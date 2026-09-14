@@ -28,11 +28,28 @@ async function makeDriver(): Promise<Driver> {
   const url = process.env.DATABASE_URL ?? process.env.POSTGRES_URL ?? process.env.POSTGRES_PRISMA_URL;
   if (url && !url.includes('[SENSITIVE]')) {
     const postgres = (await import('postgres')).default;
-    const sql = postgres(url, { prepare: false, ssl: url.includes('localhost') ? undefined : 'require', max: isServerless() ? 3 : 8, idle_timeout: 20, connect_timeout: 15, transform: { undefined: null }, onnotice: () => {} });
+    const open = () => postgres(url, { prepare: false, ssl: url.includes('localhost') ? undefined : 'require', max: isServerless() ? 3 : 8, idle_timeout: 10, max_lifetime: 300, connect_timeout: 15, transform: { undefined: null }, onnotice: () => {} });
+    let sql = open();
+    // In serverless l'istanza viene "congelata" tra una richiesta e l'altra: una connessione tenuta aperta può risultare morta al risveglio
+    // e una query resterebbe appesa per minuti. Ogni operazione ha quindi un timeout: se scatta, il pool viene chiuso e ricreato e si riprova una volta.
+    const QUERY_MS = 20_000, TX_MS = 60_000;
+    const withTimeout = <T,>(run: () => Promise<T>, ms: number): Promise<T> => new Promise<T>((resolve, reject) => {
+      const timer = setTimeout(() => reject(new DbTimeout(`Database non risponde da ${ms / 1000}s`)), ms);
+      run().then((v) => { clearTimeout(timer); resolve(v); }, (e) => { clearTimeout(timer); reject(e); });
+    });
+    const guarded = async <T,>(run: () => Promise<T>, ms: number): Promise<T> => {
+      try { return await withTimeout(run, ms); }
+      catch (e) {
+        if (!(e instanceof DbTimeout) && !isDeadConnection(e)) throw e;
+        const dead = sql; sql = open();
+        void dead.end({ timeout: 0 }).catch(() => {});
+        return await withTimeout(run, ms);
+      }
+    };
     return {
-      all: async (q, args) => (await sql.unsafe(toPg(q), args.map(norm) as never)) as unknown as Record<string, unknown>[],
-      exec: async (q) => { await sql.unsafe(q); },
-      tx: async (stmts) => { await sql.begin(async (t) => { for (const s of stmts) await t.unsafe(toPg(s.sql), (s.args ?? []).map(norm) as never); }); },
+      all: (q, args) => guarded(async () => (await sql.unsafe(toPg(q), args.map(norm) as never)) as unknown as Record<string, unknown>[], QUERY_MS),
+      exec: (q) => guarded(async () => { await sql.unsafe(q); }, QUERY_MS),
+      tx: (stmts) => guarded(async () => { await sql.begin(async (t) => { for (const s of stmts) await t.unsafe(toPg(s.sql), (s.args ?? []).map(norm) as never); }); }, TX_MS),
       close: async () => { await sql.end({ timeout: 5 }); },
     };
   }
@@ -47,6 +64,12 @@ async function makeDriver(): Promise<Driver> {
   };
 }
 
+class DbTimeout extends Error {}
+/** Errori di rete/connessione per cui ha senso riaprire il pool e riprovare (mai errori SQL). */
+function isDeadConnection(e: unknown): boolean {
+  const err = e as { code?: string; message?: string };
+  return ['CONNECTION_CLOSED', 'CONNECTION_ENDED', 'CONNECTION_DESTROYED', 'ECONNRESET', 'EPIPE', 'ETIMEDOUT', '57P01', '57014'].includes(err?.code ?? '');
+}
 function isDuplicate(e: unknown): boolean {
   const err = e as { code?: string; message?: string };
   return err?.code === '23505' || err?.code === '42P07' || /duplicate key|already exists/i.test(err?.message ?? '');
