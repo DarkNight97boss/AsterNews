@@ -28,7 +28,7 @@ async function makeDriver(): Promise<Driver> {
   const url = process.env.DATABASE_URL ?? process.env.POSTGRES_URL ?? process.env.POSTGRES_PRISMA_URL;
   if (url && !url.includes('[SENSITIVE]')) {
     const postgres = (await import('postgres')).default;
-    const sql = postgres(url, { prepare: false, ssl: url.includes('localhost') ? undefined : 'require', max: isServerless() ? 3 : 8, idle_timeout: 20, connect_timeout: 15, transform: { undefined: null } });
+    const sql = postgres(url, { prepare: false, ssl: url.includes('localhost') ? undefined : 'require', max: isServerless() ? 3 : 8, idle_timeout: 20, connect_timeout: 15, transform: { undefined: null }, onnotice: () => {} });
     return {
       all: async (q, args) => (await sql.unsafe(toPg(q), args.map(norm) as never)) as unknown as Record<string, unknown>[],
       exec: async (q) => { await sql.unsafe(q); },
@@ -45,6 +45,28 @@ async function makeDriver(): Promise<Driver> {
     tx: async (stmts) => { await db.transaction(async (t) => { for (const s of stmts) await t.query(toPg(s.sql), (s.args ?? []).map(norm)); }); },
     close: async () => { await db.close(); }, // PGlite scrive su disco solo con una chiusura pulita: gli script devono chiamare closeDb()
   };
+}
+
+function isDuplicate(e: unknown): boolean {
+  const err = e as { code?: string; message?: string };
+  return err?.code === '23505' || err?.code === '42P07' || /duplicate key|already exists/i.test(err?.message ?? '');
+}
+
+/** Unisce INSERT consecutivi con lo stesso testo SQL in un unico INSERT multi-riga (max ~60.000 parametri per statement). */
+export function mergeInserts(stmts: Stmt[]): Stmt[] {
+  const re = /^(\s*INSERT INTO \S+ \([^)]*\)\s*VALUES\s*)(\((?:\s*\?\s*,)*\s*\?\s*\))([\s\S]*)$/i;
+  const out: Stmt[] = [];
+  let cur: { prefix: string; tuple: string; suffix: string; tuples: number; args: unknown[] } | null = null;
+  const flush = () => { if (cur) { out.push({ sql: cur.prefix + Array.from({ length: cur.tuples }, () => cur!.tuple).join(',') + cur.suffix, args: cur.args }); cur = null; } };
+  for (const st of stmts) {
+    const m = st.sql.match(re);
+    if (!m) { flush(); out.push(st); continue; }
+    const [, prefix, tuple, suffix] = m; const args = st.args ?? [];
+    if (cur && cur.prefix === prefix && cur.suffix === suffix && cur.args.length + args.length <= 60000) { cur.tuples++; cur.args.push(...args); }
+    else { flush(); cur = { prefix, tuple, suffix, tuples: 1, args: [...args] }; }
+  }
+  flush();
+  return out;
 }
 
 export const SCHEMA = `
@@ -107,13 +129,17 @@ export async function ready(): Promise<Driver> {
   const d = await driver();
   if (!g.__asterReady) {
     g.__asterReady = (async () => {
-      await d.exec(SCHEMA);
+      // Più istanze serverless possono partire insieme: CREATE ... IF NOT EXISTS concorrenti possono collidere, si riprova una volta.
+      try { await d.exec(SCHEMA); } catch (e) { if (!isDuplicate(e)) throw e; await new Promise((r) => setTimeout(r, 500)); await d.exec(SCHEMA); }
       const r = await d.all("SELECT value FROM meta WHERE key = 'seeded'", []);
       if (!r.length) {
         const { seedStatements } = await import('./repo');
-        const stmts = seedStatements(buildSeed()); // eseguito direttamente sul driver: siamo dentro l'inizializzazione, ready() non è ancora risolto
-        for (let i = 0; i < stmts.length; i += 400) await d.tx(stmts.slice(i, i + 400));
-        await d.all("INSERT INTO meta (key, value) VALUES ('seeded', $1) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value", [new Date().toISOString()]);
+        // Eseguito direttamente sul driver (ready() non è ancora risolto), in UNA transazione con INSERT multi-riga: pochi round-trip anche verso un database remoto.
+        // Il primo statement è un INSERT semplice su meta: se un'altra istanza sta già inserendo i dati demo, questa aspetta il suo commit e poi fallisce con 23505 → niente da fare.
+        const stmts = mergeInserts(seedStatements(buildSeed()));
+        try {
+          await d.tx([{ sql: "INSERT INTO meta (key, value) VALUES ('seeded', ?)", args: [new Date().toISOString()] }, ...stmts]);
+        } catch (e) { if (!isDuplicate(e)) throw e; }
       }
     })().catch((e) => { g.__asterReady = undefined; throw e; });
   }

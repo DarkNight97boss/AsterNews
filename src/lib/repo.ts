@@ -264,7 +264,8 @@ export function seedStatements(d: Database): Stmt[] {
   d.tags.forEach((t) => stmts.push({ sql: 'INSERT INTO tags (id, slug, name) VALUES (?,?,?) ON CONFLICT (id) DO NOTHING', args: [t.id, t.slug, t.name] }));
   d.users.forEach((u) => stmts.push({ sql: 'INSERT INTO users (id, name, email, role, avatar, bio, active, created_at) VALUES (?,?,?,?,?,?,?,?) ON CONFLICT (id) DO NOTHING', args: [u.id, u.name, u.email, u.role, u.avatar, u.bio, b(u.active), u.createdAt] }));
   d.zones.forEach((z) => stmts.push({ sql: 'INSERT INTO zones (id, slug, name, kind) VALUES (?,?,?,?) ON CONFLICT (id) DO NOTHING', args: [z.id, z.slug, z.name, z.kind] }));
-  d.articles.forEach((a) => stmts.push(...articleStmts(a)));
+  d.articles.forEach((a) => stmts.push(articleStmts(a)[0])); // database vuoto: niente DELETE dei tag, solo inserimenti (unibili in multi-riga)
+  d.articles.forEach((a) => a.tagIds.forEach((t) => stmts.push({ sql: 'INSERT INTO article_tags (article_id, tag_id) VALUES (?, ?) ON CONFLICT DO NOTHING', args: [a.id, t] })));
   d.comments.forEach((c) => stmts.push({ sql: 'INSERT INTO comments (id, article_id, author_name, email, body, status, created_at) VALUES (?,?,?,?,?,?,?) ON CONFLICT (id) DO NOTHING', args: [c.id, c.articleId, c.authorName, c.email, c.body, c.status, c.createdAt] }));
   d.media.forEach((m) => stmts.push({ sql: 'INSERT INTO media (id, name, url, alt, type, size, uploaded_by, created_at) VALUES (?,?,?,?,?,?,?,?) ON CONFLICT (id) DO NOTHING', args: [m.id, m.name, m.url, m.alt, m.type, m.size, m.uploadedBy, m.createdAt] }));
   d.subscribers.forEach((x) => stmts.push({ sql: 'INSERT INTO subscribers (id, email, created_at) VALUES (?,?,?) ON CONFLICT (email) DO NOTHING', args: [x.id, x.email, x.createdAt] }));
