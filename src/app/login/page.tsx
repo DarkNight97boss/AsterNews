@@ -9,6 +9,6 @@ export const metadata: Metadata = { title: 'Accedi', robots: { index: false } };
 export default async function LoginPage({ searchParams }: PageProps<'/login'>) {
   const { redirect: r } = await searchParams;
   if (await getCurrentUser()) redirect(typeof r === 'string' && r.startsWith('/') ? r : '/admin');
-  const users = getUsers().map((u) => ({ email: u.email, role: u.role }));
+  const users = (await getUsers()).map((u) => ({ email: u.email, role: u.role }));
   return <LoginForm users={users} redirectTo={typeof r === 'string' ? r : '/admin'} />;
 }

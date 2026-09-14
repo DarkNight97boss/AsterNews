@@ -6,6 +6,7 @@ import { getSeoSettings, getSettings } from '@/lib/queries';
 import { getActiveTheme } from '@/lib/theme-server';
 import { themeCss } from '@/lib/themes';
 import './globals.scss';
+import { siteUrl } from '@/lib/site-url';
 
 const inter = Inter({ subsets: ['latin'], weight: ['400', '700'], variable: '--font-inter', display: 'swap' });
 const serif = Source_Serif_4({ subsets: ['latin'], weight: ['400', '700'], variable: '--font-serif-src', display: 'swap', preload: false });
@@ -15,14 +16,14 @@ const slab = Roboto_Slab({ subsets: ['latin'], weight: ['700', '900'], variable:
 
 export const dynamic = 'force-dynamic';
 
-export function generateMetadata(): Metadata {
-  const s = getSettings();
+export async function generateMetadata(): Promise<Metadata> {
+  const [s, seo] = await Promise.all([getSettings(), getSeoSettings()]);
   return {
     title: { default: `${s.siteName} - ${s.tagline}`, template: `%s | ${s.siteName}` },
     description: s.description,
-    metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000'),
+    metadataBase: new URL(siteUrl()),
     openGraph: { siteName: s.siteName, locale: 'it_IT', type: 'website' },
-    verification: getSeoSettings().searchConsoleToken ? { google: getSeoSettings().searchConsoleToken } : undefined,
+    verification: seo.searchConsoleToken ? { google: seo.searchConsoleToken } : undefined,
   };
 }
 

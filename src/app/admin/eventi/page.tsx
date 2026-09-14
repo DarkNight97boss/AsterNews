@@ -7,5 +7,6 @@ import { getAllEvents, getMedia, getZones } from '@/lib/queries';
 export default async function EventsAdminPage() {
   const me = await requireUser();
   if (!can(me, 'article.publish')) redirect('/admin');
-  return <EventsManager events={getAllEvents()} zones={getZones()} media={getMedia()} canDelete={can(me, 'article.delete')} />;
+  const [events, zones, media] = await Promise.all([getAllEvents(), getZones(), getMedia(300)]);
+  return <EventsManager events={events} zones={zones} media={media} canDelete={can(me, 'article.delete')} />;
 }

@@ -82,7 +82,7 @@ export function SettingsForm({ initial, categories }: { initial: SiteSettings; c
             <label className="switch"><input type="checkbox" checked={s.commentsModeration} onChange={(e) => setS({ ...s, commentsModeration: e.target.checked })} /> Modera i commenti prima della pubblicazione</label>
           </div>
           <div className="panel"><div className="panel-title">Dati</div>
-            <p className="help">I dati della demo sono salvati in <code>data/db.json</code> sul server.</p>
+            <p className="help">I dati sono salvati su Postgres (Supabase in produzione, PGlite in locale nella cartella <code>data/pg</code>).</p>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               <button className="btn btn-outline btn-sm" onClick={() => start(async () => { const json = await exportJsonAction(); const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([json], { type: 'application/json' })); a.download = 'aster-news-export.json'; a.click(); })}>Esporta JSON</button>
               <button className="btn btn-danger btn-sm" onClick={() => { if (confirm('Ripristinare tutti i dati demo? Le modifiche andranno perse.')) start(async () => { const r = await resetDemoAction(); toast.success(r.message ?? ''); router.refresh(); }); }}>Ripristina dati demo</button>

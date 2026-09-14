@@ -103,3 +103,6 @@
 .seo-report-box { margin-top: 14px; background: var(--gray-50); border: 1px solid var(--gray-200); border-radius: 6px; padding: 8px 12px; summary { cursor: pointer; font-size: 13px; font-weight: 700; } }
 
 .wp-drop { display: block; border: 2px dashed var(--gray-300); border-radius: 8px; padding: 26px; text-align: center; color: var(--gray-600); background: #fff; cursor: pointer; margin-top: 12px; &:hover { border-color: var(--blue); } input { display: none; } }
+
+.job { padding: 12px 0; border-bottom: 1px solid var(--gray-200); &:last-of-type { border-bottom: 0; margin-bottom: 12px; } }
+.progress { height: 8px; background: var(--gray-200); border-radius: 4px; overflow: hidden; margin: 8px 0 6px; div { height: 100%; background: var(--blue); transition: width .4s; } }

@@ -9,8 +9,8 @@ export function Stars({ n }: { n: number }) {
   return <span className="stars" aria-label={`${n} stelle su 5`}>{'★'.repeat(n)}<span className="off">{'★'.repeat(5 - n)}</span></span>;
 }
 
-export function EventCard({ event: e }: { event: Event }) {
-  const z = zone(e.zoneId);
+export async function EventCard({ event: e }: { event: Event }) {
+  const z = await zone(e.zoneId);
   return (
     <article className="event-card">
       <Link href={`/eventi/${e.slug}`} className="ev-img">

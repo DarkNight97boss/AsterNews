@@ -4,34 +4,30 @@ import { revalidatePath } from 'next/cache';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { createSessionToken, DEMO_PASSWORD, getCurrentUser, requirePermission, requireUser, SESSION_COOKIE } from './auth';
-import { getDb, mutate, resetDb } from './db';
+import { resetDb } from './db';
+import * as repo from './repo';
 import { Article, ArticleStatus, Category, Comment, CommentStatus, Event, MediaItem, Report, SiteSettings, Tag, User, Zone } from './models';
 import { can, canEdit } from './permissions';
-import { article as findArticle, getCategories, getSeoSettings, rawContext, seoContext } from './queries';
+import { getCategories, getSeoSettings, getSettings, invalidateProfiles, rawContext, seoContext } from './queries';
 import { analyze, optimizeArticle, prepareArticle } from './seo-engine';
 import { slugify, uid } from './utils';
 import { PREVIEW_COOKIE } from './theme-server';
 import type { ThemeSettings } from './themes';
+import { siteUrl } from './site-url';
 
 export type ActionResult = { ok: boolean; message?: string; id?: string };
-
 const ok = (message?: string, id?: string): ActionResult => ({ ok: true, message, id });
 const fail = (message: string): ActionResult => ({ ok: false, message });
+function refresh(): void { revalidatePath('/', 'layout'); }
+async function log(userId: string, action: string, target: string): Promise<void> { await repo.insertActivity({ id: uid('ac'), userId, action, target, createdAt: new Date().toISOString() }); }
 
-function refresh(): void {
-  revalidatePath('/', 'layout');
-}
-
-function log(userId: string, action: string, target: string): void {
-  mutate((d) => ({ activity: [{ id: uid('ac'), userId, action, target, createdAt: new Date().toISOString() }, ...d.activity].slice(0, 100) }));
-}
 
 // ---------------- Auth ----------------
 export async function loginAction(_prev: ActionResult | null, formData: FormData): Promise<ActionResult> {
   const email = String(formData.get('email') ?? '').trim().toLowerCase();
   const password = String(formData.get('password') ?? '');
   const redirectTo = String(formData.get('redirect') ?? '') || '/admin';
-  const u = getDb().users.find((x) => x.email.toLowerCase() === email);
+  const u = await repo.findUserByEmail(email);
   if (!u) return fail('Nessun utente con questa email.');
   if (!u.active) return fail('Account disattivato. Contatta un amministratore.');
   if (password !== DEMO_PASSWORD) return fail('Password errata.');
@@ -39,40 +35,31 @@ export async function loginAction(_prev: ActionResult | null, formData: FormData
   store.set(SESSION_COOKIE, createSessionToken(u.id), { httpOnly: true, sameSite: 'lax', path: '/', maxAge: 60 * 60 * 24 * 7, secure: process.env.NODE_ENV === 'production' });
   redirect(redirectTo.startsWith('/') ? redirectTo : '/admin');
 }
-
-export async function logoutAction(): Promise<void> {
-  const store = await cookies();
-  store.delete(SESSION_COOKIE);
-  redirect('/login');
-}
+export async function logoutAction(): Promise<void> { (await cookies()).delete(SESSION_COOKIE); redirect('/login'); }
+export async function currentUserAction(): Promise<User | null> { return getCurrentUser(); }
 
 // ---------------- Articoli ----------------
-function uniqueSlug(base: string, excludeId: string): string {
+async function uniqueSlug(base: string, excludeId: string): Promise<string> {
   const root = slugify(base) || 'articolo';
-  let slug = root;
-  let n = 2;
-  while (getDb().articles.some((a) => a.slug === slug && a.id !== excludeId)) slug = `${root}-${n++}`;
+  let slug = root; let n = 2;
+  while (await repo.slugExists(slug, excludeId)) slug = `${root}-${n++}`;
   return slug;
 }
 
 export async function saveArticleAction(input: Article, status: ArticleStatus): Promise<ActionResult> {
   const u = await requireUser();
-  const existing = findArticle(input.id);
+  const existing = await repo.findArticle(input.id);
   if (existing && !canEdit(u, existing)) return fail('Non puoi modificare questo articolo.');
   if (!existing && !can(u, 'article.create')) return fail('Non puoi creare articoli.');
   if (!input.title.trim()) return fail('Il titolo è obbligatorio.');
   if (!can(u, 'article.edit.any')) input.authorId = existing?.authorId ?? u.id;
   if ((status === 'published' || status === 'scheduled' || status === 'archived') && !can(u, 'article.publish')) status = 'review';
-
   const now = new Date().toISOString();
-  const seoCfg = getSeoSettings();
-  const ctx = seoContext(input.id);
+  const seoCfg = await getSeoSettings();
+  const ctx = await seoContext(input.id, input);
   let prepared = input;
-  if (seoCfg.autoOptimizeOnSave) {
-    prepared = optimizeArticle(input, ctx, { fillMeta: true, links: seoCfg.autoInternalLinks, maxLinks: seoCfg.maxInternalLinks, fixImages: seoCfg.fixImages, siteUrl: process.env.NEXT_PUBLIC_SITE_URL ?? '', overwriteSlug: false }).article;
-  }
-  const a: Article = { ...prepared, status, slug: uniqueSlug(prepared.slug || prepared.title, prepared.id), updatedAt: now, excerpt: prepared.excerpt || prepared.subtitle };
-  a.seoScore = analyze(a, ctx).score;
+  if (seoCfg.autoOptimizeOnSave) prepared = optimizeArticle(input, ctx, { fillMeta: true, links: seoCfg.autoInternalLinks, maxLinks: seoCfg.maxInternalLinks, fixImages: seoCfg.fixImages, siteUrl: siteUrl(), overwriteSlug: false }).article;
+  const a: Article = { ...prepared, status, slug: await uniqueSlug(prepared.slug || prepared.title, prepared.id), updatedAt: now, excerpt: prepared.excerpt || prepared.subtitle };
   if (status === 'scheduled') {
     if (!a.scheduledAt) return fail('Imposta data e ora di programmazione.');
     if (a.scheduledAt <= now) { a.status = 'published'; a.scheduledAt = null; }
@@ -81,9 +68,9 @@ export async function saveArticleAction(input: Article, status: ArticleStatus): 
   if (!a.seo.title) a.seo.title = a.title;
   if (!a.seo.description) a.seo.description = a.excerpt || a.subtitle;
   if (!existing) a.createdAt = now;
-
-  mutate((d) => ({ articles: existing ? d.articles.map((x) => (x.id === a.id ? a : x)) : [a, ...d.articles] }));
-  log(u.id, a.status === 'published' ? 'ha pubblicato' : 'ha salvato', a.title);
+  a.seoScore = analyze(a, ctx).score;
+  await repo.upsertArticle(a);
+  await log(u.id, a.status === 'published' ? 'ha pubblicato' : 'ha salvato', a.title);
   refresh();
   const msg = a.status === 'published' ? 'Articolo pubblicato!' : a.status === 'scheduled' ? 'Articolo programmato.' : a.status === 'review' ? 'Inviato in revisione.' : 'Bozza salvata.';
   return ok(msg, a.id);
@@ -91,167 +78,122 @@ export async function saveArticleAction(input: Article, status: ArticleStatus): 
 
 export async function setArticleStatusAction(id: string, status: ArticleStatus): Promise<ActionResult> {
   const u = await requireUser();
-  const a = findArticle(id);
+  const a = await repo.findArticle(id);
   if (!a || !canEdit(u, a)) return fail('Operazione non consentita.');
   if (status !== 'draft' && status !== 'review' && !can(u, 'article.publish')) return fail('Non hai il permesso di pubblicare.');
   const now = new Date().toISOString();
-  mutate((d) => ({ articles: d.articles.map((x) => (x.id === id ? { ...x, status, updatedAt: now, publishedAt: status === 'published' && !x.publishedAt ? now : x.publishedAt } : x)) }));
-  log(u.id, `ha impostato lo stato "${status}" per`, a.title);
+  await repo.patchArticle(id, { status, updated_at: now, published_at: status === 'published' && !a.publishedAt ? now : a.publishedAt });
+  await log(u.id, `ha impostato lo stato "${status}" per`, a.title);
   refresh();
   return ok('Stato aggiornato.');
 }
-
-export async function bulkStatusAction(ids: string[], status: ArticleStatus): Promise<ActionResult> {
-  let n = 0;
-  for (const id of ids) if ((await setArticleStatusAction(id, status)).ok) n++;
-  return ok(`${n} articoli aggiornati.`);
-}
-
+export async function bulkStatusAction(ids: string[], status: ArticleStatus): Promise<ActionResult> { let n = 0; for (const id of ids) if ((await setArticleStatusAction(id, status)).ok) n++; return ok(`${n} articoli aggiornati.`); }
 export async function deleteArticleAction(id: string): Promise<ActionResult> {
   const u = await requireUser();
-  const a = findArticle(id);
+  const a = await repo.findArticle(id);
   if (!a) return fail('Articolo non trovato.');
-  const allowed = can(u, 'article.delete') || (a.authorId === u.id && a.status === 'draft');
-  if (!allowed) return fail('Non puoi eliminare questo articolo.');
-  mutate((d) => ({ articles: d.articles.filter((x) => x.id !== id), comments: d.comments.filter((c) => c.articleId !== id) }));
-  log(u.id, 'ha eliminato', a.title);
+  if (!(can(u, 'article.delete') || (a.authorId === u.id && a.status === 'draft'))) return fail('Non puoi eliminare questo articolo.');
+  await repo.deleteArticleRow(id);
+  await log(u.id, 'ha eliminato', a.title);
   refresh();
   return ok('Articolo eliminato.');
 }
-
-export async function bulkDeleteAction(ids: string[]): Promise<ActionResult> {
-  let n = 0;
-  for (const id of ids) if ((await deleteArticleAction(id)).ok) n++;
-  return ok(`${n} articoli eliminati.`);
-}
-
+export async function bulkDeleteAction(ids: string[]): Promise<ActionResult> { let n = 0; for (const id of ids) if ((await deleteArticleAction(id)).ok) n++; return ok(`${n} articoli eliminati.`); }
 export async function duplicateArticleAction(id: string): Promise<ActionResult> {
   const u = await requirePermission('article.create');
-  const a = findArticle(id);
+  const a = await repo.findArticle(id);
   if (!a) return fail('Articolo non trovato.');
   const now = new Date().toISOString();
-  const copy: Article = { ...structuredClone(a), id: uid('a'), title: a.title + ' (copia)', slug: uniqueSlug(a.slug + '-copia', ''), status: 'draft', publishedAt: null, scheduledAt: null, views: 0, createdAt: now, updatedAt: now, authorId: can(u, 'article.edit.any') ? a.authorId : u.id };
-  mutate((d) => ({ articles: [copy, ...d.articles] }));
-  log(u.id, 'ha duplicato', a.title);
+  const copy: Article = { ...structuredClone(a), id: uid('a'), title: a.title + ' (copia)', slug: await uniqueSlug(a.slug + '-copia', ''), status: 'draft', publishedAt: null, scheduledAt: null, views: 0, createdAt: now, updatedAt: now, legacyUrl: undefined, authorId: can(u, 'article.edit.any') ? a.authorId : u.id };
+  await repo.upsertArticle(copy);
+  await log(u.id, 'ha duplicato', a.title);
   refresh();
   return ok('Articolo duplicato.', copy.id);
 }
+export async function incrementViewsAction(id: string): Promise<void> { await repo.incrementViews(id); }
 
-export async function incrementViewsAction(id: string): Promise<void> {
-  mutate((d) => ({ articles: d.articles.map((a) => (a.id === id ? { ...a, views: a.views + 1 } : a)) }));
-}
-
-// ---------------- Categorie / Tag ----------------
+// ---------------- Categorie / Tag / Zone ----------------
 export async function saveCategoryAction(c: Category): Promise<ActionResult> {
   await requirePermission('category.manage');
   if (!c.name.trim()) return fail('Il nome è obbligatorio.');
   const cat: Category = { ...c, id: c.id || uid('c'), slug: slugify(c.slug || c.name) };
-  mutate((d) => ({ categories: d.categories.some((x) => x.id === cat.id) ? d.categories.map((x) => (x.id === cat.id ? cat : x)) : [...d.categories, cat] }));
-  refresh();
+  await repo.upsertCategory(cat); invalidateProfiles(); refresh();
   return ok('Categoria salvata.', cat.id);
 }
-
 export async function deleteCategoryAction(id: string): Promise<ActionResult> {
   await requirePermission('category.manage');
-  const cats = getCategories();
+  const cats = await getCategories();
   if (cats.length <= 1) return fail('Deve esistere almeno una categoria.');
   const fallback = cats.find((c) => c.id !== id)?.id ?? '';
-  mutate((d) => ({
-    categories: d.categories.filter((c) => c.id !== id),
-    articles: d.articles.map((a) => (a.categoryId === id ? { ...a, categoryId: fallback } : a)),
-    settings: { ...d.settings, homeSections: d.settings.homeSections.filter((s) => s !== id) },
-  }));
+  await repo.deleteCategoryRow(id, fallback);
+  const s = await getSettings();
+  await repo.saveSettingsRow({ ...s, homeSections: s.homeSections.filter((x) => x !== id) });
   refresh();
   return ok('Categoria eliminata.');
 }
-
 export async function moveCategoryAction(id: string, dir: -1 | 1): Promise<ActionResult> {
   await requirePermission('category.manage');
-  const list = getCategories();
-  const i = list.findIndex((c) => c.id === id);
-  const j = i + dir;
+  const list = await getCategories();
+  const i = list.findIndex((c) => c.id === id); const j = i + dir;
   if (i < 0 || j < 0 || j >= list.length) return ok();
   const a = list[i], b = list[j];
-  mutate((d) => ({ categories: d.categories.map((c) => (c.id === a.id ? { ...c, order: b.order } : c.id === b.id ? { ...c, order: a.order } : c)) }));
+  await repo.upsertCategory({ ...a, order: b.order }); await repo.upsertCategory({ ...b, order: a.order });
   refresh();
   return ok();
 }
-
 export async function saveTagAction(t: Tag): Promise<ActionResult> {
   await requirePermission('tag.manage');
   if (!t.name.trim()) return fail('Il nome è obbligatorio.');
   const tag: Tag = { ...t, id: t.id || uid('t'), slug: slugify(t.slug || t.name) };
-  mutate((d) => ({ tags: d.tags.some((x) => x.id === tag.id) ? d.tags.map((x) => (x.id === tag.id ? tag : x)) : [...d.tags, tag] }));
-  refresh();
+  await repo.upsertTag(tag); refresh();
   return ok('Tag salvato.', tag.id);
 }
-
 export async function ensureTagAction(name: string): Promise<Tag | null> {
   const u = await requireUser();
   if (!can(u, 'tag.manage') && !can(u, 'article.create')) return null;
+  return ensureTag(name);
+}
+/** Crea il tag se manca (uso interno, senza controllo permessi). */
+export async function ensureTag(name: string): Promise<Tag | null> {
   const slug = slugify(name);
   if (!slug) return null;
-  const existing = getDb().tags.find((t) => t.slug === slug);
+  const existing = await repo.findTagBySlug(slug);
   if (existing) return existing;
   const tag: Tag = { id: uid('t'), slug, name: name.trim() };
-  mutate((d) => ({ tags: [...d.tags, tag] }));
+  await repo.upsertTag(tag);
   return tag;
 }
-
-export async function deleteTagAction(id: string): Promise<ActionResult> {
-  await requirePermission('tag.manage');
-  mutate((d) => ({ tags: d.tags.filter((t) => t.id !== id), articles: d.articles.map((a) => ({ ...a, tagIds: a.tagIds.filter((t) => t !== id) })) }));
-  refresh();
-  return ok('Tag eliminato.');
+export async function deleteTagAction(id: string): Promise<ActionResult> { await requirePermission('tag.manage'); await repo.deleteTagRow(id); refresh(); return ok('Tag eliminato.'); }
+export async function saveZoneAction(z: Zone): Promise<ActionResult> {
+  await requirePermission('category.manage');
+  if (!z.name.trim()) return fail('Il nome è obbligatorio.');
+  const zone: Zone = { ...z, id: z.id || uid('z'), slug: slugify(z.slug || z.name), name: z.name.trim() };
+  await repo.upsertZone(zone); refresh();
+  return ok('Zona salvata.', zone.id);
 }
+export async function deleteZoneAction(id: string): Promise<ActionResult> { await requirePermission('category.manage'); await repo.deleteZoneRow(id); refresh(); return ok('Zona eliminata.'); }
 
 // ---------------- Media ----------------
 export async function addMediaAction(m: { name: string; url: string; alt: string; size: number }): Promise<MediaItem | null> {
   const u = await requirePermission('media.manage');
   if (!m.url) return null;
   const item: MediaItem = { ...m, id: uid('m'), type: 'image', uploadedBy: u.id, createdAt: new Date().toISOString() };
-  mutate((d) => ({ media: [item, ...d.media] }));
-  refresh();
+  await repo.insertMedia(item); refresh();
   return item;
 }
-
-export async function updateMediaAction(m: MediaItem): Promise<ActionResult> {
-  await requirePermission('media.manage');
-  mutate((d) => ({ media: d.media.map((x) => (x.id === m.id ? { ...x, name: m.name, alt: m.alt } : x)) }));
-  refresh();
-  return ok('Salvato.');
-}
-
-export async function deleteMediaAction(id: string): Promise<ActionResult> {
-  await requirePermission('media.manage');
-  mutate((d) => ({ media: d.media.filter((m) => m.id !== id) }));
-  refresh();
-  return ok('File eliminato.');
-}
+export async function updateMediaAction(m: MediaItem): Promise<ActionResult> { await requirePermission('media.manage'); await repo.updateMediaRow(m); refresh(); return ok('Salvato.'); }
+export async function deleteMediaAction(id: string): Promise<ActionResult> { await requirePermission('media.manage'); await repo.deleteMediaRow(id); refresh(); return ok('File eliminato.'); }
 
 // ---------------- Commenti ----------------
-export async function setCommentStatusAction(id: string, status: CommentStatus): Promise<ActionResult> {
-  await requirePermission('comment.moderate');
-  mutate((d) => ({ comments: d.comments.map((c) => (c.id === id ? { ...c, status } : c)) }));
-  refresh();
-  return ok('Commento aggiornato.');
-}
-
-export async function deleteCommentAction(id: string): Promise<ActionResult> {
-  await requirePermission('comment.moderate');
-  mutate((d) => ({ comments: d.comments.filter((c) => c.id !== id) }));
-  refresh();
-  return ok('Commento eliminato.');
-}
-
+export async function setCommentStatusAction(id: string, status: CommentStatus): Promise<ActionResult> { await requirePermission('comment.moderate'); await repo.setCommentStatus(id, status); refresh(); return ok('Commento aggiornato.'); }
+export async function deleteCommentAction(id: string): Promise<ActionResult> { await requirePermission('comment.moderate'); await repo.deleteCommentRow(id); refresh(); return ok('Commento eliminato.'); }
 export async function addCommentAction(input: { articleId: string; authorName: string; email: string; body: string }): Promise<ActionResult> {
-  const a = findArticle(input.articleId);
+  const a = await repo.findArticle(input.articleId);
   if (!a || !a.allowComments) return fail('Commenti non disponibili.');
   if (!input.authorName.trim() || !input.body.trim() || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(input.email.trim())) return fail('Compila tutti i campi correttamente.');
-  const moderated = getDb().settings.commentsModeration;
+  const moderated = (await getSettings()).commentsModeration;
   const c: Comment = { id: uid('cm'), articleId: a.id, authorName: input.authorName.trim().slice(0, 60), email: input.email.trim(), body: input.body.trim().slice(0, 2000), status: moderated ? 'pending' : 'approved', createdAt: new Date().toISOString() };
-  mutate((d) => ({ comments: [c, ...d.comments] }));
-  refresh();
+  await repo.insertComment(c); refresh();
   return ok(moderated ? 'Grazie! Il commento sarà pubblicato dopo la moderazione.' : 'Commento pubblicato.');
 }
 
@@ -259,123 +201,64 @@ export async function addCommentAction(input: { articleId: string; authorName: s
 export async function saveUserAction(u: User): Promise<ActionResult> {
   const me = await requirePermission('user.manage');
   if (!u.name.trim() || !u.email.trim()) return fail('Nome ed email sono obbligatori.');
-  if (getDb().users.some((x) => x.email.toLowerCase() === u.email.toLowerCase() && x.id !== u.id)) return fail('Email già in uso.');
+  const dup = await repo.findUserByEmail(u.email);
+  if (dup && dup.id !== u.id) return fail('Email già in uso.');
   if (u.id === me.id && !u.active) return fail('Non puoi disattivare il tuo account.');
   const user: User = { ...u, id: u.id || uid('u'), avatar: u.avatar || `https://picsum.photos/seed/${slugify(u.name)}/200/200`, createdAt: u.createdAt || new Date().toISOString() };
-  mutate((d) => ({ users: d.users.some((x) => x.id === user.id) ? d.users.map((x) => (x.id === user.id ? user : x)) : [...d.users, user] }));
-  refresh();
+  await repo.upsertUser(user); refresh();
   return ok('Utente salvato.', user.id);
 }
-
 export async function deleteUserAction(id: string): Promise<ActionResult> {
   const me = await requirePermission('user.manage');
   if (id === me.id) return fail('Non puoi eliminare te stesso.');
-  if (getDb().articles.some((a) => a.authorId === id)) return fail("L'utente ha articoli associati: disattivalo invece di eliminarlo.");
-  mutate((d) => ({ users: d.users.filter((u) => u.id !== id) }));
-  refresh();
+  if (await repo.userHasArticles(id)) return fail("L'utente ha articoli associati: disattivalo invece di eliminarlo.");
+  await repo.deleteUserRow(id); refresh();
   return ok('Utente eliminato.');
 }
 
 // ---------------- Impostazioni / newsletter ----------------
 export async function saveSettingsAction(s: SiteSettings): Promise<ActionResult> {
   await requirePermission('settings.manage');
-  mutate(() => ({ settings: { ...s, ticker: s.ticker.filter((t) => t.trim()), articlesPerPage: Math.min(48, Math.max(4, Number(s.articlesPerPage) || 12)) } }));
+  await repo.saveSettingsRow({ ...s, ticker: s.ticker.filter((t) => t.trim()), articlesPerPage: Math.min(48, Math.max(4, Number(s.articlesPerPage) || 12)) });
   refresh();
   return ok('Impostazioni salvate.');
 }
-
-export async function resetDemoAction(): Promise<ActionResult> {
-  await requirePermission('settings.manage');
-  resetDb();
-  refresh();
-  return ok('Dati demo ripristinati.');
-}
-
+export async function resetDemoAction(): Promise<ActionResult> { await requirePermission('settings.manage'); await resetDb(); invalidateProfiles(); refresh(); return ok('Dati demo ripristinati.'); }
 export async function exportJsonAction(): Promise<string> {
   await requirePermission('settings.manage');
-  return JSON.stringify(getDb(), null, 2);
+  const [categories, tags, users, zones, settings, articles] = await Promise.all([repo.listCategories(), repo.listTags(100000), repo.listUsers(), repo.listZones(), getSettings(), repo.listArticles({}, 'updated', 1000)]);
+  return JSON.stringify({ exportedAt: new Date().toISOString(), note: 'Esportazione parziale: ultimi 1000 articoli. Per l\'intero archivio copia il file SQLite.', categories, tags, users, zones, settings, articles }, null, 1);
 }
-
 export async function subscribeAction(email: string): Promise<ActionResult> {
   const e = email.trim().toLowerCase();
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e)) return fail('Inserisci un indirizzo email valido.');
-  if (!getDb().subscribers.some((s) => s.email === e)) mutate((d) => ({ subscribers: [{ id: uid('s'), email: e, createdAt: new Date().toISOString() }, ...d.subscribers] }));
+  await repo.insertSubscriber({ id: uid('s'), email: e, createdAt: new Date().toISOString() });
   return ok('Iscrizione completata. Benvenuto!');
 }
-
-export async function removeSubscriberAction(id: string): Promise<ActionResult> {
-  await requirePermission('comment.moderate');
-  mutate((d) => ({ subscribers: d.subscribers.filter((s) => s.id !== id) }));
-  refresh();
-  return ok('Iscritto rimosso.');
-}
-
-export async function currentUserAction(): Promise<User | null> {
-  return getCurrentUser();
-}
-
-// ---------------- Zone ----------------
-export async function saveZoneAction(z: Zone): Promise<ActionResult> {
-  await requirePermission('category.manage');
-  if (!z.name.trim()) return fail('Il nome è obbligatorio.');
-  const zone: Zone = { ...z, id: z.id || uid('z'), slug: slugify(z.slug || z.name), name: z.name.trim() };
-  mutate((d) => ({ zones: d.zones.some((x) => x.id === zone.id) ? d.zones.map((x) => (x.id === zone.id ? zone : x)) : [...d.zones, zone] }));
-  refresh();
-  return ok('Zona salvata.', zone.id);
-}
-
-export async function deleteZoneAction(id: string): Promise<ActionResult> {
-  await requirePermission('category.manage');
-  mutate((d) => ({ zones: d.zones.filter((z) => z.id !== id), articles: d.articles.map((a) => (a.zoneId === id ? { ...a, zoneId: '' } : a)), events: d.events.map((e) => (e.zoneId === id ? { ...e, zoneId: '' } : e)) }));
-  refresh();
-  return ok('Zona eliminata.');
-}
+export async function removeSubscriberAction(id: string): Promise<ActionResult> { await requirePermission('comment.moderate'); await repo.deleteSubscriberRow(id); refresh(); return ok('Iscritto rimosso.'); }
 
 // ---------------- Eventi ----------------
-function uniqueEventSlug(base: string, excludeId: string): string {
-  const root = slugify(base) || 'evento';
-  let slug = root;
-  let n = 2;
-  while (getDb().events.some((e) => e.slug === slug && e.id !== excludeId)) slug = `${root}-${n++}`;
+async function uniqueEventSlug(base: string, excludeId: string): Promise<string> {
+  const root = slugify(base) || 'evento'; let slug = root; let n = 2;
+  while (await repo.eventSlugExists(slug, excludeId)) slug = `${root}-${n++}`;
   return slug;
 }
-
 export async function saveEventAction(e: Event): Promise<ActionResult> {
   await requirePermission('article.publish');
   if (!e.title.trim() || !e.dateFrom) return fail('Titolo e data di inizio sono obbligatori.');
-  const event: Event = { ...e, id: e.id || uid('e'), slug: uniqueEventSlug(e.slug || e.title, e.id), createdAt: e.createdAt || new Date().toISOString(), rating: Math.max(0, Math.min(5, Number(e.rating) || 0)) };
+  const event: Event = { ...e, id: e.id || uid('e'), slug: await uniqueEventSlug(e.slug || e.title, e.id), createdAt: e.createdAt || new Date().toISOString(), rating: Math.max(0, Math.min(5, Number(e.rating) || 0)) };
   if (event.dateTo && event.dateTo < event.dateFrom) event.dateTo = event.dateFrom;
-  mutate((d) => ({ events: d.events.some((x) => x.id === event.id) ? d.events.map((x) => (x.id === event.id ? event : x)) : [event, ...d.events] }));
-  refresh();
+  await repo.upsertEvent(event); refresh();
   return ok('Evento salvato.', event.id);
 }
-
-export async function setEventStatusAction(id: string, status: Event['status']): Promise<ActionResult> {
-  await requirePermission('article.publish');
-  mutate((d) => ({ events: d.events.map((e) => (e.id === id ? { ...e, status } : e)) }));
-  refresh();
-  return ok('Evento aggiornato.');
-}
-
-export async function deleteEventAction(id: string): Promise<ActionResult> {
-  await requirePermission('article.delete');
-  mutate((d) => ({ events: d.events.filter((e) => e.id !== id) }));
-  refresh();
-  return ok('Evento eliminato.');
-}
-
-/** Segnalazione evento da parte dei lettori: entra in coda di approvazione. */
+export async function setEventStatusAction(id: string, status: Event['status']): Promise<ActionResult> { await requirePermission('article.publish'); await repo.setEventStatus(id, status); refresh(); return ok('Evento aggiornato.'); }
+export async function deleteEventAction(id: string): Promise<ActionResult> { await requirePermission('article.delete'); await repo.deleteEventRow(id); refresh(); return ok('Evento eliminato.'); }
 export async function submitEventAction(input: { title: string; type: Event['type']; dateFrom: string; dateTo: string; timeInfo: string; place: string; address: string; zoneId: string; price: string; free: boolean; description: string; email: string }): Promise<ActionResult> {
   if (!input.title.trim() || !input.dateFrom || !input.place.trim()) return fail('Titolo, data e luogo sono obbligatori.');
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(input.email.trim())) return fail('Inserisci un indirizzo email valido.');
-  const event: Event = {
-    id: uid('e'), slug: uniqueEventSlug(input.title, ''), title: input.title.trim().slice(0, 140), description: `<p>${input.description.trim().slice(0, 3000).replace(/</g, '&lt;')}</p>`,
-    type: input.type, dateFrom: input.dateFrom, dateTo: input.dateTo || null, timeInfo: input.timeInfo.slice(0, 60), place: input.place.trim().slice(0, 120), address: input.address.slice(0, 120), zoneId: input.zoneId,
-    price: input.free ? '' : input.price.slice(0, 60), free: input.free, image: '', rating: 0, status: 'pending', submittedBy: input.email.trim(), createdAt: new Date().toISOString(),
-  };
-  mutate((d) => ({ events: [event, ...d.events] }));
-  refresh();
-  return ok('Grazie! L\'evento sarà pubblicato dopo la verifica della redazione.');
+  const event: Event = { id: uid('e'), slug: await uniqueEventSlug(input.title, ''), title: input.title.trim().slice(0, 140), description: `<p>${input.description.trim().slice(0, 3000).replace(/</g, '&lt;')}</p>`, type: input.type, dateFrom: input.dateFrom, dateTo: input.dateTo || null, timeInfo: input.timeInfo.slice(0, 60), place: input.place.trim().slice(0, 120), address: input.address.slice(0, 120), zoneId: input.zoneId, price: input.free ? '' : input.price.slice(0, 60), free: input.free, image: '', rating: 0, status: 'pending', submittedBy: input.email.trim(), createdAt: new Date().toISOString() };
+  await repo.upsertEvent(event); refresh();
+  return ok("Grazie! L'evento sarà pubblicato dopo la verifica della redazione.");
 }
 
 // ---------------- Segnalazioni ----------------
@@ -383,63 +266,23 @@ export async function submitReportAction(input: { name: string; email: string; z
   if (!input.name.trim() || !input.subject.trim() || !input.body.trim()) return fail('Compila nome, oggetto e descrizione.');
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(input.email.trim())) return fail('Inserisci un indirizzo email valido.');
   const r: Report = { id: uid('r'), name: input.name.trim().slice(0, 60), email: input.email.trim(), zoneId: input.zoneId, subject: input.subject.trim().slice(0, 140), body: input.body.trim().slice(0, 3000), image: input.image.startsWith('data:image/') && input.image.length < 2_000_000 ? input.image : '', status: 'new', reply: '', createdAt: new Date().toISOString() };
-  mutate((d) => ({ reports: [r, ...d.reports] }));
-  refresh();
+  await repo.insertReport(r); refresh();
   return ok('Segnalazione inviata. La redazione la verificherà al più presto.');
 }
-
-export async function updateReportAction(id: string, patch: { status?: Report['status']; reply?: string; subject?: string; body?: string }): Promise<ActionResult> {
-  await requirePermission('comment.moderate');
-  mutate((d) => ({ reports: d.reports.map((r) => (r.id === id ? { ...r, ...patch } : r)) }));
-  refresh();
-  return ok('Segnalazione aggiornata.');
-}
-
-export async function deleteReportAction(id: string): Promise<ActionResult> {
-  await requirePermission('comment.moderate');
-  mutate((d) => ({ reports: d.reports.filter((r) => r.id !== id) }));
-  refresh();
-  return ok('Segnalazione eliminata.');
-}
-
-export async function setCookieConsentAction(value: 'all' | 'necessary'): Promise<void> {
-  const store = await cookies();
-  store.set('cookie_consent', value, { path: '/', maxAge: 60 * 60 * 24 * 180, sameSite: 'lax' });
-}
+export async function updateReportAction(id: string, patch: { status?: Report['status']; reply?: string; subject?: string; body?: string }): Promise<ActionResult> { await requirePermission('comment.moderate'); await repo.updateReportRow(id, patch); refresh(); return ok('Segnalazione aggiornata.'); }
+export async function deleteReportAction(id: string): Promise<ActionResult> { await requirePermission('comment.moderate'); await repo.deleteReportRow(id); refresh(); return ok('Segnalazione eliminata.'); }
+export async function setCookieConsentAction(value: 'all' | 'necessary'): Promise<void> { (await cookies()).set('cookie_consent', value, { path: '/', maxAge: 60 * 60 * 24 * 180, sameSite: 'lax' }); }
 
 // ---------------- Temi ----------------
-export async function previewThemeAction(theme: ThemeSettings): Promise<void> {
-  await requirePermission('settings.manage');
-  const store = await cookies();
-  store.set(PREVIEW_COOKIE, JSON.stringify(theme), { path: '/', maxAge: 60 * 30, sameSite: 'lax', httpOnly: true });
-  redirect('/');
-}
-
-export async function clearThemePreviewAction(): Promise<void> {
-  const store = await cookies();
-  store.delete(PREVIEW_COOKIE);
-  redirect('/admin/impostazioni');
-}
-
-export async function applyThemeAction(theme: ThemeSettings): Promise<ActionResult> {
-  await requirePermission('settings.manage');
-  mutate((d) => ({ settings: { ...d.settings, theme } }));
-  const store = await cookies();
-  store.delete(PREVIEW_COOKIE);
-  refresh();
-  return ok(`Tema "${theme.preset}" applicato a tutto il sito.`);
-}
-
+export async function previewThemeAction(theme: ThemeSettings): Promise<void> { await requirePermission('settings.manage'); (await cookies()).set(PREVIEW_COOKIE, JSON.stringify(theme), { path: '/', maxAge: 60 * 30, sameSite: 'lax', httpOnly: true }); redirect('/'); }
+export async function clearThemePreviewAction(): Promise<void> { (await cookies()).delete(PREVIEW_COOKIE); redirect('/admin/impostazioni'); }
+export async function applyThemeAction(theme: ThemeSettings): Promise<ActionResult> { await requirePermission('settings.manage'); await repo.saveSettingsRow({ ...(await getSettings()), theme }); (await cookies()).delete(PREVIEW_COOKIE); refresh(); return ok(`Tema "${theme.preset}" applicato a tutto il sito.`); }
 export async function applyThemeFromPreviewAction(): Promise<void> {
   await requirePermission('settings.manage');
   const store = await cookies();
   const raw = store.get(PREVIEW_COOKIE)?.value;
-  if (raw) {
-    try { const theme = JSON.parse(raw) as ThemeSettings; mutate((d) => ({ settings: { ...d.settings, theme } })); } catch { /* ignore */ }
-  }
-  store.delete(PREVIEW_COOKIE);
-  refresh();
-  redirect('/');
+  if (raw) { try { await repo.saveSettingsRow({ ...(await getSettings()), theme: JSON.parse(raw) as ThemeSettings }); } catch { /* ignore */ } }
+  store.delete(PREVIEW_COOKIE); refresh(); redirect('/');
 }
 
 // ---------------- Articolo grezzo → ottimizzato ----------------
@@ -447,112 +290,38 @@ export async function submitRawArticleAction(input: { title: string; text: strin
   const u = await requireUser();
   if (!can(u, 'article.create')) return fail('Non puoi creare articoli.');
   if (!input.text.trim() || input.text.trim().split(/\s+/).length < 40) return fail('Il testo è troppo corto: servono almeno 40 parole.');
-  const cfg = getSeoSettings();
+  const cfg = await getSeoSettings();
   const id = uid('a');
-  const ctx = rawContext(id);
-  const p = prepareArticle({ title: input.title, text: input.text, coverImage: input.coverImage, categoryId: input.categoryId || undefined }, ctx, { maxLinks: cfg.maxInternalLinks, siteUrl: process.env.NEXT_PUBLIC_SITE_URL ?? '' });
+  const ctx = await rawContext(id);
+  const p = prepareArticle({ title: input.title, text: input.text, coverImage: input.coverImage, categoryId: input.categoryId || undefined }, ctx, { maxLinks: cfg.maxInternalLinks, siteUrl: siteUrl() });
   const tagIds: string[] = [];
-  for (const name of p.tagNames) { const t = await ensureTagAction(name); if (t) tagIds.push(t.id); }
+  for (const name of p.tagNames) { const t = await ensureTag(name); if (t) tagIds.push(t.id); }
   const now = new Date().toISOString();
-  const article: Article = {
-    id, slug: p.slug, kicker: p.kicker, title: p.title, subtitle: p.subtitle, excerpt: p.excerpt, content: p.content, coverImage: p.coverImage, coverCaption: p.coverCaption,
-    categoryId: p.categoryId, tagIds, authorId: u.id, zoneId: p.zoneId, address: '', status: 'draft', format: 'standard', videoUrl: '', gallery: [], liveUpdates: [], liveActive: false,
-    featured: false, breaking: false, sponsored: false, allowComments: true, seo: p.seo, views: 0, publishedAt: null, scheduledAt: null, createdAt: now, updatedAt: now, seoReport: p.report,
-  };
+  const article: Article = { id, slug: p.slug, kicker: p.kicker, title: p.title, subtitle: p.subtitle, excerpt: p.excerpt, content: p.content, coverImage: p.coverImage, coverCaption: p.coverCaption, categoryId: p.categoryId, tagIds, authorId: u.id, zoneId: p.zoneId, address: '', status: 'draft', format: 'standard', videoUrl: '', gallery: [], liveUpdates: [], liveActive: false, featured: false, breaking: false, sponsored: false, allowComments: true, seo: p.seo, views: 0, publishedAt: null, scheduledAt: null, createdAt: now, updatedAt: now, seoReport: p.report };
   const status: ArticleStatus = input.publish && can(u, 'article.publish') ? 'published' : 'review';
   const r = await saveArticleAction(article, status);
   if (!r.ok) return r;
-  const suffix = status === 'published' ? 'pubblicato' : 'inviato in revisione';
-  return { ok: true, id: r.id, message: `Articolo ottimizzato e ${suffix}.`, report: p.report };
+  return { ok: true, id: r.id, message: `Articolo ottimizzato e ${status === 'published' ? 'pubblicato' : 'inviato in revisione'}.`, report: p.report };
 }
 
-// ---------------- Importazione da WordPress ----------------
-export interface WpPreview { total: number; publishable: number; categories: { name: string; count: number; existingId: string }[]; authors: string[]; sample: string[]; conflicts: number }
-export interface WpImportInput { source: 'wxr' | 'rest'; xml?: string; url?: string; maxPosts?: number; optimize: boolean; statusMode: 'keep' | 'draft' | 'review'; categoryMap: Record<string, string>; overwrite: boolean }
+// ---------------- Importazione WordPress (job in background) ----------------
+export type { ImportJob } from './repo';
+export interface WpImportOptions { source: 'wxr' | 'rest'; file?: string; url?: string; maxPosts?: number; optimize: boolean; statusMode: 'keep' | 'draft' | 'review'; categoryMap: Record<string, string>; overwrite: boolean; downloadMedia: boolean }
 
-async function loadWpPosts(input: WpImportInput) {
-  const { parseWxr, fetchWpRest } = await import('./wp-import');
-  if (input.source === 'wxr') { if (!input.xml?.includes('<item>')) throw new Error('Il file non sembra un\'esportazione WordPress (WXR).'); return parseWxr(input.xml); }
-  if (!input.url || !/^https?:\/\//.test(input.url)) throw new Error('Inserisci l\'indirizzo completo del sito WordPress (https://...).');
-  return fetchWpRest(input.url, input.maxPosts ?? 200);
-}
-
-export async function previewWordPressAction(input: WpImportInput): Promise<ActionResult & { preview?: WpPreview }> {
-  await requirePermission('settings.manage');
-  try {
-    const posts = await loadWpPosts(input);
-    const cats = new Map<string, number>();
-    posts.forEach((p) => p.categories.forEach((c) => cats.set(c, (cats.get(c) ?? 0) + 1)));
-    const existing = getCategories();
-    const slugs = new Set(getDb().articles.map((a) => a.slug));
-    const preview: WpPreview = {
-      total: posts.length, publishable: posts.filter((p) => p.status === 'publish').length,
-      categories: [...cats.entries()].sort((a, b) => b[1] - a[1]).map(([name, count]) => ({ name, count, existingId: existing.find((c) => c.name.toLowerCase() === name.toLowerCase() || c.slug === slugify(name))?.id ?? '' })),
-      authors: [...new Set(posts.map((p) => p.author).filter(Boolean))], sample: posts.slice(0, 8).map((p) => p.title), conflicts: posts.filter((p) => slugs.has(p.slug)).length,
-    };
-    return { ok: true, preview };
-  } catch (e) { return fail((e as Error).message); }
-}
-
-export async function importWordPressAction(input: WpImportInput): Promise<ActionResult & { imported?: number; skipped?: number; errors?: string[] }> {
+export async function startImportJobAction(opts: WpImportOptions): Promise<ActionResult> {
   const me = await requirePermission('settings.manage');
+  const { createJob, runJobInBackground } = await import('./import-jobs');
   try {
-    const posts = await loadWpPosts(input);
-    const cfg = getSeoSettings();
-    const errors: string[] = [];
-    let imported = 0, skipped = 0;
-    const catCache = new Map<string, string>();
-    const resolveCategory = (names: string[]): string => {
-      for (const n of names) {
-        const mapped = input.categoryMap[n];
-        if (mapped === '__skip') continue;
-        if (mapped && mapped !== '__new') return mapped;
-        if (catCache.has(n)) return catCache.get(n)!;
-        const existing = getCategories().find((c) => c.name.toLowerCase() === n.toLowerCase() || c.slug === slugify(n));
-        if (existing && mapped !== '__new') { catCache.set(n, existing.id); return existing.id; }
-        const created: Category = { id: uid('c'), slug: slugify(n), name: n, kind: 'standard', color: '#22418f', description: `Notizie di ${n.toLowerCase()}.`, order: getCategories().length + 1, showInMenu: false, showOnHome: false };
-        mutate((d) => ({ categories: [...d.categories, created] }));
-        catCache.set(n, created.id);
-        return created.id;
-      }
-      return getCategories().find((c) => c.kind === 'standard')?.id ?? getCategories()[0]?.id ?? '';
-    };
-    const resolveAuthor = (name: string): string => {
-      if (!name) return me.id;
-      const found = getDb().users.find((u) => u.name.toLowerCase() === name.toLowerCase());
-      if (found) return found.id;
-      const u: User = { id: uid('u'), name, email: `${slugify(name)}@importato.local`, role: 'contributor', avatar: `https://picsum.photos/seed/${slugify(name)}/200/200`, bio: 'Autore importato da WordPress.', active: false, createdAt: new Date().toISOString() };
-      mutate((d) => ({ users: [...d.users, u] }));
-      return u.id;
-    };
-    for (const p of posts) {
-      try {
-        if (!p.title.trim() || !p.content.trim()) { skipped++; continue; }
-        const legacyUrl = (() => { try { return new URL(p.link).pathname.replace(/\/+$/, '') || '/'; } catch { return ''; } })();
-        const existing = getDb().articles.find((a) => a.slug === p.slug || (legacyUrl && a.legacyUrl === legacyUrl));
-        if (existing && !input.overwrite) { skipped++; continue; }
-        const tagIds: string[] = [];
-        for (const t of p.tags) { const tag = await ensureTagAction(t); if (tag) tagIds.push(tag.id); }
-        const status: ArticleStatus = input.statusMode === 'draft' ? 'draft' : input.statusMode === 'review' ? 'review' : p.status === 'publish' ? 'published' : p.status === 'pending' ? 'review' : 'draft';
-        const date = p.date && !p.date.startsWith('0000') ? new Date(p.date).toISOString() : new Date().toISOString();
-        const id = existing?.id ?? uid('a');
-        let article: Article = {
-          id, slug: p.slug || slugify(p.title), kicker: p.categories[0] ?? '', title: p.title, subtitle: p.excerpt.slice(0, 200), excerpt: p.excerpt.slice(0, 300), content: p.content, coverImage: p.image, coverCaption: '',
-          categoryId: resolveCategory(p.categories), tagIds, authorId: resolveAuthor(p.author), zoneId: '', address: '', status, format: 'standard', videoUrl: '', gallery: [], liveUpdates: [], liveActive: false,
-          featured: false, breaking: false, sponsored: false, allowComments: true, seo: { title: '', description: '', canonical: '', noIndex: false }, views: existing?.views ?? 0,
-          publishedAt: status === 'published' ? date : null, scheduledAt: null, createdAt: date, updatedAt: new Date().toISOString(), legacyUrl, seoReport: [`importato da WordPress (${p.link})`],
-        };
-        if (input.optimize) {
-          const r = optimizeArticle(article, seoContext(id), { fillMeta: true, links: cfg.autoInternalLinks, maxLinks: cfg.maxInternalLinks, fixImages: cfg.fixImages, siteUrl: process.env.NEXT_PUBLIC_SITE_URL ?? '', overwriteSlug: false });
-          article = r.article; article.seoReport = [...(article.seoReport ?? []), ...r.changes.map((c) => `ottimizzato: ${c}`)];
-        }
-        article.seoScore = analyze(article, seoContext(id)).score;
-        mutate((d) => ({ articles: existing ? d.articles.map((a) => (a.id === id ? article : a)) : [article, ...d.articles] }));
-        imported++;
-      } catch (e) { errors.push(`${p.title}: ${(e as Error).message}`); }
-    }
-    log(me.id, 'ha importato da WordPress', `${imported} articoli`);
-    refresh();
-    return { ok: true, message: `Importazione completata: ${imported} articoli importati, ${skipped} saltati.`, imported, skipped, errors };
+    const job = await createJob(opts, me.id);
+    runJobInBackground(job.id);
+    return ok('Importazione avviata.', job.id);
   } catch (e) { return fail((e as Error).message); }
 }
+export async function previewImportAction(opts: WpImportOptions): Promise<ActionResult & { preview?: import('./import-jobs').ImportPreview }> {
+  await requirePermission('settings.manage');
+  const { previewImport } = await import('./import-jobs');
+  try { return { ok: true, preview: await previewImport(opts) }; } catch (e) { return fail((e as Error).message); }
+}
+export async function getImportJobAction(id: string) { await requirePermission('settings.manage'); return repo.findJob(id); }
+export async function listImportJobsAction() { await requirePermission('settings.manage'); return repo.listJobs(10); }
+export async function cancelImportJobAction(id: string): Promise<ActionResult> { await requirePermission('settings.manage'); const { cancelJob } = await import('./import-jobs'); cancelJob(id); await repo.updateJob(id, { status: 'cancelled', message: 'Annullata dall\'utente.' }); return ok('Importazione annullata.'); }

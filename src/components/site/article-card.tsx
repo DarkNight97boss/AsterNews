@@ -1,14 +1,13 @@
 import Link from 'next/link';
-import { Article, ROLE_LABELS } from '@/lib/models';
-import { articleUrl, category, user } from '@/lib/queries';
+import { Article, Category, ROLE_LABELS, User } from '@/lib/models';
+import { articleUrlWith, getCategories, getUsers } from '@/lib/queries';
 import { relativeDate } from '@/lib/utils';
 import { SmartImage } from '@/components/ui/smart-image';
 
 export type CardVariant = 'hero' | 'md' | 'sm' | 'horizontal' | 'horizontal-sm' | 'compact' | 'number' | 'city' | 'opinion' | 'overlay' | 'overlay-sm';
 interface Props { article: Article; variant?: CardVariant; index?: number; showExcerpt?: boolean; showMeta?: boolean; showImage?: boolean; priority?: boolean }
 
-export function Kicker({ article: a, className = 'kicker' }: { article: Article; className?: string }) {
-  const cat = category(a.categoryId);
+export function KickerView({ article: a, cat, className = 'kicker' }: { article: Article; cat?: Category; className?: string }) {
   return (
     <span className={`${className} ${cat?.kind === 'dossier' ? 'kicker-dossier' : ''}`}>
       {cat?.kind === 'dossier' && <span className="badge badge-yellow">Dossier</span>}
@@ -18,28 +17,17 @@ export function Kicker({ article: a, className = 'kicker' }: { article: Article;
     </span>
   );
 }
+/** Occhiello (server): risolve la categoria da solo. */
+export async function Kicker({ article, className }: { article: Article; className?: string }) {
+  const cat = (await getCategories()).find((c) => c.id === article.categoryId);
+  return <KickerView article={article} cat={cat} className={className} />;
+}
 
-export function ArticleCard({ article: a, variant = 'md', index = 0, showExcerpt = false, showMeta = false, showImage = true, priority = false }: Props) {
-  const cat = category(a.categoryId);
-  const link = articleUrl(a);
-  const author = user(a.authorId);
+export function ArticleCardView({ article: a, cat, author, variant = 'md', index = 0, showExcerpt = false, showMeta = false, showImage = true, priority = false }: Props & { cat?: Category; author?: User }) {
+  const link = `/${cat?.slug ?? 'notizie'}/${a.slug}`;
   const cls = `card card-${variant}`;
-
-  if (variant === 'city') {
-    return (
-      <article className={cls}>
-        <h3 className="card-title"><Link href={link}><span className="city">{a.kicker || cat?.name}</span>{a.title}</Link></h3>
-      </article>
-    );
-  }
-  if (variant === 'number') {
-    return (
-      <article className={cls}>
-        <span className="num">{index}</span>
-        <div className="card-body"><Kicker article={a} /><h3 className="card-title"><Link href={link}>{a.title}</Link></h3></div>
-      </article>
-    );
-  }
+  if (variant === 'city') return <article className={cls}><h3 className="card-title"><Link href={link}><span className="city">{a.kicker || cat?.name}</span>{a.title}</Link></h3></article>;
+  if (variant === 'number') return <article className={cls}><span className="num">{index}</span><div className="card-body"><KickerView article={a} cat={cat} /><h3 className="card-title"><Link href={link}>{a.title}</Link></h3></div></article>;
   if (variant === 'opinion') {
     return (
       <article className={cls}>
@@ -53,12 +41,7 @@ export function ArticleCard({ article: a, variant = 'md', index = 0, showExcerpt
     return (
       <article className={`card card-overlay ${variant === 'overlay-sm' ? 'card-overlay-sm' : ''}`}>
         <Link className="card-img" href={link} aria-label={a.title}><SmartImage src={a.coverImage} alt={a.title} priority={priority} sizes={variant === 'overlay' ? '(max-width: 768px) 100vw, 800px' : '(max-width: 768px) 100vw, 400px'} />{a.format === 'video' && <span className="card-format">▶</span>}</Link>
-        <div className="card-body">
-          <Kicker article={a} />
-          <h3 className="card-title"><Link href={link}>{a.title}</Link></h3>
-          {showExcerpt && variant === 'overlay' && <p className="card-excerpt">{a.excerpt}</p>}
-          {showMeta && <div className="meta"><span>{relativeDate(a.publishedAt)}</span></div>}
-        </div>
+        <div className="card-body"><KickerView article={a} cat={cat} /><h3 className="card-title"><Link href={link}>{a.title}</Link></h3>{showExcerpt && variant === 'overlay' && <p className="card-excerpt">{a.excerpt}</p>}{showMeta && <div className="meta"><span>{relativeDate(a.publishedAt)}</span></div>}</div>
       </article>
     );
   }
@@ -67,12 +50,11 @@ export function ArticleCard({ article: a, variant = 'md', index = 0, showExcerpt
       {showImage && variant !== 'compact' && (
         <Link className="card-img" href={link} aria-label={a.title}>
           <SmartImage src={a.coverImage} alt={a.title} priority={priority} sizes={variant === 'horizontal-sm' ? '130px' : '(max-width: 768px) 100vw, 600px'} />
-          {a.format === 'video' && <span className="card-format">▶</span>}
-          {a.format === 'gallery' && <span className="card-format">▦</span>}
+          {a.format === 'video' && <span className="card-format">▶</span>}{a.format === 'gallery' && <span className="card-format">▦</span>}
         </Link>
       )}
       <div className="card-body">
-        <Kicker article={a} />
+        <KickerView article={a} cat={cat} />
         <h3 className="card-title"><Link href={link}>{a.title}</Link></h3>
         {showExcerpt && <p className="card-excerpt">{a.excerpt}</p>}
         {showMeta && <div className="meta"><span>{relativeDate(a.publishedAt)}</span>{a.sponsored && <span>· <span className="sponsored-label">Contenuto sponsorizzato</span></span>}</div>}
@@ -80,3 +62,10 @@ export function ArticleCard({ article: a, variant = 'md', index = 0, showExcerpt
     </article>
   );
 }
+
+/** Card articolo (server component asincrono): risolve categoria e autore. */
+export async function ArticleCard(props: Props) {
+  const [cats, users] = await Promise.all([getCategories(), getUsers()]);
+  return <ArticleCardView {...props} cat={cats.find((c) => c.id === props.article.categoryId)} author={users.find((u) => u.id === props.article.authorId)} />;
+}
+export { articleUrlWith };

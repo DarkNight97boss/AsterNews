@@ -1,11 +1,11 @@
 import type { Metadata } from 'next';
 import { ArticleCard } from '@/components/site/article-card';
-import { getPublished } from '@/lib/queries';
+import { getGalleries } from '@/lib/queries';
 
 export const metadata: Metadata = { title: 'Foto', description: 'Le fotogallery: immagini, reportage e gallerie.' };
 
-export default function PhotoPage() {
-  const galleries = getPublished().filter((a) => a.format === 'gallery');
+export default async function PhotoPage() {
+  const galleries = await getGalleries(48);
   return (
     <>
       <div className="section-head"><h1>Foto</h1></div>

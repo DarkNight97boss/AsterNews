@@ -9,7 +9,7 @@ import { formatDate } from '@/lib/utils';
 export default async function NewsletterPage() {
   const me = await requireUser();
   if (!can(me, 'comment.moderate')) redirect('/admin');
-  const subs = getSubscribers();
+  const subs = await getSubscribers();
   const csv = 'data:text/csv;charset=utf-8,' + encodeURIComponent('email,data\n' + subs.map((s) => `${s.email},${s.createdAt}`).join('\n'));
   return (
     <>

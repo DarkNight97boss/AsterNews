@@ -2,12 +2,13 @@ import { redirect } from 'next/navigation';
 import { TagsManager } from '@/components/admin/tags-manager';
 import { requireUser } from '@/lib/auth';
 import { can } from '@/lib/permissions';
-import { getAllArticles, getTags } from '@/lib/queries';
+import { getTags, tagCounts } from '@/lib/queries';
+import { searchTags } from '@/lib/repo';
 
-export default async function TagsPage() {
+export default async function TagsPage({ searchParams }: PageProps<'/admin/tag'>) {
   const me = await requireUser();
   if (!can(me, 'tag.manage')) redirect('/admin');
-  const counts: Record<string, number> = {};
-  getAllArticles().forEach((a) => a.tagIds.forEach((t) => { counts[t] = (counts[t] ?? 0) + 1; }));
-  return <TagsManager tags={getTags()} counts={counts} />;
+  const { q } = await searchParams;
+  const [tags, counts] = await Promise.all([typeof q === 'string' && q ? searchTags(q, 200) : getTags(), tagCounts()]);
+  return <TagsManager tags={tags} counts={counts} serverQuery={typeof q === 'string' ? q : ''} />;
 }

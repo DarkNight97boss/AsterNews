@@ -1,6 +1,8 @@
 import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
+  serverExternalPackages: ['postgres', '@electric-sql/pglite'],
+  outputFileTracingIncludes: { '/**': ['./node_modules/@electric-sql/pglite/dist/**'] },
   images: {
     remotePatterns: [{ protocol: 'https', hostname: 'picsum.photos' }, { protocol: 'https', hostname: '**' }],
     minimumCacheTTL: 86400,

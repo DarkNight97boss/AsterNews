@@ -2,19 +2,24 @@ import Link from 'next/link';
 import { ArticlesTable } from '@/components/admin/articles-table';
 import { requireUser } from '@/lib/auth';
 import { can, permissionsOf } from '@/lib/permissions';
-import { getAllArticles, getCategories, getPublished, getUsers } from '@/lib/queries';
+import { ArticleStatus } from '@/lib/models';
+import { adminArticles, adminCount, countByStatus, getCategories, getUsers } from '@/lib/queries';
+import type { ArticleSort } from '@/lib/repo';
 
+const PER_PAGE = 50;
 export default async function ArticlesPage({ searchParams }: PageProps<'/admin/articoli'>) {
   const me = await requireUser();
-  const { status } = await searchParams;
-  const articles = can(me, 'article.edit.any') ? getAllArticles() : getAllArticles().filter((a) => a.authorId === me.id);
+  const sp = await searchParams;
+  const str = (k: string) => (typeof sp[k] === 'string' ? (sp[k] as string) : '');
+  const page = Math.max(1, Number(str('pagina') || 1));
+  const sort = (['published', 'updated', 'views', 'title', 'created'].includes(str('ordina')) ? str('ordina') : 'updated') as ArticleSort;
+  const dir = str('dir') === 'asc' ? 'asc' : 'desc';
+  const filter = { q: str('q') || undefined, status: (str('status') || undefined) as ArticleStatus | undefined, categoryId: str('categoria') || undefined, authorId: can(me, 'article.edit.any') ? str('autore') || undefined : me.id };
+  const [articles, total, counts, categories, users] = await Promise.all([adminArticles(filter, sort, dir, PER_PAGE, (page - 1) * PER_PAGE), adminCount(filter), countByStatus(can(me, 'article.edit.any') ? {} : { authorId: me.id }), getCategories(), getUsers()]);
   return (
     <>
-      <div className="page-title">
-        <div><h1>Articoli</h1><p>{articles.length} articoli · {can(me, 'article.edit.any') ? 'tutta la redazione' : 'solo i tuoi'}</p></div>
-        <div className="actions"><Link href="/admin/articoli/nuovo" className="btn btn-primary">+ Nuovo articolo</Link></div>
-      </div>
-      <ArticlesTable articles={articles} categories={getCategories()} users={getUsers()} me={me} permissions={permissionsOf(me)} publicIds={getPublished().map((a) => a.id)} initialStatus={typeof status === 'string' ? status : ''} />
+      <div className="page-title"><div><h1>Articoli</h1><p>{total} articoli · {can(me, 'article.edit.any') ? 'tutta la redazione' : 'solo i tuoi'}</p></div><div className="actions"><Link href="/admin/scrivi" className="btn btn-primary">✨ Scrivi</Link><Link href="/admin/articoli/nuovo" className="btn btn-outline">Editor completo</Link></div></div>
+      <ArticlesTable articles={articles} total={total} page={page} perPage={PER_PAGE} counts={counts} categories={categories} users={users} me={me} permissions={permissionsOf(me)} filters={{ q: str('q'), status: str('status'), categoria: str('categoria'), autore: str('autore'), ordina: sort, dir }} />
     </>
   );
 }

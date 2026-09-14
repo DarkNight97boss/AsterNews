@@ -10,7 +10,7 @@ export const PREVIEW_COOKIE = 'theme_preview';
 
 /** Tema attivo: quello delle impostazioni, oppure l'anteprima scelta da un amministratore (cookie). */
 export const getActiveTheme = cache(async (): Promise<{ theme: ResolvedTheme; preview: boolean }> => {
-  const settings = getSettings();
+  const settings = await getSettings();
   const raw = (await cookies()).get(PREVIEW_COOKIE)?.value;
   if (raw) {
     const me = await getCurrentUser();

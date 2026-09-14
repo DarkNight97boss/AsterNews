@@ -1,8 +1,8 @@
 import Link from 'next/link';
 import { getCategories, getSettings } from '@/lib/queries';
 
-export function Footer() {
-  const s = getSettings();
+export async function Footer() {
+  const [s, cats] = await Promise.all([getSettings(), getCategories()]);
   return (
     <footer className="site-footer">
       <div className="container">
@@ -12,7 +12,7 @@ export function Footer() {
             <p style={{ marginTop: 12 }}>{s.description}</p>
             <p>{s.footerText}</p>
           </div>
-          <div><h4>Sezioni</h4><ul>{getCategories().map((c) => <li key={c.id}><Link href={`/${c.slug}`}>{c.name}</Link></li>)}</ul></div>
+          <div><h4>Sezioni</h4><ul>{cats.map((c) => <li key={c.id}><Link href={`/${c.slug}`}>{c.name}</Link></li>)}</ul></div>
           <div><h4>Servizi</h4><ul><li><Link href="/notizie">Tutte le notizie</Link></li><li><Link href="/eventi">Cosa fare in città</Link></li><li><Link href="/zone">Zone</Link></li><li><Link href="/meteo">Meteo</Link></li><li><Link href="/segnalazioni">Segnalazioni</Link></li><li><Link href="/video">Video</Link></li><li><Link href="/foto">Foto</Link></li><li><a href="/feed.xml">Feed RSS</a></li><li><Link href="/cerca">Cerca</Link></li><li><Link href="#newsletter">Newsletter</Link></li><li><Link href="/login">Area redazione</Link></li></ul></div>
           <div><h4>Seguici</h4><ul>
             <li><a href={s.socials.facebook} target="_blank" rel="noopener">Facebook</a></li>

@@ -9,16 +9,16 @@ import { eventDateLabel, stripHtml } from '@/lib/utils';
 
 export async function generateMetadata({ params }: PageProps<'/eventi/[slug]'>): Promise<Metadata> {
   const { slug } = await params;
-  const e = eventBySlug(slug);
+  const e = await eventBySlug(slug);
   return e ? { title: e.title, description: stripHtml(e.description).slice(0, 160), openGraph: { images: e.image ? [{ url: e.image }] : [] } } : {};
 }
 
 export default async function EventPage({ params }: PageProps<'/eventi/[slug]'>) {
   const { slug } = await params;
-  const e = eventBySlug(slug);
+  const e = await eventBySlug(slug);
   if (!e) notFound();
-  const z = zone(e.zoneId);
-  const others = getEvents().filter((x) => x.id !== e.id && (x.type === e.type || x.zoneId === e.zoneId)).slice(0, 3);
+  const [z, all] = await Promise.all([zone(e.zoneId), getEvents({}, 100)]);
+  const others = all.filter((x) => x.id !== e.id && (x.type === e.type || x.zoneId === e.zoneId)).slice(0, 3);
   const jsonLd = { '@context': 'https://schema.org', '@type': 'Event', name: e.title, startDate: e.dateFrom, endDate: e.dateTo ?? e.dateFrom, description: stripHtml(e.description), image: e.image || undefined, location: { '@type': 'Place', name: e.place, address: [e.address, z?.name].filter(Boolean).join(', ') }, offers: e.free ? { '@type': 'Offer', price: 0, priceCurrency: 'EUR' } : undefined };
   return (
     <>

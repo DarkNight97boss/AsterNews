@@ -4,14 +4,13 @@ import { getSettings, getZones, zoneCounts } from '@/lib/queries';
 
 export const metadata: Metadata = { title: 'Notizie dalle zone', description: 'Le notizie quartiere per quartiere e dai comuni della provincia.' };
 
-export default function ZonesPage() {
-  const zones = getZones();
-  const counts = zoneCounts();
+export default async function ZonesPage() {
+  const [zones, counts, settings] = await Promise.all([getZones(), zoneCounts(), getSettings()]);
   const letters = [...new Set(zones.map((z) => z.name[0].toUpperCase()))].sort();
   const byLetter = (l: string, kind: 'comune' | 'zona') => zones.filter((z) => z.kind === kind && z.name[0].toUpperCase() === l);
   return (
     <>
-      <div className="section-head"><h1>Zone di {getSettings().weatherCity}</h1><p className="desc">Le notizie dai quartieri e dai comuni della provincia.</p></div>
+      <div className="section-head"><h1>Zone di {settings.weatherCity}</h1><p className="desc">Le notizie dai quartieri e dai comuni della provincia.</p></div>
       <div className="letter-nav">{letters.map((l) => <a key={l} href={`#lettera-${l}`}>{l}</a>)}</div>
       {letters.map((l) => (
         <section key={l} id={`lettera-${l}`} className="zone-letter">

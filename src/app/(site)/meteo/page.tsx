@@ -6,7 +6,7 @@ import { getWeather } from '@/lib/weather';
 export const metadata: Metadata = { title: 'Meteo', description: 'Previsioni meteo per i prossimi 7 giorni: temperature, precipitazioni e vento ora per ora.' };
 
 export default async function WeatherPage() {
-  const s = getSettings();
+  const s = await getSettings();
   const w = await getWeather(s.weatherCity, s.weatherLat, s.weatherLon);
   return (
     <>

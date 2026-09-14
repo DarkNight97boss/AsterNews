@@ -70,12 +70,24 @@ Si sceglie da **Impostazioni → Tema del sito**: sei preset (Today, Fanpage —
 
 Per aggiungere un tema basta un nuovo oggetto in `src/lib/themes.ts` (`THEMES`); i token CSS vengono iniettati nel layout radice come variabili (`--blue`, `--red`, `--font-serif`, `--radius-card`, ecc.), le varianti strutturali sono selezionate con `data-header`, `data-card-style` e `data-site-theme` sull'elemento `html`.
 
-## Dati
+## Dati (Postgres)
 
-Lo store è un file JSON (`data/db.json`, creato al primo avvio dai dati demo in `src/lib/seed.ts`) letto e scritto solo lato server da `src/lib/db.ts`.
-Tutte le letture passano da `src/lib/queries.ts` e tutte le scritture da `src/lib/actions.ts`: per passare a un database reale (es. Postgres) basta riscrivere questi due file.
+Il database è **Postgres**: in produzione **Supabase** (o qualsiasi Postgres) tramite `POSTGRES_URL` / `DATABASE_URL`; in locale, se nessuna variabile è impostata, **PGlite** (Postgres embedded, salvato in `data/pg`, nessuna installazione). Lo stesso SQL gira in entrambi i casi.
 
-> Su hosting serverless (Vercel) il filesystem non è persistente: per la produzione collega un database o imposta `DB_PATH` su un volume persistente.
+- Schema e dati demo creati al primo avvio (`src/lib/db.ts`, seed in `src/lib/seed.ts`).
+- Letture in `src/lib/queries.ts`, scritture in `src/lib/actions.ts`, SQL nel repository `src/lib/repo.ts`.
+- Ricerca full-text in italiano (`tsvector` generato + indice GIN), indici su stato/data/categoria/autore/zona, paginazione ovunque: pensato per archivi da oltre 100.000 articoli.
+- Sitemap a indice (`/sitemap.xml` → `/sitemaps/pagine.xml`, `/sitemaps/articoli-N.xml` da 20.000 URL).
+
+Script (da eseguire con il server di sviluppo fermo, perché PGlite accetta un solo processo):
+
+```bash
+npm run import:wp -- --file export.xml      # importazione WXR dalla riga di comando (archivi enormi)
+npm run import:wp -- --url https://sito.it  # importazione via REST API
+npm run seed:bulk -- --n 100000              # articoli finti per misurare le prestazioni
+```
+
+> Nota: il file `.env.local` scaricato con `vercel env pull` contiene `VERCEL=1` e i valori segreti come `[SENSITIVE]`; il codice li ignora. Per usare Supabase anche in locale incolla in `.env.local` la stringa `DATABASE_URL=postgresql://...` presa dalla dashboard Supabase.
 
 ## Struttura
 
@@ -98,4 +110,4 @@ npm run build
 npm start
 ```
 
-Deploy su Vercel senza configurazione aggiuntiva (imposta le variabili `AUTH_SECRET` e `NEXT_PUBLIC_SITE_URL`).
+Deploy su Vercel: collega l'integrazione Supabase (crea `POSTGRES_URL`) e imposta `AUTH_SECRET` e `NEXT_PUBLIC_SITE_URL` (es. `https://asternewscms.vercel.app`). Le funzioni serverless accettano upload fino a ~4,5 MB: per esportazioni WordPress più grandi usa l'importazione via REST API oppure lo script `npm run import:wp` puntato allo stesso database.

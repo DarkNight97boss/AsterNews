@@ -61,3 +61,8 @@ Thumbs.db
 /out
 next-env.d.ts
 *.tsbuildinfo
+.vercel
+.env*
+/data/pg
+/data/imports
+/data/*.db*

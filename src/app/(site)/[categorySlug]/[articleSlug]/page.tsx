@@ -6,10 +6,11 @@ import { CommentForm, Gallery, ReadingProgress, ShareBar, ViewCounter } from '@/
 import { MostRead, NewsletterWidget } from '@/components/site/widgets';
 import { SmartImage } from '@/components/ui/smart-image';
 import { ROLE_LABELS } from '@/lib/models';
-import { approvedComments, articleBySlug, articleUrl, category, getFeatured, getMostRead, getPublished, getSettings, legacyRedirectFor, related, tag, user, zone } from '@/lib/queries';
+import { approvedComments, articleBySlug, articleUrlWith, category, getCategories, getFeatured, getMostRead, getSettings, legacyRedirectFor, listPublished, related, tagsByIds, user, zone } from '@/lib/queries';
 import { formatDate, readingTime, relativeDate, timeAgo } from '@/lib/utils';
 import { getActiveTheme } from '@/lib/theme-server';
 import { ArticleFanpage } from '@/components/site/fanpage/article-fanpage';
+import { siteUrl } from '@/lib/site-url';
 
 function shortTime(iso: string): string {
   const d = new Date(iso);
@@ -20,43 +21,41 @@ function shortTime(iso: string): string {
 
 export async function generateMetadata({ params }: PageProps<'/[categorySlug]/[articleSlug]'>): Promise<Metadata> {
   const { articleSlug } = await params;
-  const a = articleBySlug(articleSlug);
+  const a = await articleBySlug(articleSlug);
   if (!a) return {};
-  const author = user(a.authorId);
+  const [author, cats, tags] = await Promise.all([user(a.authorId), getCategories(), tagsByIds(a.tagIds)]);
+  const articleUrl = (x: typeof a) => articleUrlWith(x, cats);
   return {
     title: a.seo.title || a.title,
     description: a.seo.description || a.excerpt,
-    keywords: [a.seo.focusKeyword, ...a.tagIds.map((t) => tag(t)?.name ?? '')].filter((k): k is string => !!k),
+    keywords: [a.seo.focusKeyword, ...tags.map((t) => t.name)].filter((k): k is string => !!k),
     robots: a.seo.noIndex ? { index: false, follow: false } : undefined,
     alternates: { canonical: a.seo.canonical || articleUrl(a) },
-    openGraph: { type: 'article', title: a.title, description: a.excerpt, images: a.coverImage ? [{ url: a.coverImage }] : [], publishedTime: a.publishedAt ?? undefined, modifiedTime: a.updatedAt, authors: author ? [author.name] : undefined, section: category(a.categoryId)?.name },
+    openGraph: { type: 'article', title: a.title, description: a.excerpt, images: a.coverImage ? [{ url: a.coverImage }] : [], publishedTime: a.publishedAt ?? undefined, modifiedTime: a.updatedAt, authors: author ? [author.name] : undefined, section: cats.find((c) => c.id === a.categoryId)?.name },
     twitter: { card: 'summary_large_image', title: a.title, description: a.excerpt },
   };
 }
 
 export default async function ArticlePage({ params }: PageProps<'/[categorySlug]/[articleSlug]'>) {
   const { categorySlug, articleSlug } = await params;
-  const a = articleBySlug(articleSlug);
-  if (!a) { const t = legacyRedirectFor(`${categorySlug}/${articleSlug}`); if (t) permanentRedirect(t); notFound(); }
-  const cat = category(a.categoryId);
+  const a = await articleBySlug(articleSlug);
+  if (!a) { const t = await legacyRedirectFor(`${categorySlug}/${articleSlug}`); if (t) permanentRedirect(t); notFound(); }
+  const cats = await getCategories();
+  const articleUrl = (x: typeof a) => articleUrlWith(x, cats);
+  const cat = cats.find((c) => c.id === a.categoryId);
   if (cat && cat.slug !== categorySlug) permanentRedirect(articleUrl(a));
-  const author = user(a.authorId);
-  const tags = a.tagIds.map((id) => tag(id)).filter((t): t is NonNullable<typeof t> => !!t);
-  const rel = related(a, 6);
-  const comments = approvedComments(a.id);
+  const [author, tags, rel, comments, videos, z, featuredAll, mostAll, settings] = await Promise.all([user(a.authorId), tagsByIds(a.tagIds), related(a, 6), approvedComments(a.id), listPublished({ format: 'video', excludeIds: [a.id] }, 1), zone(a.zoneId), getFeatured(5), getMostRead(7), getSettings()]);
   const liveUpdates = [...a.liveUpdates].sort((x, y) => y.time.localeCompare(x.time));
-  const video = getPublished().find((v) => v.format === 'video' && v.id !== a.id);
-  const z = zone(a.zoneId);
-  const featured = getFeatured().filter((f) => f.id !== a.id).slice(0, 4);
-  const mostWeek = getMostRead().filter((m) => m.id !== a.id).slice(0, 6);
-  const settings = getSettings();
+  const video = videos[0];
+  const featured = featuredAll.filter((f) => f.id !== a.id).slice(0, 4);
+  const mostWeek = mostAll.filter((m) => m.id !== a.id).slice(0, 6);
   const jsonLd = {
     '@context': 'https://schema.org', '@type': 'NewsArticle', headline: a.title, description: a.excerpt, image: a.coverImage ? [a.coverImage] : undefined,
     datePublished: a.publishedAt, dateModified: a.updatedAt, author: author ? [{ '@type': 'Person', name: author.name }] : undefined,
-    publisher: { '@type': 'Organization', name: getSettings().siteName }, articleSection: cat?.name, keywords: tags.map((t) => t.name).join(', '),
+    publisher: { "@type": "Organization", name: settings.siteName }, articleSection: cat?.name, keywords: tags.map((t) => t.name).join(', '),
   };
 
-  const base = process.env.NEXT_PUBLIC_SITE_URL ?? '';
+  const base = siteUrl();
   const breadcrumb = { '@context': 'https://schema.org', '@type': 'BreadcrumbList', itemListElement: [
     { '@type': 'ListItem', position: 1, name: settings.siteName, item: `${base}/` },
     ...(cat ? [{ '@type': 'ListItem', position: 2, name: cat.name, item: `${base}/${cat.slug}` }] : []),
@@ -143,7 +142,7 @@ export default async function ArticlePage({ params }: PageProps<'/[categorySlug]
               <h3>Commenti ({comments.length})</h3>
               {comments.length === 0 && <p style={{ color: 'var(--muted)' }}>Nessun commento. Sii il primo a commentare.</p>}
               {comments.map((c) => <div key={c.id} className="comment"><div className="c-head"><b>{c.authorName}</b><span>{relativeDate(c.createdAt)}</span></div><p>{c.body}</p></div>)}
-              <CommentForm articleId={a.id} moderated={getSettings().commentsModeration} />
+              <CommentForm articleId={a.id} moderated={settings.commentsModeration} />
             </section>
           )}
         </div>

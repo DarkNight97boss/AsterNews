@@ -7,5 +7,6 @@ import { getReports, getZones } from '@/lib/queries';
 export default async function ReportsAdminPage() {
   const me = await requireUser();
   if (!can(me, 'comment.moderate')) redirect('/admin');
-  return <ReportsManager reports={getReports()} zones={getZones()} />;
+  const [reports, zones] = await Promise.all([getReports(), getZones()]);
+  return <ReportsManager reports={reports} zones={zones} />;
 }

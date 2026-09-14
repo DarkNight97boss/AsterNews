@@ -7,7 +7,7 @@ import { getActiveTheme } from '@/lib/theme-server';
 
 export default async function HomePage() {
   const { theme } = await getActiveTheme();
-  const data = getHomeData();
+  const data = await getHomeData();
   if (theme.homeLayout === 'fanpage') return <HomeFanpage d={data} />;
   if (theme.homeLayout === 'grid') return <HomeGrid d={data} />;
   if (theme.homeLayout === 'magazine') return <HomeMagazine d={data} />;

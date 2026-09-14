@@ -29,13 +29,13 @@ export default async function EventsPage({ searchParams }: PageProps<'/eventi'>)
   const period = typeof sp.periodo === 'string' && PERIODS[sp.periodo] ? sp.periodo : 'settimana';
   const tipo = typeof sp.tipo === 'string' && sp.tipo in EVENT_TYPE_LABELS ? (sp.tipo as EventType) : '';
   const [from, to] = range(period);
-  const events = getEvents().filter((e) => e.dateFrom <= to && (e.dateTo ?? e.dateFrom) >= from).filter((e) => !tipo || e.type === tipo);
+  const [events, settings] = await Promise.all([getEvents({ from, to, type: tipo || undefined }, 300), getSettings()]);
   return (
     <>
       <div className="section-head"><h1>Cosa fare in città</h1><div className="sub-topics">{(Object.keys(EVENT_TYPE_LABELS) as EventType[]).map((t) => <Link key={t} href={`/eventi?tipo=${t}&periodo=${period}`} style={tipo === t ? { color: 'var(--red)' } : undefined}>{EVENT_TYPE_LABELS[t].toLowerCase()}</Link>)}</div></div>
       <div className="event-filters">
         <Form action="/eventi" className="ef-form">
-          <label><span>Eventi a {getSettings().weatherCity}</span><select className="select" name="periodo" defaultValue={period}>{Object.entries(PERIODS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></label>
+          <label><span>Eventi a {settings.weatherCity}</span><select className="select" name="periodo" defaultValue={period}>{Object.entries(PERIODS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></label>
           <label><span>Tipologia</span><select className="select" name="tipo" defaultValue={tipo}><option value="">Tutti</option>{(Object.keys(EVENT_TYPE_LABELS) as EventType[]).map((t) => <option key={t} value={t}>{EVENT_TYPE_LABELS[t]}</option>)}</select></label>
           <button className="btn btn-dark" type="submit">Filtra</button>
         </Form>
