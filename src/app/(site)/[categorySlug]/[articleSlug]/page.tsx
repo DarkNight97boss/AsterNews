@@ -6,7 +6,7 @@ import { CommentForm, Gallery, ReadingProgress, ShareBar, ViewCounter } from '@/
 import { MostRead, NewsletterWidget } from '@/components/site/widgets';
 import { SmartImage } from '@/components/ui/smart-image';
 import { ROLE_LABELS } from '@/lib/models';
-import { approvedComments, articleBySlug, articleUrl, category, getPublished, getSettings, related, tag, user } from '@/lib/queries';
+import { approvedComments, articleBySlug, articleUrl, category, getFeatured, getMostRead, getPublished, getSettings, related, tag, user, zone } from '@/lib/queries';
 import { formatDate, readingTime, relativeDate, timeAgo } from '@/lib/utils';
 
 function shortTime(iso: string): string {
@@ -43,6 +43,10 @@ export default async function ArticlePage({ params }: PageProps<'/[categorySlug]
   const comments = approvedComments(a.id);
   const liveUpdates = [...a.liveUpdates].sort((x, y) => y.time.localeCompare(x.time));
   const video = getPublished().find((v) => v.format === 'video' && v.id !== a.id);
+  const z = zone(a.zoneId);
+  const featured = getFeatured().filter((f) => f.id !== a.id).slice(0, 4);
+  const mostWeek = getMostRead().filter((m) => m.id !== a.id).slice(0, 6);
+  const settings = getSettings();
   const jsonLd = {
     '@context': 'https://schema.org', '@type': 'NewsArticle', headline: a.title, description: a.excerpt, image: a.coverImage ? [a.coverImage] : undefined,
     datePublished: a.publishedAt, dateModified: a.updatedAt, author: author ? [{ '@type': 'Person', name: author.name }] : undefined,
@@ -78,6 +82,7 @@ export default async function ArticlePage({ params }: PageProps<'/[categorySlug]
           )}
           <header className="article-head">
             <Kicker article={a} />
+            {(z || a.address) && <span className="article-place">{z && <Link href={`/zone/${z.slug}`}>{z.name}</Link>}{z && a.address && ' / '}{a.address}</span>}
             <h1>{a.title}</h1>
             <p className="subtitle">{a.subtitle}</p>
             {a.sponsored && <p className="sponsored-label">Contenuto sponsorizzato</p>}
@@ -95,6 +100,8 @@ export default async function ArticlePage({ params }: PageProps<'/[categorySlug]
           )}
           {a.format === 'gallery' && a.gallery.length > 0 && <Gallery images={a.gallery} />}
           <div className="article-body" dangerouslySetInnerHTML={{ __html: a.content }} />
+          {settings.googleNewsUrl && <p className="gnews" style={{ fontFamily: 'var(--font-serif)', textAlign: 'center', marginTop: 24 }}>Scegli <a href={settings.googleNewsUrl} target="_blank" rel="noopener" style={{ color: 'var(--red)', textDecoration: 'underline' }}>{settings.siteName}</a> come fonte preferita su Google News</p>}
+          <div className="article-foot"><span className="copy">© Riproduzione riservata</span><ShareBar title={a.title} withMail /></div>
           {tags.length > 0 && <div className="article-tags">{tags.map((t) => <Link key={t.id} href={`/tag/${t.slug}`}>#{t.name}</Link>)}</div>}
           {author && (
             <div className="author-box"><img src={author.avatar} alt={author.name} /><div><div className="role">{ROLE_LABELS[author.role]}</div><h4><Link href={`/autore/${author.id}`}>{author.name}</Link></h4><p>{author.bio}</p></div></div>
@@ -103,6 +110,12 @@ export default async function ArticlePage({ params }: PageProps<'/[categorySlug]
             <div className="section-title"><h2>Leggi anche</h2></div>
             <div className="grid grid-2">{rel.slice(0, 4).map((r) => <ArticleCard key={r.id} article={r} variant="horizontal-sm" showMeta />)}</div>
           </section>
+          {featured.length > 0 && (
+            <section className="section"><div className="section-title"><h2>In evidenza</h2></div><div className="grid grid-4 grid-divided">{featured.map((f) => <ArticleCard key={f.id} article={f} variant="sm" />)}</div></section>
+          )}
+          {mostWeek.length > 0 && (
+            <section className="section"><div className="section-title"><h2>I più letti della settimana</h2></div><div className="most-week">{mostWeek.map((m, i) => <ArticleCard key={m.id} article={m} variant="number" index={i + 1} />)}</div></section>
+          )}
           {a.allowComments && (
             <section className="comments">
               <h3>Commenti ({comments.length})</h3>

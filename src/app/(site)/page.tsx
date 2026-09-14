@@ -2,7 +2,8 @@ import Link from 'next/link';
 import { ArticleCard, Kicker } from '@/components/site/article-card';
 import { FromCities, MostRead, NewsletterWidget } from '@/components/site/widgets';
 import { SmartImage } from '@/components/ui/smart-image';
-import { articleUrl, articlesByCategory, category, getCategories, getFeatured, getPublished, getSettings, user } from '@/lib/queries';
+import { EventCard } from '@/components/site/event-card';
+import { articleUrl, articlesByCategory, category, getCategories, getEvents, getFeatured, getPublished, getSettings, user } from '@/lib/queries';
 
 export default function HomePage() {
   const cats = getCategories();
@@ -23,6 +24,7 @@ export default function HomePage() {
   const dossierRest = dossiers.filter((a) => a.id !== dossierLead?.id).slice(0, 3);
   const opinions = opinionCat ? articlesByCategory(opinionCat.id).slice(0, 3) : [];
   const videos = published.filter((a) => a.format === 'video').slice(0, 3);
+  const events = getEvents().slice(0, 4);
 
   const sections = getSettings().homeSections
     .map((id) => category(id))
@@ -73,6 +75,13 @@ export default function HomePage() {
             <div className="section-title section-title-stencil"><h2>{dossierCat.name}</h2><Link href={`/${dossierCat.slug}`}>Vai alla sezione →</Link></div>
             <div className="grid grid-3 grid-divided">{dossierRest.map((a) => <ArticleCard key={a.id} article={a} variant="md" showExcerpt />)}</div>
           </div>
+        </section>
+      )}
+
+      {events.length > 0 && (
+        <section className="section home-events">
+          <div className="section-title"><h2>Cosa fare in città</h2><Link href="/eventi">Tutti gli eventi →</Link></div>
+          <div className="events-grid">{events.map((e) => <EventCard key={e.id} event={e} />)}</div>
         </section>
       )}
 

@@ -5,7 +5,7 @@ import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { createSessionToken, DEMO_PASSWORD, getCurrentUser, requirePermission, requireUser, SESSION_COOKIE } from './auth';
 import { getDb, mutate, resetDb } from './db';
-import { Article, ArticleStatus, Category, Comment, CommentStatus, MediaItem, SiteSettings, Tag, User } from './models';
+import { Article, ArticleStatus, Category, Comment, CommentStatus, Event, MediaItem, Report, SiteSettings, Tag, User, Zone } from './models';
 import { can, canEdit } from './permissions';
 import { article as findArticle, getCategories } from './queries';
 import { slugify, uid } from './utils';
@@ -302,4 +302,97 @@ export async function removeSubscriberAction(id: string): Promise<ActionResult> 
 
 export async function currentUserAction(): Promise<User | null> {
   return getCurrentUser();
+}
+
+// ---------------- Zone ----------------
+export async function saveZoneAction(z: Zone): Promise<ActionResult> {
+  await requirePermission('category.manage');
+  if (!z.name.trim()) return fail('Il nome è obbligatorio.');
+  const zone: Zone = { ...z, id: z.id || uid('z'), slug: slugify(z.slug || z.name), name: z.name.trim() };
+  mutate((d) => ({ zones: d.zones.some((x) => x.id === zone.id) ? d.zones.map((x) => (x.id === zone.id ? zone : x)) : [...d.zones, zone] }));
+  refresh();
+  return ok('Zona salvata.', zone.id);
+}
+
+export async function deleteZoneAction(id: string): Promise<ActionResult> {
+  await requirePermission('category.manage');
+  mutate((d) => ({ zones: d.zones.filter((z) => z.id !== id), articles: d.articles.map((a) => (a.zoneId === id ? { ...a, zoneId: '' } : a)), events: d.events.map((e) => (e.zoneId === id ? { ...e, zoneId: '' } : e)) }));
+  refresh();
+  return ok('Zona eliminata.');
+}
+
+// ---------------- Eventi ----------------
+function uniqueEventSlug(base: string, excludeId: string): string {
+  const root = slugify(base) || 'evento';
+  let slug = root;
+  let n = 2;
+  while (getDb().events.some((e) => e.slug === slug && e.id !== excludeId)) slug = `${root}-${n++}`;
+  return slug;
+}
+
+export async function saveEventAction(e: Event): Promise<ActionResult> {
+  await requirePermission('article.publish');
+  if (!e.title.trim() || !e.dateFrom) return fail('Titolo e data di inizio sono obbligatori.');
+  const event: Event = { ...e, id: e.id || uid('e'), slug: uniqueEventSlug(e.slug || e.title, e.id), createdAt: e.createdAt || new Date().toISOString(), rating: Math.max(0, Math.min(5, Number(e.rating) || 0)) };
+  if (event.dateTo && event.dateTo < event.dateFrom) event.dateTo = event.dateFrom;
+  mutate((d) => ({ events: d.events.some((x) => x.id === event.id) ? d.events.map((x) => (x.id === event.id ? event : x)) : [event, ...d.events] }));
+  refresh();
+  return ok('Evento salvato.', event.id);
+}
+
+export async function setEventStatusAction(id: string, status: Event['status']): Promise<ActionResult> {
+  await requirePermission('article.publish');
+  mutate((d) => ({ events: d.events.map((e) => (e.id === id ? { ...e, status } : e)) }));
+  refresh();
+  return ok('Evento aggiornato.');
+}
+
+export async function deleteEventAction(id: string): Promise<ActionResult> {
+  await requirePermission('article.delete');
+  mutate((d) => ({ events: d.events.filter((e) => e.id !== id) }));
+  refresh();
+  return ok('Evento eliminato.');
+}
+
+/** Segnalazione evento da parte dei lettori: entra in coda di approvazione. */
+export async function submitEventAction(input: { title: string; type: Event['type']; dateFrom: string; dateTo: string; timeInfo: string; place: string; address: string; zoneId: string; price: string; free: boolean; description: string; email: string }): Promise<ActionResult> {
+  if (!input.title.trim() || !input.dateFrom || !input.place.trim()) return fail('Titolo, data e luogo sono obbligatori.');
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(input.email.trim())) return fail('Inserisci un indirizzo email valido.');
+  const event: Event = {
+    id: uid('e'), slug: uniqueEventSlug(input.title, ''), title: input.title.trim().slice(0, 140), description: `<p>${input.description.trim().slice(0, 3000).replace(/</g, '&lt;')}</p>`,
+    type: input.type, dateFrom: input.dateFrom, dateTo: input.dateTo || null, timeInfo: input.timeInfo.slice(0, 60), place: input.place.trim().slice(0, 120), address: input.address.slice(0, 120), zoneId: input.zoneId,
+    price: input.free ? '' : input.price.slice(0, 60), free: input.free, image: '', rating: 0, status: 'pending', submittedBy: input.email.trim(), createdAt: new Date().toISOString(),
+  };
+  mutate((d) => ({ events: [event, ...d.events] }));
+  refresh();
+  return ok('Grazie! L\'evento sarà pubblicato dopo la verifica della redazione.');
+}
+
+// ---------------- Segnalazioni ----------------
+export async function submitReportAction(input: { name: string; email: string; zoneId: string; subject: string; body: string; image: string }): Promise<ActionResult> {
+  if (!input.name.trim() || !input.subject.trim() || !input.body.trim()) return fail('Compila nome, oggetto e descrizione.');
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(input.email.trim())) return fail('Inserisci un indirizzo email valido.');
+  const r: Report = { id: uid('r'), name: input.name.trim().slice(0, 60), email: input.email.trim(), zoneId: input.zoneId, subject: input.subject.trim().slice(0, 140), body: input.body.trim().slice(0, 3000), image: input.image.startsWith('data:image/') && input.image.length < 2_000_000 ? input.image : '', status: 'new', reply: '', createdAt: new Date().toISOString() };
+  mutate((d) => ({ reports: [r, ...d.reports] }));
+  refresh();
+  return ok('Segnalazione inviata. La redazione la verificherà al più presto.');
+}
+
+export async function updateReportAction(id: string, patch: { status?: Report['status']; reply?: string; subject?: string; body?: string }): Promise<ActionResult> {
+  await requirePermission('comment.moderate');
+  mutate((d) => ({ reports: d.reports.map((r) => (r.id === id ? { ...r, ...patch } : r)) }));
+  refresh();
+  return ok('Segnalazione aggiornata.');
+}
+
+export async function deleteReportAction(id: string): Promise<ActionResult> {
+  await requirePermission('comment.moderate');
+  mutate((d) => ({ reports: d.reports.filter((r) => r.id !== id) }));
+  refresh();
+  return ok('Segnalazione eliminata.');
+}
+
+export async function setCookieConsentAction(value: 'all' | 'necessary'): Promise<void> {
+  const store = await cookies();
+  store.set('cookie_consent', value, { path: '/', maxAge: 60 * 60 * 24 * 180, sameSite: 'lax' });
 }

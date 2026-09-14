@@ -1,7 +1,7 @@
 import 'server-only';
 import { cache } from 'react';
 import { getDb } from './db';
-import { Article, ArticleStatus, Category, Comment, Tag, User } from './models';
+import { Article, ArticleStatus, Category, Comment, Event, Report, Tag, User, Zone } from './models';
 
 export const getCategories = cache((): Category[] => [...getDb().categories].sort((a, b) => a.order - b.order));
 export const getTags = cache((): Tag[] => [...getDb().tags].sort((a, b) => a.name.localeCompare(b.name)));
@@ -65,3 +65,25 @@ export function countByStatus(): Record<ArticleStatus, number> {
 export function articleUrl(a: Article): string {
   return `/${category(a.categoryId)?.slug ?? 'notizie'}/${a.slug}`;
 }
+
+// ---------- Zone / eventi / segnalazioni ----------
+export const getZones = cache((): Zone[] => [...getDb().zones].sort((a, b) => a.name.localeCompare(b.name)));
+export const zone = (id: string | null | undefined) => getDb().zones.find((z) => z.id === id);
+export const zoneBySlug = (slug: string) => getDb().zones.find((z) => z.slug === slug);
+export const articlesByZone = (zoneId: string) => getPublished().filter((a) => a.zoneId === zoneId);
+export function zoneCounts(): Record<string, number> {
+  const r: Record<string, number> = {};
+  getPublished().forEach((a) => { if (a.zoneId) r[a.zoneId] = (r[a.zoneId] ?? 0) + 1; });
+  return r;
+}
+
+export const getAllEvents = cache((): Event[] => getDb().events);
+export const getEvents = cache((): Event[] => {
+  const today = new Date().toISOString().slice(0, 10);
+  return getDb().events
+    .filter((e) => e.status === 'published' && (e.dateTo ?? e.dateFrom) >= today)
+    .sort((a, b) => a.dateFrom.localeCompare(b.dateFrom) || b.rating - a.rating);
+});
+export const eventBySlug = (slug: string) => getEvents().find((e) => e.slug === slug);
+export const getReports = cache((): Report[] => [...getDb().reports].sort((a, b) => b.createdAt.localeCompare(a.createdAt)));
+export const getPublishedReports = () => getReports().filter((r) => r.status === 'published');

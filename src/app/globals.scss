@@ -268,3 +268,55 @@ ul { margin: 0; padding: 0; list-style: none; }
 @media (max-width: 520px) {
   .grid-2, .grid-3, .grid-4 { grid-template-columns: 1fr; } .card-horizontal, .card-horizontal-sm { flex-direction: column; .card-img { width: 100%; flex: auto; } } .site-footer .footer-grid { grid-template-columns: 1fr; }
 }
+
+/* ==========================================================
+   Funzioni Citynews: meteo, eventi, zone, segnalazioni, mega-menu
+   ========================================================== */
+.topbar .date-wrap { display: flex; align-items: center; gap: 16px; min-width: 0; }
+.weather-pill { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; .w-icon { font-size: 15px; } .w-temp { font-weight: 800; } .w-label { color: var(--muted); } &:hover .w-label { color: var(--ink); } }
+.mega { background: var(--bg); border-bottom: 1px solid var(--line); box-shadow: 0 12px 30px rgba(0, 0, 0, .12); animation: slide-in .15s ease-out;
+  .mega-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 32px; padding: 28px 20px 32px; }
+  .mega-title { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .12em; color: var(--muted); margin-bottom: 10px; }
+  a { display: block; padding: 5px 0; font-size: 14px; font-weight: 600; color: var(--text); &:hover { color: var(--red); } } }
+.cookie-banner { position: fixed; left: 16px; right: 16px; bottom: 16px; z-index: 900; background: var(--panel); color: var(--text); border: 1px solid var(--line); box-shadow: var(--shadow-lg); border-radius: 8px; padding: 16px 20px; display: flex; gap: 20px; align-items: center; justify-content: space-between; max-width: 1100px; margin: 0 auto; font-size: 13px;
+  p { margin: 4px 0 0; color: var(--muted); a { text-decoration: underline; } } .cookie-actions { display: flex; gap: 8px; flex-shrink: 0; } }
+
+.weather-now { display: flex; justify-content: space-between; align-items: center; gap: 20px; flex-wrap: wrap; background: var(--paper); border: 1px solid var(--line); padding: 22px 26px; border-radius: 8px;
+  .wn-main { display: flex; align-items: center; gap: 16px; } .wn-icon { font-size: 56px; line-height: 1; } .wn-temp { font-family: var(--font-serif); font-size: 48px; font-weight: 700; line-height: 1; } .wn-label { color: var(--muted); font-size: 14px; margin-top: 4px; }
+  .wn-details { display: flex; gap: 22px; font-size: 13px; color: var(--muted); b { color: var(--ink); } } }
+.weather-days { display: grid; grid-template-columns: repeat(7, 1fr); gap: 0; border: 1px solid var(--line); border-radius: 6px; overflow: hidden;
+  .wd { background: var(--panel); border: 0; border-right: 1px solid var(--line); padding: 14px 10px; text-align: center; color: var(--text); cursor: pointer; &:last-child { border-right: 0; } &:hover { background: var(--paper); } &.active { background: var(--paper); box-shadow: inset 0 3px 0 var(--red); }
+    .wd-name { font-weight: 700; font-size: 13px; text-transform: capitalize; } .wd-temp { font-family: var(--font-serif); font-size: 20px; margin: 6px 0 2px; b { font-weight: 700; } } .wd-label { font-size: 11px; color: var(--muted); } } }
+.weather-table { .muted { color: var(--muted); font-size: 12px; } tr.now td { background: rgba(215, 38, 45, .06); } th { cursor: default; } }
+
+.event-filters { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; flex-wrap: wrap; margin-bottom: 24px;
+  .ef-form { display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap; label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--muted); font-weight: 700; .select { min-width: 200px; } } } }
+.events-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
+.event-card { background: var(--panel); border: 1px solid var(--line); display: flex; flex-direction: column;
+  .ev-img { position: relative; aspect-ratio: 3 / 2; background: var(--gray-200); display: block; overflow: hidden; .ev-placeholder { display: grid; place-items: center; height: 100%; font-size: 40px; } .badge-type { position: absolute; left: 10px; bottom: 10px; background: var(--red); color: #fff; } }
+  .ev-body { padding: 14px 16px 16px; display: flex; flex-direction: column; gap: 8px; flex: 1; } .ev-title { font-size: 17px; line-height: 1.25; font-family: var(--font); font-weight: 700; a:hover { color: var(--red); } }
+  .ev-meta { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--muted); margin-top: auto; } }
+.stars { color: #f5b301; font-size: 13px; letter-spacing: 1px; .off { color: var(--gray-300); } }
+.event-detail { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 40px; align-items: start; }
+.event-info { position: sticky; top: 20px; background: var(--paper); border: 1px solid var(--line); padding: 20px; h3 { font-family: var(--font-serif); font-size: 20px; margin-bottom: 12px; }
+  dl { margin: 0 0 16px; } dt { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin-top: 12px; } dd { margin: 4px 0 0; font-size: 15px; a { color: var(--red); font-weight: 600; } } }
+
+.letter-nav { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 28px; a { display: grid; place-items: center; width: 34px; height: 34px; font-weight: 800; font-size: 13px; background: var(--paper); border: 1px solid var(--line); &:hover { background: var(--ink); color: var(--bg); } } }
+.zone-letter { display: grid; grid-template-columns: 60px 1fr 1fr; gap: 24px; padding: 20px 0; border-top: 1px solid var(--line);
+  .zl-letter { font-size: 34px; font-weight: 700; } .zl-head { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); margin-bottom: 6px; }
+  .zl-item { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--line); font-weight: 700; font-size: 14px; &:hover { color: var(--red); } .zl-count { color: var(--muted); font-weight: 400; font-size: 12px; } } .zl-empty { color: var(--muted-2); } }
+
+.reports { display: flex; flex-direction: column; gap: 24px; }
+.report { border: 1px solid var(--line); padding: 20px; background: var(--panel); .report-head { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 8px; } h3 { font-size: 22px; margin-bottom: 12px; }
+  .report-body { display: grid; grid-template-columns: 200px 1fr; gap: 16px; align-items: start; img { aspect-ratio: 3 / 2; object-fit: cover; width: 100%; } p { margin: 0; font-size: 15px; } &:has(> p:only-child) { grid-template-columns: 1fr; } }
+  .report-reply { margin-top: 14px; padding: 12px 16px; background: var(--paper); border-left: 3px solid var(--blue); font-size: 14px; b { display: block; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--blue); margin-bottom: 4px; } p { margin: 0; } } }
+
+.article-place { font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin-left: 8px; a { color: var(--ink); &:hover { color: var(--red); } } }
+.article-foot { display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap; margin: 28px 0; padding-top: 16px; border-top: 1px solid var(--line); .copy { font-size: 12px; color: var(--muted); } .gnews { font-family: var(--font-serif); text-align: center; font-size: 16px; a { color: var(--red); text-decoration: underline; } } }
+.share-btn.mail { background: var(--gray-500); }
+.most-week { display: grid; grid-template-columns: 1fr 1fr; gap: 0 40px; > * { padding-right: 20px; } }
+.home-events .events-grid { grid-template-columns: repeat(4, 1fr); }
+
+@media (max-width: 1024px) { .mega .mega-grid { grid-template-columns: 1fr 1fr; } .event-detail { grid-template-columns: 1fr; .event-info { position: static; } } .events-grid, .home-events .events-grid { grid-template-columns: repeat(2, 1fr); } .weather-days { grid-template-columns: repeat(4, 1fr); .wd { border-bottom: 1px solid var(--line); } } }
+@media (max-width: 768px) { .topbar .weather-pill .w-label { display: none; } .mega .mega-grid { grid-template-columns: 1fr; gap: 20px; padding: 20px; } .zone-letter { grid-template-columns: 40px 1fr; > div:last-child { grid-column: 2; } } .most-week { grid-template-columns: 1fr; } .report .report-body { grid-template-columns: 1fr; } .cookie-banner { flex-direction: column; align-items: stretch; .cookie-actions { justify-content: flex-end; } } .weather-days { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 520px) { .events-grid, .home-events .events-grid { grid-template-columns: 1fr; } }

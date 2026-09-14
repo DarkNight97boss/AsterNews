@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { StatusBadge } from '@/components/admin/badges';
 import { getCurrentUser } from '@/lib/auth';
-import { category, countByStatus, getActivity, getAllArticles, getComments, getMostRead, getPublished, getSubscribers, user } from '@/lib/queries';
+import { category, countByStatus, getActivity, getAllArticles, getAllEvents, getComments, getMostRead, getPublished, getReports, getSubscribers, user } from '@/lib/queries';
 import { timeAgo } from '@/lib/utils';
 
 const compact = (n: number) => (n >= 1e6 ? (n / 1e6).toFixed(1).replace('.0', '') + 'M' : n >= 1000 ? (n / 1000).toFixed(1).replace('.0', '') + 'k' : String(n));
@@ -11,6 +11,8 @@ export default async function DashboardPage() {
   const counts = countByStatus();
   const totalViews = getAllArticles().reduce((s, a) => s + a.views, 0);
   const pending = getComments().filter((c) => c.status === 'pending').length;
+  const pendingEvents = getAllEvents().filter((e) => e.status === 'pending').length;
+  const newReports = getReports().filter((r) => r.status === 'new').length;
   const top = getMostRead().slice(0, 7);
   const maxViews = Math.max(1, ...top.map((a) => a.views));
   const recent = [...getAllArticles()].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)).slice(0, 6);
@@ -59,7 +61,9 @@ export default async function DashboardPage() {
               {counts.review > 0 && <li><span>⏳</span><div><Link href="/admin/articoli?status=review"><b>{counts.review} articoli</b> in attesa di revisione</Link></div></li>}
               {pending > 0 && <li><span>💬</span><div><Link href="/admin/commenti"><b>{pending} commenti</b> da moderare</Link></div></li>}
               {counts.scheduled > 0 && <li><span>📅</span><div><Link href="/admin/articoli?status=scheduled"><b>{counts.scheduled} articoli</b> programmati</Link></div></li>}
-              {!counts.review && !pending && !counts.scheduled && <li>Tutto in ordine 🎉</li>}
+              {pendingEvents > 0 && <li><span>📅</span><div><Link href="/admin/eventi"><b>{pendingEvents} eventi</b> segnalati da approvare</Link></div></li>}
+              {newReports > 0 && <li><span>🚧</span><div><Link href="/admin/segnalazioni"><b>{newReports} segnalazioni</b> nuove dai lettori</Link></div></li>}
+              {!counts.review && !pending && !counts.scheduled && !pendingEvents && !newReports && <li>Tutto in ordine 🎉</li>}
             </ul>
           </div>
           <div className="panel">

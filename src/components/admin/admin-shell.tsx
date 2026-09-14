@@ -7,9 +7,9 @@ import { logoutAction } from '@/lib/actions';
 import { ROLE_LABELS, User } from '@/lib/models';
 import { Permission } from '@/lib/permissions';
 
-interface Props { user: User; permissions: Permission[]; reviewCount: number; pendingComments: number; children: ReactNode }
+interface Props { user: User; permissions: Permission[]; reviewCount: number; pendingComments: number; pendingEvents: number; newReports: number; children: ReactNode }
 
-export function AdminShell({ user, permissions, reviewCount, pendingComments, children }: Props) {
+export function AdminShell({ user, permissions, reviewCount, pendingComments, pendingEvents, newReports, children }: Props) {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
   const can = (p: Permission) => permissions.includes(p);
@@ -28,10 +28,18 @@ export function AdminShell({ user, permissions, reviewCount, pendingComments, ch
           {can('category.manage') && <A href="/admin/categorie"><span className="ico">☰</span> Categorie</A>}
           {can('tag.manage') && <A href="/admin/tag"><span className="ico">#</span> Tag</A>}
           <A href="/admin/media"><span className="ico">▣</span> Media</A>
+          {can('article.publish') && (
+            <>
+              <div className="nav-group">Città</div>
+              <A href="/admin/eventi"><span className="ico">📅</span> Eventi {pendingEvents > 0 && <span className="pill">{pendingEvents}</span>}</A>
+              {can('category.manage') && <A href="/admin/zone"><span className="ico">📍</span> Zone</A>}
+            </>
+          )}
           {can('comment.moderate') && (
             <>
               <div className="nav-group">Community</div>
               <A href="/admin/commenti"><span className="ico">💬</span> Commenti {pendingComments > 0 && <span className="pill">{pendingComments}</span>}</A>
+              <A href="/admin/segnalazioni"><span className="ico">🚧</span> Segnalazioni {newReports > 0 && <span className="pill">{newReports}</span>}</A>
               <A href="/admin/newsletter"><span className="ico">✉</span> Newsletter</A>
             </>
           )}

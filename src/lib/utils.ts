@@ -75,3 +75,22 @@ export function relativeDate(iso: string | null | undefined): string {
   const date = d.toLocaleDateString('it-IT', { day: 'numeric', month: 'long' });
   return `${date}, ${time}`;
 }
+
+/** Data (yyyy-mm-dd) a n giorni da oggi, in ora locale. */
+export function dayOffset(n: number): string {
+  const d = new Date();
+  d.setDate(d.getDate() + n);
+  const pad = (x: number) => String(x).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
+export function formatDay(ymd: string, opts: Intl.DateTimeFormatOptions = { day: 'numeric', month: 'long', year: 'numeric' }): string {
+  if (!ymd) return '';
+  const [y, m, d] = ymd.split('-').map(Number);
+  return new Date(y, m - 1, d).toLocaleDateString('it-IT', opts);
+}
+
+export function eventDateLabel(from: string, to: string | null): string {
+  if (to && to !== from) return `dal ${formatDay(from, { day: 'numeric', month: 'long' })} al ${formatDay(to)}`;
+  return formatDay(from);
+}

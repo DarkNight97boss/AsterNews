@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useMemo, useState, useTransition } from 'react';
 import { ensureTagAction, deleteArticleAction, saveArticleAction } from '@/lib/actions';
-import { Article, ArticleFormat, ArticleStatus, Category, FORMAT_LABELS, LiveUpdate, MediaItem, STATUS_LABELS, Tag, User } from '@/lib/models';
+import { Article, ArticleFormat, ArticleStatus, Category, FORMAT_LABELS, LiveUpdate, MediaItem, STATUS_LABELS, Tag, User, Zone } from '@/lib/models';
 import { Permission } from '@/lib/permissions';
 import { formatDate, readingTime, slugify, stripHtml, toLocalInput, uid } from '@/lib/utils';
 import { toast } from '@/components/ui/toaster';
@@ -12,7 +12,7 @@ import { statusBadgeClass } from './badges';
 import { MediaPicker } from './media-picker';
 import { RichEditor } from './rich-editor';
 
-interface Props { initial: Article; isNew: boolean; isPublic: boolean; categories: Category[]; tags: Tag[]; users: User[]; media: MediaItem[]; permissions: Permission[] }
+interface Props { initial: Article; isNew: boolean; isPublic: boolean; categories: Category[]; zones: Zone[]; tags: Tag[]; users: User[]; media: MediaItem[]; permissions: Permission[] }
 const FORMATS: ArticleFormat[] = ['standard', 'video', 'gallery', 'live'];
 
 function shortTime(iso: string): string {
@@ -20,7 +20,7 @@ function shortTime(iso: string): string {
   return d.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
 }
 
-export function ArticleEditor({ initial, isNew, isPublic, categories, tags: allTags, users, media, permissions }: Props) {
+export function ArticleEditor({ initial, isNew, isPublic, categories, zones, tags: allTags, users, media, permissions }: Props) {
   const router = useRouter();
   const [a, setA] = useState<Article>(initial);
   const [tags, setTags] = useState<Tag[]>(allTags);
@@ -153,6 +153,10 @@ export function ArticleEditor({ initial, isNew, isPublic, categories, tags: allT
           </div>
           <div className="panel"><div className="panel-title">Categoria</div>
             <select className="select" value={a.categoryId} onChange={(e) => set('categoryId', e.target.value)}>{categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</select>
+          </div>
+          <div className="panel"><div className="panel-title">Zona e luogo</div>
+            <div className="field"><label>Zona / comune</label><select className="select" value={a.zoneId} onChange={(e) => set('zoneId', e.target.value)}><option value="">Nessuna</option>{zones.map((z) => <option key={z.id} value={z.id}>{z.name}</option>)}</select></div>
+            <div className="field" style={{ marginBottom: 0 }}><label>Indirizzo</label><input className="input" value={a.address} onChange={(e) => set('address', e.target.value)} placeholder="es. Via Tuscia, 43" /></div>
           </div>
           <div className="panel"><div className="panel-title">Tag</div>
             <div className="chips" style={{ marginBottom: 8 }}>{a.tagIds.map((id) => <span key={id} className="chip">{tagOf(id)?.name}<button onClick={() => set('tagIds', a.tagIds.filter((t) => t !== id))}>✕</button></span>)}</div>

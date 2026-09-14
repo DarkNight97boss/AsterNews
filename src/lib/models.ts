@@ -61,6 +61,8 @@ export interface Article {
   categoryId: string;
   tagIds: string[];
   authorId: string;
+  zoneId: string;
+  address: string;
   status: ArticleStatus;
   format: ArticleFormat;
   videoUrl: string;
@@ -115,6 +117,10 @@ export interface SiteSettings {
   homeSections: string[];
   articlesPerPage: number;
   subscribeUrl: string;
+  weatherCity: string;
+  weatherLat: number;
+  weatherLon: number;
+  googleNewsUrl: string;
   socials: { facebook: string; instagram: string; x: string; youtube: string; telegram: string };
   footerText: string;
   commentsModeration: boolean;
@@ -128,8 +134,56 @@ export interface ActivityEntry {
   createdAt: string;
 }
 
+export type ZoneKind = 'comune' | 'zona';
+export interface Zone {
+  id: string;
+  slug: string;
+  name: string;
+  kind: ZoneKind;
+}
+
+export type EventType = 'concerti' | 'mostre' | 'teatro' | 'sagre' | 'cinema' | 'feste' | 'sport' | 'incontri' | 'bambini' | 'altro';
+export type EventStatus = 'pending' | 'published' | 'archived';
+export interface Event {
+  id: string;
+  slug: string;
+  title: string;
+  description: string;
+  type: EventType;
+  dateFrom: string;
+  dateTo: string | null;
+  timeInfo: string;
+  place: string;
+  address: string;
+  zoneId: string;
+  price: string;
+  free: boolean;
+  image: string;
+  rating: number;
+  status: EventStatus;
+  submittedBy: string;
+  createdAt: string;
+}
+
+export type ReportStatus = 'new' | 'progress' | 'published' | 'archived';
+export interface Report {
+  id: string;
+  name: string;
+  email: string;
+  zoneId: string;
+  subject: string;
+  body: string;
+  image: string;
+  status: ReportStatus;
+  reply: string;
+  createdAt: string;
+}
+
 export interface Database {
   version: number;
+  zones: Zone[];
+  events: Event[];
+  reports: Report[];
   categories: Category[];
   tags: Tag[];
   users: User[];
@@ -176,3 +230,10 @@ export const CATEGORY_KIND_LABELS: Record<CategoryKind, string> = {
   opinion: 'Opinioni (firma in evidenza)',
   dossier: 'Dossier (badge giallo)',
 };
+
+export const EVENT_TYPE_LABELS: Record<EventType, string> = {
+  concerti: 'Concerti', mostre: 'Mostre', teatro: 'Teatri', sagre: 'Sagre', cinema: 'Cinema', feste: 'Disco & Feste', sport: 'Sport', incontri: 'Incontri', bambini: 'Bambini', altro: 'Altro',
+};
+export const EVENT_STATUS_LABELS: Record<EventStatus, string> = { pending: 'Da approvare', published: 'Pubblicato', archived: 'Archiviato' };
+export const REPORT_STATUS_LABELS: Record<ReportStatus, string> = { new: 'Nuova', progress: 'In lavorazione', published: 'Pubblicata', archived: 'Archiviata' };
+export const ZONE_KIND_LABELS: Record<ZoneKind, string> = { comune: 'Comune', zona: 'Zona / quartiere' };

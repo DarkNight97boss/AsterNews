@@ -28,6 +28,15 @@ export function SettingsForm({ initial, categories }: { initial: SiteSettings; c
             {s.ticker.map((t, i) => <div key={i} style={{ display: 'flex', gap: 6, marginBottom: 6 }}><input className="input" value={t} onChange={(e) => setS({ ...s, ticker: s.ticker.map((x, j) => (j === i ? e.target.value : x)) })} /><button className="icon-btn danger" onClick={() => setS({ ...s, ticker: s.ticker.filter((_, j) => j !== i) })}>✕</button></div>)}
             <button className="btn btn-outline btn-sm" onClick={() => setS({ ...s, ticker: [...s.ticker, ''] })}>+ Aggiungi voce</button>
           </div>
+          <div className="panel"><div className="panel-title">Meteo e città</div>
+            <div className="form-row">
+              <div className="field"><label>Città</label><input className="input" value={s.weatherCity} onChange={(e) => setS({ ...s, weatherCity: e.target.value })} /></div>
+              <div className="field"><label>Latitudine</label><input className="input" type="number" step="0.0001" value={s.weatherLat} onChange={(e) => setS({ ...s, weatherLat: Number(e.target.value) })} /></div>
+              <div className="field"><label>Longitudine</label><input className="input" type="number" step="0.0001" value={s.weatherLon} onChange={(e) => setS({ ...s, weatherLon: Number(e.target.value) })} /></div>
+            </div>
+            <p className="help">Le previsioni arrivano da Open-Meteo (gratuito, senza chiave) e sono aggiornate ogni 30 minuti.</p>
+            <div className="field"><label>Link Google News (fonte preferita)</label><input className="input" value={s.googleNewsUrl} onChange={(e) => setS({ ...s, googleNewsUrl: e.target.value })} placeholder="https://news.google.com/publications/..." /></div>
+          </div>
           <div className="panel"><div className="panel-title">Social</div>
             <div className="form-row">
               {(['facebook', 'instagram', 'x', 'youtube', 'telegram'] as const).map((k) => <div key={k} className="field"><label>{k}</label><input className="input" value={s.socials[k]} onChange={(e) => setS({ ...s, socials: { ...s.socials, [k]: e.target.value } })} /></div>)}

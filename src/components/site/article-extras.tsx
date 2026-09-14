@@ -23,7 +23,7 @@ export function ViewCounter({ id }: { id: string }) {
   return null;
 }
 
-export function ShareBar({ title }: { title: string }) {
+export function ShareBar({ title, withMail = false }: { title: string; withMail?: boolean }) {
   const [url, setUrl] = useState('');
   useEffect(() => setUrl(window.location.href), []);
   const u = encodeURIComponent(url); const t = encodeURIComponent(title);
@@ -32,6 +32,7 @@ export function ShareBar({ title }: { title: string }) {
       <a className="share-btn fb" href={`https://www.facebook.com/sharer/sharer.php?u=${u}`} target="_blank" rel="noopener" title="Condividi su Facebook">f</a>
       <a className="share-btn x" href={`https://x.com/intent/tweet?url=${u}&text=${t}`} target="_blank" rel="noopener" title="Condividi su X">𝕏</a>
       <a className="share-btn wa" href={`https://wa.me/?text=${t}%20${u}`} target="_blank" rel="noopener" title="Condividi su WhatsApp">W</a>
+      {withMail && <a className="share-btn mail" href={`mailto:?subject=${t}&body=${u}`} title="Invia via email">✉</a>}
       <button className="share-btn copy" title="Copia link" onClick={() => navigator.clipboard?.writeText(url).then(() => toast.info('Link copiato negli appunti'))}>🔗</button>
     </div>
   );

@@ -1,23 +1,29 @@
 import { SiteHeader } from '@/components/site/header';
 import { Ticker } from '@/components/site/ticker';
 import { Footer } from '@/components/site/footer';
+import { CookieBanner } from '@/components/site/cookie-banner';
+import { cookies } from 'next/headers';
 import { getCurrentUser } from '@/lib/auth';
-import { articleUrl, getCategories, getLiveArticles, getPublished, getSettings, user } from '@/lib/queries';
+import { articleUrl, getCategories, getLiveArticles, getPublished, getSettings, getZones, user, zoneCounts } from '@/lib/queries';
+import { getWeather, weatherIcon, weatherLabel } from '@/lib/weather';
 
 export default async function SiteLayout({ children }: LayoutProps<'/'>) {
-  const me = await getCurrentUser();
+  const s = getSettings();
+  const [me, weather, cookieStore] = await Promise.all([getCurrentUser(), getWeather(s.weatherCity, s.weatherLat, s.weatherLon), cookies()]);
   const categories = getCategories();
   const opinionIds = new Set(categories.filter((c) => c.kind === 'opinion').map((c) => c.id));
   const opinions = getPublished().filter((a) => opinionIds.has(a.categoryId)).slice(0, 2).map((a) => ({ title: a.title, url: articleUrl(a), author: user(a.authorId)?.name ?? '', avatar: user(a.authorId)?.avatar ?? '' }));
   const live = getLiveArticles()[0];
-  const s = getSettings();
+  const counts = zoneCounts();
+  const topZones = [...getZones()].sort((a, b) => (counts[b.id] ?? 0) - (counts[a.id] ?? 0) || a.name.localeCompare(b.name));
   const today = new Date().toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
   return (
     <>
-      <SiteHeader categories={categories} opinions={opinions} liveLink={live ? articleUrl(live) : null} isLoggedIn={!!me} today={today} subscribeUrl={s.subscribeUrl} siteName={s.siteName} />
+      <SiteHeader categories={categories} zones={topZones} opinions={opinions} weather={weather ? { icon: weatherIcon(weather.current.code), label: weatherLabel(weather.current.code), temp: weather.current.temp, city: weather.city } : null} liveLink={live ? articleUrl(live) : null} isLoggedIn={!!me} today={today} subscribeUrl={s.subscribeUrl} siteName={s.siteName} />
       <Ticker />
       <main className="page"><div className="container">{children}</div></main>
       <Footer />
+      {!cookieStore.get('cookie_consent') && <CookieBanner />}
     </>
   );
 }
