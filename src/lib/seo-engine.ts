@@ -16,7 +16,7 @@ export interface SeoAnalysis {
 export interface SeoSettings { autoOptimizeOnSave: boolean; autoInternalLinks: boolean; maxInternalLinks: number; fixImages: boolean; searchConsoleToken: string; titleSuffix: boolean }
 export const DEFAULT_SEO_SETTINGS: SeoSettings = { autoOptimizeOnSave: true, autoInternalLinks: true, maxInternalLinks: 4, fixImages: true, searchConsoleToken: '', titleSuffix: true };
 
-const STOP = new Set(('a ad al alla alle allo agli ai anche ancora avere aveva avevano ben c che chi ci come con contro cui da dal dalla dalle dallo dagli dai de dei del della delle dello degli di dopo dove due e ed egli era erano essere fa fare fino fra gli ha hanno il in invece io l la le lei li lo loro lui ma me mi mio molto ne nei nel nella nelle nello negli noi non nostro o ogni oltre ora per perché più poco poi prima quale quando quanto quasi quella quelle quelli quello questa queste questi questo qui se sei senza si sia siamo solo sono sopra sotto sua sue sui sul sulla sulle sullo sugli suo suoi tra tre tu tua tue tuo tutti tutto un una uno va verso vi voi è così già stato stata stati state come cosa oggi ieri domani anni anno euro ore ora nuovo nuova nuovi nuove grande grandi primo prima secondo dopo tutto tutta italia italiana italiano governo caso via'.split(' ')));
+const STOP = new Set(('a ad al alla alle allo agli ai anche ancora avere aveva avevano ben c che chi ci come con contro cui da dal dalla dalle dallo dagli dai de dei del della delle dello degli di dopo dove due e ed egli era erano essere fa fare fino fra gli ha hanno il in invece io l la le lei li lo loro lui ma me mi mio molto ne nei nel nella nelle nello negli noi non nostro o ogni oltre ora per perché più poco poi prima quale quando quanto quasi quella quelle quelli quello questa queste questi questo qui se sei senza si sia siamo solo sono sopra sotto sua sue sui sul sulla sulle sullo sugli suo suoi tra tre tu tua tue tuo tutti tutto un una uno va verso vi voi è così già stato stata stati state come cosa oggi ieri domani anni anno euro ore ora nuovo nuova nuovi nuove grande grandi primo prima secondo dopo tutto tutta italia italiana italiano caso via prossime prossimo prossima prossimi reazioni notizia notizie redazione secondo punto parte fonti aggiornamenti pagina articolo articoli vicenda situazione'.split(' ')));
 
 const norm = (s: string) => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
 const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -25,9 +25,21 @@ function words(text: string): string[] {
   return norm(text).replace(/[^a-z0-9\s'-]/g, ' ').split(/\s+/).filter((w) => w.length > 2 && !STOP.has(w) && !/^\d+$/.test(w));
 }
 
-/** Come words(), ma i bigrammi non scavalcano la punteggiatura: restituisce gruppi di parole per frase/inciso. */
-function chunks(text: string): string[][] {
-  return norm(text).split(/[.,;:!?()«»"“”\[\]\n]+/).map((c) => c.replace(/[^a-z0-9\s'-]/g, ' ').split(/\s+/).filter((w) => w.length > 2 && !STOP.has(w) && !/^\d+$/.test(w))).filter((c) => c.length);
+/** Frasi/incisi come sequenze di token; le stopword restano (marcate) per non formare bigrammi che le scavalcano. */
+const CONNECTIVES = new Set(['di', 'del', 'della', 'dei', 'delle', 'dello', 'degli', 'a', 'al', 'alla', 'ai', 'alle', 'allo', 'agli', 'da', 'dal', 'dalla', 'dai', 'dalle', 'in', 'nel', 'nella', 'nei', 'nelle', 'per', 'e', 'su', 'sul', 'sulla', 'sui', 'sulle']);
+function chunks(text: string): { w: string; stop: boolean }[][] {
+  return norm(text).split(/[.,;:!?()«»"“”\[\]\n]+/).map((c) => c.replace(/[^a-z0-9\s'-]/g, ' ').split(/\s+/).filter((w) => w.length > 1 && !/^\d+$/.test(w)).map((w) => ({ w, stop: STOP.has(w) || w.length < 3 }))).filter((c) => c.length);
+}
+/** Frasi chiave di un inciso: bigrammi adiacenti e "parola + connettivo + parola" (es. consiglio dei ministri). */
+function phrasesOf(c: { w: string; stop: boolean }[]): string[] {
+  const out: string[] = [];
+  for (let i = 0; i < c.length; i++) {
+    if (c[i].stop) continue;
+    const n1 = c[i + 1], n2 = c[i + 2];
+    if (n1 && !n1.stop) out.push(`${c[i].w} ${n1.w}`);
+    else if (n1 && n2 && CONNECTIVES.has(n1.w) && !n2.stop) out.push(`${c[i].w} ${n1.w} ${n2.w}`);
+  }
+  return out;
 }
 
 function sentences(text: string): number {
@@ -47,16 +59,15 @@ export function gulpease(text: string): number {
 /** Parole chiave: unigrammi e bigrammi più frequenti nel testo, premiati se presenti nel titolo. */
 export function extractKeywords(title: string, kicker: string, content: string, n = 8): string[] {
   const head = new Set(words(`${title} ${kicker}`));
-  const titleBigrams = new Set(chunks(title).flatMap((c) => c.slice(0, -1).map((w, i) => `${w} ${c[i + 1]}`)));
+  const titlePhrases = new Set(chunks(title).flatMap(phrasesOf));
   const score = new Map<string, number>();
   const add = (k: string, v: number) => score.set(k, (score.get(k) ?? 0) + v);
-  chunks(stripHtml(content)).forEach((c) => c.forEach((w, i) => {
-    add(w, 1 + (head.has(w) ? 3 : 0));
-    const next = c[i + 1];
-    if (next) { const bg = `${w} ${next}`; add(bg, 1.5 + (titleBigrams.has(bg) ? 6 : head.has(w) && head.has(next) ? 3 : 0)); }
-  }));
+  chunks(stripHtml(content)).forEach((c) => {
+    c.forEach((t) => { if (!t.stop) add(t.w, 1 + (head.has(t.w) ? 3 : 0)); });
+    phrasesOf(c).forEach((ph) => { const parts = ph.split(' ').filter((x) => !CONNECTIVES.has(x)); add(ph, 1.5 + (titlePhrases.has(ph) ? 6 : parts.every((x) => head.has(x)) ? 3 : 0)); });
+  });
   words(title).forEach((w) => add(w, 2));
-  titleBigrams.forEach((bg) => add(bg, 2));
+  titlePhrases.forEach((ph) => add(ph, 2.5));
   return [...score.entries()].filter(([k, v]) => v >= 2 || k.includes(' ')).sort((a, b) => b[1] - a[1]).map(([k]) => k).filter((k, i, arr) => !arr.slice(0, i).some((p) => p.includes(k))).slice(0, n);
 }
 
@@ -167,7 +178,8 @@ export function fixHtml(html: string, fallbackAlt: string, siteUrl: string): str
 export function analyze(a: Article, ctx: SeoContext): SeoAnalysis {
   const text = stripHtml(a.content);
   const wordCount = text.split(/\s+/).filter(Boolean).length;
-  const keywords = extractKeywords(a.title, a.kicker, a.content);
+  const siteTokens = words(ctx.siteName);
+  const keywords = extractKeywords(a.title, a.kicker, a.content, 12).filter((k) => !siteTokens.some((t) => k.split(' ').includes(t))).slice(0, 8);
   const focus = (a.seo.focusKeyword?.trim() || keywords.find((k) => k.includes(' ') && norm(a.title).includes(k)) || keywords[0] || '').toLowerCase();
   const metaTitle = a.seo.title || a.title;
   const metaDesc = a.seo.description || a.excerpt || a.subtitle;
