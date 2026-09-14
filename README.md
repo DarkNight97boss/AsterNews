@@ -46,6 +46,12 @@ Password unica per tutti: `aster2026`
 - **Eventi** (approvazione delle segnalazioni dei lettori), **Zone**, **Segnalazioni** (stati: nuova, in lavorazione, pubblicata, archiviata; risposta pubblica), meteo e città nelle impostazioni
 - **Categorie**, **Tag**, **Media** (upload drag&drop o URL), **Commenti**, **Newsletter** (export CSV), **Utenti e ruoli**, **Impostazioni** (identità, ticker, social, sezioni home, moderazione, export/reset dati)
 
+## SEO automatica
+
+Ogni articolo viene analizzato in tempo reale nell'editor (punteggio 0-100 e checklist di 25 controlli: lunghezze di titolo, meta e slug, parola chiave in titolo/primo paragrafo/sottotitoli/description/slug, densità, lunghezza del testo, H2/H3, paragrafi brevi, leggibilità Gulpease, copertina e alt, link interni ed esterni, tag, titolo duplicato, noindex).
+«Ottimizza automaticamente» compila parola chiave, meta title, meta description, estratto e slug, corregge alt e link esterni e inserisce fino a N **link interni** verso articoli correlati (àncore = tag e nomi propri del titolo degli altri articoli). Le stesse ottimizzazioni girano al salvataggio se attive in Impostazioni → SEO automatica, dove si imposta anche il token di verifica Google Search Console.
+Motore in `src/lib/seo-engine.ts` (funzioni pure, senza servizi esterni); punteggio salvato sull'articolo e riepilogo in dashboard.
+
 ## Sistema di temi
 
 Il motore (dati, rotte, CMS, componenti) è unico; il **tema** decide colori, font, stile della testata, layout della home e stile delle card.

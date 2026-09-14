@@ -46,6 +46,7 @@ export interface SeoMeta {
   description: string;
   canonical: string;
   noIndex: boolean;
+  focusKeyword?: string;
 }
 
 export interface Article {
@@ -75,6 +76,7 @@ export interface Article {
   allowComments: boolean;
   seo: SeoMeta;
   views: number;
+  seoScore?: number;
   publishedAt: string | null;
   scheduledAt: string | null;
   createdAt: string;
@@ -109,9 +111,11 @@ export interface Subscriber {
 }
 
 import type { ThemeSettings } from './themes';
+import type { SeoSettings } from './seo-engine';
 
 export interface SiteSettings {
   theme: ThemeSettings;
+  seo?: SeoSettings;
   siteName: string;
   tagline: string;
   description: string;

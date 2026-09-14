@@ -5,11 +5,14 @@ import { useState, useTransition } from 'react';
 import { exportJsonAction, resetDemoAction, saveSettingsAction } from '@/lib/actions';
 import { Category, SiteSettings } from '@/lib/models';
 import { ThemePicker } from './theme-picker';
+import { DEFAULT_SEO_SETTINGS } from '@/lib/seo-engine';
 import { toast } from '@/components/ui/toaster';
 
 export function SettingsForm({ initial, categories }: { initial: SiteSettings; categories: Category[] }) {
   const router = useRouter();
-  const [s, setS] = useState<SiteSettings>(initial);
+  const [s, setS] = useState<SiteSettings>({ ...initial, seo: { ...DEFAULT_SEO_SETTINGS, ...(initial.seo ?? {}) } });
+  const seo = { ...DEFAULT_SEO_SETTINGS, ...(s.seo ?? {}) };
+  const setSeo = (patch: Partial<typeof seo>) => setS({ ...s, seo: { ...seo, ...patch } });
   const [pending, start] = useTransition();
   const cat = (id: string) => categories.find((c) => c.id === id);
   const move = (i: number, d: number) => { const l = [...s.homeSections]; const j = i + d; if (j < 0 || j >= l.length) return; [l[i], l[j]] = [l[j], l[i]]; setS({ ...s, homeSections: l }); };
@@ -32,6 +35,19 @@ export function SettingsForm({ initial, categories }: { initial: SiteSettings; c
             <p className="help">Gli articoli marcati &quot;Ultim&apos;ora&quot; compaiono automaticamente. Qui puoi aggiungere voci manuali.</p>
             {s.ticker.map((t, i) => <div key={i} style={{ display: 'flex', gap: 6, marginBottom: 6 }}><input className="input" value={t} onChange={(e) => setS({ ...s, ticker: s.ticker.map((x, j) => (j === i ? e.target.value : x)) })} /><button className="icon-btn danger" onClick={() => setS({ ...s, ticker: s.ticker.filter((_, j) => j !== i) })}>✕</button></div>)}
             <button className="btn btn-outline btn-sm" onClick={() => setS({ ...s, ticker: [...s.ticker, ''] })}>+ Aggiungi voce</button>
+          </div>
+          <div className="panel"><div className="panel-title">SEO automatica</div>
+            <p className="help" style={{ marginBottom: 12 }}>Al salvataggio di ogni articolo il motore compila i campi mancanti (meta title, description, estratto, slug, parola chiave), corregge le immagini senza alt e i link esterni, e inserisce link interni verso gli articoli correlati.</p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <label className="switch"><input type="checkbox" checked={seo.autoOptimizeOnSave} onChange={(e) => setSeo({ autoOptimizeOnSave: e.target.checked })} /> Ottimizza automaticamente al salvataggio</label>
+              <label className="switch"><input type="checkbox" checked={seo.autoInternalLinks} onChange={(e) => setSeo({ autoInternalLinks: e.target.checked })} /> Inserisci link interni automatici</label>
+              <label className="switch"><input type="checkbox" checked={seo.fixImages} onChange={(e) => setSeo({ fixImages: e.target.checked })} /> Correggi alt delle immagini e link esterni</label>
+            </div>
+            <div className="form-row" style={{ marginTop: 14 }}>
+              <div className="field"><label>Massimo link interni per articolo</label><input className="input" type="number" min={0} max={10} value={seo.maxInternalLinks} onChange={(e) => setSeo({ maxInternalLinks: Number(e.target.value) })} /></div>
+              <div className="field"><label>Google Search Console (token di verifica)</label><input className="input" value={seo.searchConsoleToken} onChange={(e) => setSeo({ searchConsoleToken: e.target.value })} placeholder="contenuto del meta google-site-verification" /></div>
+            </div>
+            <p className="help">Il sito espone già sitemap.xml, news-sitemap.xml, robots.txt, feed RSS, canonical e dati strutturati NewsArticle e BreadcrumbList. Imposta NEXT_PUBLIC_SITE_URL con il dominio reale prima della pubblicazione.</p>
           </div>
           <div className="panel"><div className="panel-title">Meteo e città</div>
             <div className="form-row">

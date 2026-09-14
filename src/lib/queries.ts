@@ -2,6 +2,7 @@ import 'server-only';
 import { cache } from 'react';
 import { getDb } from './db';
 import { resolveTheme } from './themes';
+import { DEFAULT_SEO_SETTINGS, LinkTarget, SeoContext, SeoSettings, phrasesForArticle } from './seo-engine';
 import { Article, ArticleStatus, Category, Comment, Event, Report, Tag, User, Zone } from './models';
 
 export const getCategories = cache((): Category[] => [...getDb().categories].sort((a, b) => a.order - b.order));
@@ -90,3 +91,20 @@ export const getReports = cache((): Report[] => [...getDb().reports].sort((a, b)
 export const getPublishedReports = () => getReports().filter((r) => r.status === 'published');
 
 export const getTheme = () => resolveTheme(getSettings().theme);
+
+export const getSeoSettings = (): SeoSettings => ({ ...DEFAULT_SEO_SETTINGS, ...(getSettings().seo ?? {}) });
+
+/** Contesto per il motore SEO: titoli esistenti, tag e bersagli per i link interni (articoli pubblicati). */
+export function seoContext(excludeId: string, limit = 150): SeoContext {
+  const linkTargets: LinkTarget[] = getPublished()
+    .filter((a) => a.id !== excludeId)
+    .slice(0, limit)
+    .map((a) => ({ id: a.id, title: a.title, url: articleUrl(a), phrases: phrasesForArticle(a, a.tagIds.map((t) => tag(t)?.name ?? '').filter(Boolean)) }))
+    .filter((t) => t.phrases.length > 0);
+  return {
+    siteName: getSettings().siteName,
+    existingTitles: getAllArticles().filter((a) => a.id !== excludeId).map((a) => a.title),
+    tags: getTags().map((t) => ({ id: t.id, name: t.name })),
+    linkTargets,
+  };
+}

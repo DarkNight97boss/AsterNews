@@ -3,6 +3,8 @@ import { StatusBadge } from '@/components/admin/badges';
 import { getCurrentUser } from '@/lib/auth';
 import { category, countByStatus, getActivity, getAllArticles, getAllEvents, getComments, getMostRead, getPublished, getReports, getSubscribers, user } from '@/lib/queries';
 import { timeAgo } from '@/lib/utils';
+import { analyze } from '@/lib/seo-engine';
+import { seoContext } from '@/lib/queries';
 
 const compact = (n: number) => (n >= 1e6 ? (n / 1e6).toFixed(1).replace('.0', '') + 'M' : n >= 1000 ? (n / 1000).toFixed(1).replace('.0', '') + 'k' : String(n));
 
@@ -17,6 +19,10 @@ export default async function DashboardPage() {
   const maxViews = Math.max(1, ...top.map((a) => a.views));
   const recent = [...getAllArticles()].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)).slice(0, 6);
   const today = getPublished().filter((a) => new Date(a.publishedAt!).toDateString() === new Date().toDateString()).length;
+  const seoCtx = seoContext('');
+  const scored = getPublished().slice(0, 60).map((a) => ({ a, score: typeof a.seoScore === 'number' ? a.seoScore : analyze(a, seoCtx).score }));
+  const avgSeo = scored.length ? Math.round(scored.reduce((s, x) => s + x.score, 0) / scored.length) : 0;
+  const weakSeo = scored.filter((x) => x.score < 55).sort((x, y) => x.score - y.score).slice(0, 5);
   return (
     <>
       <div className="page-title">
@@ -65,6 +71,14 @@ export default async function DashboardPage() {
               {newReports > 0 && <li><span>🚧</span><div><Link href="/admin/segnalazioni"><b>{newReports} segnalazioni</b> nuove dai lettori</Link></div></li>}
               {!counts.review && !pending && !counts.scheduled && !pendingEvents && !newReports && <li>Tutto in ordine 🎉</li>}
             </ul>
+          </div>
+          <div className="panel">
+            <div className="panel-title">SEO automatica</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 10 }}>
+              <div className="seo-ring" style={{ ['--p' as string]: `${avgSeo}%`, ['--c' as string]: avgSeo >= 80 ? '#0b7a4b' : avgSeo >= 55 ? '#e67e00' : '#d7262d' }}><span>{avgSeo}</span></div>
+              <div><b>Punteggio medio</b><div className="help">{scored.length} articoli pubblicati analizzati</div></div>
+            </div>
+            {weakSeo.length > 0 ? <ul className="activity">{weakSeo.map(({ a, score }) => <li key={a.id}><span className="seo-pill" style={{ background: '#d7262d' }}>{score}</span><div><Link href={`/admin/articoli/${a.id}`}>{a.title}</Link><div className="a-time">apri e premi «Ottimizza automaticamente»</div></div></li>)}</ul> : <p className="help">Nessun articolo sotto la soglia.</p>}
           </div>
           <div className="panel">
             <div className="panel-title">Attività recente</div>

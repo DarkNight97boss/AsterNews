@@ -7,7 +7,8 @@ import { createSessionToken, DEMO_PASSWORD, getCurrentUser, requirePermission, r
 import { getDb, mutate, resetDb } from './db';
 import { Article, ArticleStatus, Category, Comment, CommentStatus, Event, MediaItem, Report, SiteSettings, Tag, User, Zone } from './models';
 import { can, canEdit } from './permissions';
-import { article as findArticle, getCategories } from './queries';
+import { article as findArticle, getCategories, getSeoSettings, seoContext } from './queries';
+import { analyze, optimizeArticle } from './seo-engine';
 import { slugify, uid } from './utils';
 import { PREVIEW_COOKIE } from './theme-server';
 import type { ThemeSettings } from './themes';
@@ -64,7 +65,14 @@ export async function saveArticleAction(input: Article, status: ArticleStatus): 
   if ((status === 'published' || status === 'scheduled' || status === 'archived') && !can(u, 'article.publish')) status = 'review';
 
   const now = new Date().toISOString();
-  const a: Article = { ...input, status, slug: uniqueSlug(input.slug || input.title, input.id), updatedAt: now, excerpt: input.excerpt || input.subtitle };
+  const seoCfg = getSeoSettings();
+  const ctx = seoContext(input.id);
+  let prepared = input;
+  if (seoCfg.autoOptimizeOnSave) {
+    prepared = optimizeArticle(input, ctx, { fillMeta: true, links: seoCfg.autoInternalLinks, maxLinks: seoCfg.maxInternalLinks, fixImages: seoCfg.fixImages, siteUrl: process.env.NEXT_PUBLIC_SITE_URL ?? '', overwriteSlug: false }).article;
+  }
+  const a: Article = { ...prepared, status, slug: uniqueSlug(prepared.slug || prepared.title, prepared.id), updatedAt: now, excerpt: prepared.excerpt || prepared.subtitle };
+  a.seoScore = analyze(a, ctx).score;
   if (status === 'scheduled') {
     if (!a.scheduledAt) return fail('Imposta data e ora di programmazione.');
     if (a.scheduledAt <= now) { a.status = 'published'; a.scheduledAt = null; }

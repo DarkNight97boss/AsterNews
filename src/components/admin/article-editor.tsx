@@ -11,8 +11,10 @@ import { toast } from '@/components/ui/toaster';
 import { statusBadgeClass } from './badges';
 import { MediaPicker } from './media-picker';
 import { RichEditor } from './rich-editor';
+import { SeoAssistant } from './seo-assistant';
+import type { SeoContext } from '@/lib/seo-engine';
 
-interface Props { initial: Article; isNew: boolean; isPublic: boolean; categories: Category[]; zones: Zone[]; tags: Tag[]; users: User[]; media: MediaItem[]; permissions: Permission[] }
+interface Props { initial: Article; isNew: boolean; isPublic: boolean; categories: Category[]; zones: Zone[]; tags: Tag[]; users: User[]; media: MediaItem[]; permissions: Permission[]; seoCtx: SeoContext; siteUrl: string; maxLinks: number }
 const FORMATS: ArticleFormat[] = ['standard', 'video', 'gallery', 'live'];
 
 function shortTime(iso: string): string {
@@ -20,7 +22,7 @@ function shortTime(iso: string): string {
   return d.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
 }
 
-export function ArticleEditor({ initial, isNew, isPublic, categories, zones, tags: allTags, users, media, permissions }: Props) {
+export function ArticleEditor({ initial, isNew, isPublic, categories, zones, tags: allTags, users, media, permissions, seoCtx, siteUrl, maxLinks }: Props) {
   const router = useRouter();
   const [a, setA] = useState<Article>(initial);
   const [tags, setTags] = useState<Tag[]>(allTags);
@@ -118,7 +120,9 @@ export function ArticleEditor({ initial, isNew, isPublic, categories, zones, tag
           )}
 
           <div className="panel">
-            <div className="panel-title">SEO</div>
+            <div className="panel-title">SEO automatica</div>
+            <SeoAssistant article={a} ctx={{ ...seoCtx, tags }} siteUrl={siteUrl} maxLinks={maxLinks} onPatch={(patch) => { setA((x) => ({ ...x, ...patch })); setDirty(true); if (patch.slug) setSlugTouched(true); }} onAddTag={(name) => addTag(name)} />
+            <div className="panel-title" style={{ marginTop: 20 }}>Anteprima Google</div>
             <div className="seo-preview">
               <div className="s-url">asternews.it › {cat?.slug} › {a.slug || slugify(a.title)}</div>
               <div className="s-title">{seoTitle || 'Titolo articolo'}</div>

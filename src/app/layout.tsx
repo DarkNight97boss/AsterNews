@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import { cookies } from 'next/headers';
 import { Inter, Oswald, Playfair_Display, Roboto_Slab, Source_Serif_4 } from 'next/font/google';
 import { Toaster } from '@/components/ui/toaster';
-import { getSettings } from '@/lib/queries';
+import { getSeoSettings, getSettings } from '@/lib/queries';
 import { getActiveTheme } from '@/lib/theme-server';
 import { themeCss } from '@/lib/themes';
 import './globals.scss';
@@ -22,6 +22,7 @@ export function generateMetadata(): Metadata {
     description: s.description,
     metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000'),
     openGraph: { siteName: s.siteName, locale: 'it_IT', type: 'website' },
+    verification: getSeoSettings().searchConsoleToken ? { google: getSeoSettings().searchConsoleToken } : undefined,
   };
 }
 

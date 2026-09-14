@@ -26,6 +26,7 @@ export async function generateMetadata({ params }: PageProps<'/[categorySlug]/[a
   return {
     title: a.seo.title || a.title,
     description: a.seo.description || a.excerpt,
+    keywords: [a.seo.focusKeyword, ...a.tagIds.map((t) => tag(t)?.name ?? '')].filter((k): k is string => !!k),
     robots: a.seo.noIndex ? { index: false, follow: false } : undefined,
     alternates: { canonical: a.seo.canonical || articleUrl(a) },
     openGraph: { type: 'article', title: a.title, description: a.excerpt, images: a.coverImage ? [{ url: a.coverImage }] : [], publishedTime: a.publishedAt ?? undefined, modifiedTime: a.updatedAt, authors: author ? [author.name] : undefined, section: category(a.categoryId)?.name },
@@ -55,11 +56,18 @@ export default async function ArticlePage({ params }: PageProps<'/[categorySlug]
     publisher: { '@type': 'Organization', name: getSettings().siteName }, articleSection: cat?.name, keywords: tags.map((t) => t.name).join(', '),
   };
 
+  const base = process.env.NEXT_PUBLIC_SITE_URL ?? '';
+  const breadcrumb = { '@context': 'https://schema.org', '@type': 'BreadcrumbList', itemListElement: [
+    { '@type': 'ListItem', position: 1, name: settings.siteName, item: `${base}/` },
+    ...(cat ? [{ '@type': 'ListItem', position: 2, name: cat.name, item: `${base}/${cat.slug}` }] : []),
+    { '@type': 'ListItem', position: cat ? 3 : 2, name: a.title, item: `${base}${articleUrl(a)}` },
+  ] };
   const { theme } = await getActiveTheme();
   if (theme.skin === 'fanpage') {
     return (
       <>
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumb) }} />
         <ReadingProgress />
         <ViewCounter id={a.id} />
         <ArticleFanpage a={a} cat={cat} author={author} tags={tags} rel={rel} comments={comments} zone={z} moderated={settings.commentsModeration} googleNewsUrl={settings.googleNewsUrl} siteName={settings.siteName} />
@@ -69,6 +77,7 @@ export default async function ArticlePage({ params }: PageProps<'/[categorySlug]
   return (
     <>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumb) }} />
       <ReadingProgress />
       <ViewCounter id={a.id} />
       <div className="article-grid">

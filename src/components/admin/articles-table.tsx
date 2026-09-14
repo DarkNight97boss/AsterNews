@@ -62,7 +62,7 @@ export function ArticlesTable({ articles, categories, users, me, permissions, pu
           <thead><tr>
             <th style={{ width: 36 }}><input type="checkbox" checked={allSelected} onChange={() => setSelected(allSelected ? new Set() : new Set(filtered.map((a) => a.id)))} /></th>
             <th style={{ width: 70 }}></th><th onClick={() => sortBy('title')}>Titolo {arrow('title')}</th><th>Categoria</th><th>Autore</th><th>Stato</th>
-            <th onClick={() => sortBy('views')}>Visite {arrow('views')}</th><th onClick={() => sortBy('updatedAt')}>Aggiornato {arrow('updatedAt')}</th><th></th>
+            <th onClick={() => sortBy('views')}>Visite {arrow('views')}</th><th>SEO</th><th onClick={() => sortBy('updatedAt')}>Aggiornato {arrow('updatedAt')}</th><th></th>
           </tr></thead>
           <tbody>
             {filtered.map((a) => (
@@ -82,6 +82,7 @@ export function ArticlesTable({ articles, categories, users, me, permissions, pu
                 <td><div className="t-user"><img src={userOf(a.authorId)?.avatar} alt="" />{userOf(a.authorId)?.name}</div></td>
                 <td><span className={statusBadgeClass(a.status)}>{STATUS_LABELS[a.status]}</span>{a.status === 'scheduled' && a.scheduledAt && <div style={{ fontSize: 11, color: 'var(--gray-500)' }} suppressHydrationWarning>{timeAgo(a.scheduledAt)}</div>}</td>
                 <td>{compact(a.views)}</td>
+                <td>{typeof a.seoScore === 'number' ? <span className="seo-pill" style={{ background: a.seoScore >= 80 ? '#0b7a4b' : a.seoScore >= 55 ? '#e67e00' : '#d7262d' }}>{a.seoScore}</span> : <span className="help">—</span>}</td>
                 <td style={{ whiteSpace: 'nowrap', color: 'var(--gray-600)' }} suppressHydrationWarning>{timeAgo(a.updatedAt)}</td>
                 <td><div className="t-actions">
                   {publicIds.includes(a.id) && <Link className="icon-btn" href={`/${catOf(a.categoryId)?.slug}/${a.slug}`} target="_blank" title="Vedi sul sito">↗</Link>}
@@ -92,7 +93,7 @@ export function ArticlesTable({ articles, categories, users, me, permissions, pu
                 </div></td>
               </tr>
             ))}
-            {filtered.length === 0 && <tr><td colSpan={9}><div className="empty"><h3>Nessun articolo</h3><p>Prova a cambiare i filtri o crea un nuovo articolo.</p></div></td></tr>}
+            {filtered.length === 0 && <tr><td colSpan={10}><div className="empty"><h3>Nessun articolo</h3><p>Prova a cambiare i filtri o crea un nuovo articolo.</p></div></td></tr>}
           </tbody>
         </table>
       </div>
