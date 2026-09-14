@@ -52,6 +52,16 @@ Ogni articolo viene analizzato in tempo reale nell'editor (punteggio 0-100 e che
 «Ottimizza automaticamente» compila parola chiave, meta title, meta description, estratto e slug, corregge alt e link esterni e inserisce fino a N **link interni** verso articoli correlati (àncore = tag e nomi propri del titolo degli altri articoli). Le stesse ottimizzazioni girano al salvataggio se attive in Impostazioni → SEO automatica, dove si imposta anche il token di verifica Google Search Console.
 Motore in `src/lib/seo-engine.ts` (funzioni pure, senza servizi esterni); punteggio salvato sull'articolo e riepilogo in dashboard.
 
+## Scrivi (modalità semplice) e importazione da WordPress
+
+**Scrivi**: il redattore inserisce solo titolo e testo (anche incollato da Word). Il sistema spezza i paragrafi lunghi, riconosce o aggiunge i titoletti H2, sceglie parola chiave, occhiello, sommario, estratto, categoria, zona, tag, meta title, description, slug, link interni e una copertina se manca; poi salva in revisione o pubblica. Nell'editor resta il rapporto "Cosa ha fatto il sistema".
+
+**Importa da WordPress** (Sistema → Importa da WordPress): da file di esportazione WXR (Strumenti → Esporta) o dal sito online via REST API. Importa articoli, categorie (mappabili), tag, autori, immagini in evidenza e stato; pulisce blocchi Gutenberg e shortcode; opzionalmente passa ogni articolo dal motore SEO. I vecchi URL vengono salvati e reindirizzati con 308 permanente (`/anno/mese/slug/`, `/categoria/slug`, `/slug`).
+
+## Qualità misurata (Lighthouse, build di produzione locale)
+
+Desktop: performance 100, accessibilità 100, best practice 100, SEO 100 (home e articolo). Mobile con rete 4G simulata: performance 92-95, il resto 100; il limite è il download delle immagini dimostrative da picsum.photos e dei font web.
+
 ## Sistema di temi
 
 Il motore (dati, rotte, CMS, componenti) è unico; il **tema** decide colori, font, stile della testata, layout della home e stile delle card.

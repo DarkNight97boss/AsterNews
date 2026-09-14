@@ -7,8 +7,8 @@ import { createSessionToken, DEMO_PASSWORD, getCurrentUser, requirePermission, r
 import { getDb, mutate, resetDb } from './db';
 import { Article, ArticleStatus, Category, Comment, CommentStatus, Event, MediaItem, Report, SiteSettings, Tag, User, Zone } from './models';
 import { can, canEdit } from './permissions';
-import { article as findArticle, getCategories, getSeoSettings, seoContext } from './queries';
-import { analyze, optimizeArticle } from './seo-engine';
+import { article as findArticle, getCategories, getSeoSettings, rawContext, seoContext } from './queries';
+import { analyze, optimizeArticle, prepareArticle } from './seo-engine';
 import { slugify, uid } from './utils';
 import { PREVIEW_COOKIE } from './theme-server';
 import type { ThemeSettings } from './themes';
@@ -440,4 +440,119 @@ export async function applyThemeFromPreviewAction(): Promise<void> {
   store.delete(PREVIEW_COOKIE);
   refresh();
   redirect('/');
+}
+
+// ---------------- Articolo grezzo → ottimizzato ----------------
+export async function submitRawArticleAction(input: { title: string; text: string; coverImage?: string; categoryId?: string; publish: boolean }): Promise<ActionResult & { report?: string[] }> {
+  const u = await requireUser();
+  if (!can(u, 'article.create')) return fail('Non puoi creare articoli.');
+  if (!input.text.trim() || input.text.trim().split(/\s+/).length < 40) return fail('Il testo è troppo corto: servono almeno 40 parole.');
+  const cfg = getSeoSettings();
+  const id = uid('a');
+  const ctx = rawContext(id);
+  const p = prepareArticle({ title: input.title, text: input.text, coverImage: input.coverImage, categoryId: input.categoryId || undefined }, ctx, { maxLinks: cfg.maxInternalLinks, siteUrl: process.env.NEXT_PUBLIC_SITE_URL ?? '' });
+  const tagIds: string[] = [];
+  for (const name of p.tagNames) { const t = await ensureTagAction(name); if (t) tagIds.push(t.id); }
+  const now = new Date().toISOString();
+  const article: Article = {
+    id, slug: p.slug, kicker: p.kicker, title: p.title, subtitle: p.subtitle, excerpt: p.excerpt, content: p.content, coverImage: p.coverImage, coverCaption: p.coverCaption,
+    categoryId: p.categoryId, tagIds, authorId: u.id, zoneId: p.zoneId, address: '', status: 'draft', format: 'standard', videoUrl: '', gallery: [], liveUpdates: [], liveActive: false,
+    featured: false, breaking: false, sponsored: false, allowComments: true, seo: p.seo, views: 0, publishedAt: null, scheduledAt: null, createdAt: now, updatedAt: now, seoReport: p.report,
+  };
+  const status: ArticleStatus = input.publish && can(u, 'article.publish') ? 'published' : 'review';
+  const r = await saveArticleAction(article, status);
+  if (!r.ok) return r;
+  const suffix = status === 'published' ? 'pubblicato' : 'inviato in revisione';
+  return { ok: true, id: r.id, message: `Articolo ottimizzato e ${suffix}.`, report: p.report };
+}
+
+// ---------------- Importazione da WordPress ----------------
+export interface WpPreview { total: number; publishable: number; categories: { name: string; count: number; existingId: string }[]; authors: string[]; sample: string[]; conflicts: number }
+export interface WpImportInput { source: 'wxr' | 'rest'; xml?: string; url?: string; maxPosts?: number; optimize: boolean; statusMode: 'keep' | 'draft' | 'review'; categoryMap: Record<string, string>; overwrite: boolean }
+
+async function loadWpPosts(input: WpImportInput) {
+  const { parseWxr, fetchWpRest } = await import('./wp-import');
+  if (input.source === 'wxr') { if (!input.xml?.includes('<item>')) throw new Error('Il file non sembra un\'esportazione WordPress (WXR).'); return parseWxr(input.xml); }
+  if (!input.url || !/^https?:\/\//.test(input.url)) throw new Error('Inserisci l\'indirizzo completo del sito WordPress (https://...).');
+  return fetchWpRest(input.url, input.maxPosts ?? 200);
+}
+
+export async function previewWordPressAction(input: WpImportInput): Promise<ActionResult & { preview?: WpPreview }> {
+  await requirePermission('settings.manage');
+  try {
+    const posts = await loadWpPosts(input);
+    const cats = new Map<string, number>();
+    posts.forEach((p) => p.categories.forEach((c) => cats.set(c, (cats.get(c) ?? 0) + 1)));
+    const existing = getCategories();
+    const slugs = new Set(getDb().articles.map((a) => a.slug));
+    const preview: WpPreview = {
+      total: posts.length, publishable: posts.filter((p) => p.status === 'publish').length,
+      categories: [...cats.entries()].sort((a, b) => b[1] - a[1]).map(([name, count]) => ({ name, count, existingId: existing.find((c) => c.name.toLowerCase() === name.toLowerCase() || c.slug === slugify(name))?.id ?? '' })),
+      authors: [...new Set(posts.map((p) => p.author).filter(Boolean))], sample: posts.slice(0, 8).map((p) => p.title), conflicts: posts.filter((p) => slugs.has(p.slug)).length,
+    };
+    return { ok: true, preview };
+  } catch (e) { return fail((e as Error).message); }
+}
+
+export async function importWordPressAction(input: WpImportInput): Promise<ActionResult & { imported?: number; skipped?: number; errors?: string[] }> {
+  const me = await requirePermission('settings.manage');
+  try {
+    const posts = await loadWpPosts(input);
+    const cfg = getSeoSettings();
+    const errors: string[] = [];
+    let imported = 0, skipped = 0;
+    const catCache = new Map<string, string>();
+    const resolveCategory = (names: string[]): string => {
+      for (const n of names) {
+        const mapped = input.categoryMap[n];
+        if (mapped === '__skip') continue;
+        if (mapped && mapped !== '__new') return mapped;
+        if (catCache.has(n)) return catCache.get(n)!;
+        const existing = getCategories().find((c) => c.name.toLowerCase() === n.toLowerCase() || c.slug === slugify(n));
+        if (existing && mapped !== '__new') { catCache.set(n, existing.id); return existing.id; }
+        const created: Category = { id: uid('c'), slug: slugify(n), name: n, kind: 'standard', color: '#22418f', description: `Notizie di ${n.toLowerCase()}.`, order: getCategories().length + 1, showInMenu: false, showOnHome: false };
+        mutate((d) => ({ categories: [...d.categories, created] }));
+        catCache.set(n, created.id);
+        return created.id;
+      }
+      return getCategories().find((c) => c.kind === 'standard')?.id ?? getCategories()[0]?.id ?? '';
+    };
+    const resolveAuthor = (name: string): string => {
+      if (!name) return me.id;
+      const found = getDb().users.find((u) => u.name.toLowerCase() === name.toLowerCase());
+      if (found) return found.id;
+      const u: User = { id: uid('u'), name, email: `${slugify(name)}@importato.local`, role: 'contributor', avatar: `https://picsum.photos/seed/${slugify(name)}/200/200`, bio: 'Autore importato da WordPress.', active: false, createdAt: new Date().toISOString() };
+      mutate((d) => ({ users: [...d.users, u] }));
+      return u.id;
+    };
+    for (const p of posts) {
+      try {
+        if (!p.title.trim() || !p.content.trim()) { skipped++; continue; }
+        const legacyUrl = (() => { try { return new URL(p.link).pathname.replace(/\/+$/, '') || '/'; } catch { return ''; } })();
+        const existing = getDb().articles.find((a) => a.slug === p.slug || (legacyUrl && a.legacyUrl === legacyUrl));
+        if (existing && !input.overwrite) { skipped++; continue; }
+        const tagIds: string[] = [];
+        for (const t of p.tags) { const tag = await ensureTagAction(t); if (tag) tagIds.push(tag.id); }
+        const status: ArticleStatus = input.statusMode === 'draft' ? 'draft' : input.statusMode === 'review' ? 'review' : p.status === 'publish' ? 'published' : p.status === 'pending' ? 'review' : 'draft';
+        const date = p.date && !p.date.startsWith('0000') ? new Date(p.date).toISOString() : new Date().toISOString();
+        const id = existing?.id ?? uid('a');
+        let article: Article = {
+          id, slug: p.slug || slugify(p.title), kicker: p.categories[0] ?? '', title: p.title, subtitle: p.excerpt.slice(0, 200), excerpt: p.excerpt.slice(0, 300), content: p.content, coverImage: p.image, coverCaption: '',
+          categoryId: resolveCategory(p.categories), tagIds, authorId: resolveAuthor(p.author), zoneId: '', address: '', status, format: 'standard', videoUrl: '', gallery: [], liveUpdates: [], liveActive: false,
+          featured: false, breaking: false, sponsored: false, allowComments: true, seo: { title: '', description: '', canonical: '', noIndex: false }, views: existing?.views ?? 0,
+          publishedAt: status === 'published' ? date : null, scheduledAt: null, createdAt: date, updatedAt: new Date().toISOString(), legacyUrl, seoReport: [`importato da WordPress (${p.link})`],
+        };
+        if (input.optimize) {
+          const r = optimizeArticle(article, seoContext(id), { fillMeta: true, links: cfg.autoInternalLinks, maxLinks: cfg.maxInternalLinks, fixImages: cfg.fixImages, siteUrl: process.env.NEXT_PUBLIC_SITE_URL ?? '', overwriteSlug: false });
+          article = r.article; article.seoReport = [...(article.seoReport ?? []), ...r.changes.map((c) => `ottimizzato: ${c}`)];
+        }
+        article.seoScore = analyze(article, seoContext(id)).score;
+        mutate((d) => ({ articles: existing ? d.articles.map((a) => (a.id === id ? article : a)) : [article, ...d.articles] }));
+        imported++;
+      } catch (e) { errors.push(`${p.title}: ${(e as Error).message}`); }
+    }
+    log(me.id, 'ha importato da WordPress', `${imported} articoli`);
+    refresh();
+    return { ok: true, message: `Importazione completata: ${imported} articoli importati, ${skipped} saltati.`, imported, skipped, errors };
+  } catch (e) { return fail((e as Error).message); }
 }

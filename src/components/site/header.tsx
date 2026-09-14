@@ -29,7 +29,7 @@ export function SiteHeader({ categories, zones, opinions, weather, liveLink, isL
   const close = () => setMenuOpen(false);
   const submit = (e: React.FormEvent) => { e.preventDefault(); if (q.trim()) { router.push(`/cerca?q=${encodeURIComponent(q)}`); setSearchOpen(false); } };
   const Burger = ({ cls = 'burger' }: { cls?: string }) => <button className={cls} onClick={() => setMenuOpen((v) => !v)} aria-label="Tutte le sezioni">{menuOpen ? '✕' : '☰'}</button>;
-  const Logo = ({ cls = 'logo' }: { cls?: string }) => <Link href="/" className={cls} aria-label={siteName}>Aster<small>news</small></Link>;
+  const Logo = ({ cls = 'logo' }: { cls?: string }) => <Link href="/" className={cls}>Aster<small>news</small></Link>;
 
   return (
     <>
@@ -53,12 +53,12 @@ export function SiteHeader({ categories, zones, opinions, weather, liveLink, isL
             {isHome ? (
               <>
                 <div className="fp-socials"><a href={socials.facebook} target="_blank" rel="noopener" title="Facebook">f</a><a href={socials.instagram} target="_blank" rel="noopener" title="Instagram">◎</a><a href={socials.x} target="_blank" rel="noopener" title="X">𝕏</a><a href={socials.youtube} target="_blank" rel="noopener" title="YouTube">▶</a></div>
-                <Link href="/" className="fp-logo" aria-label={siteName}>aster<small>news</small></Link>
+                <Link href="/" className="fp-logo">aster<small>news</small></Link>
                 <div className="fp-tools"><button className="fp-round" onClick={() => setSearchOpen((v) => !v)} aria-label="Cerca">⌕</button><Link className="fp-round" href={isLoggedIn ? '/admin' : '/login'} title={isLoggedIn ? 'Redazione' : 'Accedi'}>👤</Link><a className="fp-round fp-bell" href="#newsletter" title="Newsletter">🔔</a></div>
               </>
             ) : (
               <>
-                <Link href="/" className="fp-logo fp-logo-sm" aria-label={siteName}>aster<small>news</small></Link>
+                <Link href="/" className="fp-logo fp-logo-sm">aster<small>news</small></Link>
                 <div className="fp-tools">
                   <div className="fp-socials fp-socials-sm"><a href={socials.facebook} target="_blank" rel="noopener">f</a><a href={socials.instagram} target="_blank" rel="noopener">◎</a><a href={socials.x} target="_blank" rel="noopener">𝕏</a><a href={socials.youtube} target="_blank" rel="noopener">▶</a></div>
                   <span className="fp-sep" />
@@ -155,7 +155,7 @@ export function SiteHeader({ categories, zones, opinions, weather, liveLink, isL
 
       {searchOpen && (
         <div className="search-bar"><div className="container">
-          <form onSubmit={submit}><input className="input" placeholder={`Cerca su ${siteName}...`} value={q} onChange={(e) => setQ(e.target.value)} autoFocus /><button className="btn btn-dark" type="submit">Cerca</button></form>
+          <form onSubmit={submit}><input className="input" aria-label="Cerca" placeholder={`Cerca su ${siteName}...`} value={q} onChange={(e) => setQ(e.target.value)} autoFocus /><button className="btn btn-dark" type="submit">Cerca</button></form>
         </div></div>
       )}
     </>

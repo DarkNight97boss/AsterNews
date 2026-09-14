@@ -97,3 +97,9 @@
 .seo-checks { margin: 14px 0 6px; display: flex; flex-direction: column; gap: 6px; li { font-size: 13px; display: flex; align-items: baseline; gap: 8px; .dot { width: 9px; height: 9px; border-radius: 50%; flex: 0 0 9px; background: #d7262d; position: relative; top: 1px; } &.ok .dot { background: #0b7a4b; } &.warn .dot { background: #e67e00; } } }
 .seo-pill { display: inline-block; min-width: 30px; text-align: center; color: #fff; font-weight: 800; font-size: 12px; padding: 2px 6px; border-radius: 10px; }
 .chip-btn { cursor: pointer; border: 1px solid var(--gray-300); background: #fff; font-family: inherit; &:hover { border-color: var(--blue); color: var(--blue); } }
+
+.raw-text { min-height: 420px; font-size: 16px; line-height: 1.6; margin-top: 14px; }
+.seo-report { list-style: disc; padding-left: 20px; font-size: 13px; li { margin: 4px 0; } }
+.seo-report-box { margin-top: 14px; background: var(--gray-50); border: 1px solid var(--gray-200); border-radius: 6px; padding: 8px 12px; summary { cursor: pointer; font-size: 13px; font-weight: 700; } }
+
+.wp-drop { display: block; border: 2px dashed var(--gray-300); border-radius: 8px; padding: 26px; text-align: center; color: var(--gray-600); background: #fff; cursor: pointer; margin-top: 12px; &:hover { border-color: var(--blue); } input { display: none; } }

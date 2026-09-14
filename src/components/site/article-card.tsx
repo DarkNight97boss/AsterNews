@@ -10,7 +10,7 @@ interface Props { article: Article; variant?: CardVariant; index?: number; showE
 export function Kicker({ article: a, className = 'kicker' }: { article: Article; className?: string }) {
   const cat = category(a.categoryId);
   return (
-    <span className={className} style={{ color: cat?.kind === 'dossier' ? 'var(--ink)' : undefined }}>
+    <span className={`${className} ${cat?.kind === 'dossier' ? 'kicker-dossier' : ''}`}>
       {cat?.kind === 'dossier' && <span className="badge badge-yellow">Dossier</span>}
       {a.format === 'live' && a.liveActive && <span className="badge badge-live">Diretta</span>}
       {a.breaking && !(a.format === 'live' && a.liveActive) && <span className="badge badge-red">Ultim&apos;ora</span>}

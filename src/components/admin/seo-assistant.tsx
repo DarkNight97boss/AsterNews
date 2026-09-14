@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import { Article } from '@/lib/models';
-import { SeoContext, analyze, optimizeArticle, stripAutoLinks } from '@/lib/seo-engine';
+import { SeoContext, analyze, optimizeArticle, restructureHtml, stripAutoLinks } from '@/lib/seo-engine';
 import { toast } from '@/components/ui/toaster';
 
 interface Props { article: Article; ctx: SeoContext; siteUrl: string; maxLinks: number; onPatch: (patch: Partial<Article>) => void; onAddTag: (name: string) => void }
@@ -32,9 +32,13 @@ export function SeoAssistant({ article: a, ctx, siteUrl, maxLinks, onPatch, onAd
         <div className="seo-actions">
           <button type="button" className="btn btn-primary btn-sm" onClick={() => run({ fillMeta: true, links: true, overwriteSlug: false })}>✨ Ottimizza automaticamente</button>
           <button type="button" className="btn btn-outline btn-sm" onClick={() => run({ fillMeta: false, links: true, overwriteSlug: false })}>🔗 Aggiungi link interni</button>
+          <button type="button" className="btn btn-outline btn-sm" onClick={() => { const r = restructureHtml(a.content, a.seo.focusKeyword ?? an.focusKeyword); if (!r.report.length) { toast.info('Il testo è già ben strutturato.'); return; } onPatch({ content: r.html }); toast.success(`Ristrutturato: ${r.report.join(', ')}.`); }}>¶ Ristruttura testo</button>
           {a.content.includes('class="auto-link"') && <button type="button" className="btn btn-ghost btn-sm" onClick={() => { onPatch({ content: stripAutoLinks(a.content) }); toast.info('Link automatici rimossi.'); }}>Rimuovi link automatici</button>}
         </div>
       </div>
+      {a.seoReport && a.seoReport.length > 0 && (
+        <details className="seo-report-box"><summary>Cosa ha fatto il sistema su questo articolo ({a.seoReport.length} interventi)</summary><ul className="seo-report">{a.seoReport.map((r, i) => <li key={i}>{r}</li>)}</ul></details>
+      )}
       <div className="field" style={{ marginTop: 14 }}>
         <label>Parola chiave principale</label>
         <div style={{ display: 'flex', gap: 8 }}>

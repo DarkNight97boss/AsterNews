@@ -101,9 +101,9 @@ export function phrasesForArticle(a: Pick<Article, 'title' | 'kicker'>, tagNames
   let run: string[] = [];
   toks.forEach((t, i) => {
     const cap = /^[A-ZÀ-Ý]/.test(t) && i > 0 && !STOP.has(norm(t));
-    if (cap) run.push(t); else { if (run.join(' ').length >= 5) proper.push(run.join(' ')); run = []; }
+    if (cap) run.push(t); else { if (run.length >= 2 && run.join(' ').length >= 8) proper.push(run.join(' ')); run = []; }
   });
-  if (run.join(' ').length >= 5) proper.push(run.join(' '));
+  if (run.length >= 2 && run.join(' ').length >= 8) proper.push(run.join(' '));
   const kick = a.kicker && a.kicker.length >= 5 && !/^(bozza|revisione|programmato)$/i.test(a.kicker) ? [a.kicker] : [];
   return [...new Set([...tagNames, ...proper, ...kick])].filter((p) => p.length >= 4).slice(0, 6);
 }
@@ -269,4 +269,207 @@ export function optimizeArticle(a: Article, ctx: SeoContext, opts: OptimizeOptio
   }
   out.content = html;
   return { article: out, added, changes };
+}
+
+/* ==========================================================
+   Pipeline "articolo grezzo → articolo ottimizzato"
+   ========================================================== */
+export interface CategoryProfile { id: string; name: string; kind: string; terms: string[] }
+export interface ZoneRef { id: string; name: string }
+export interface MediaRef { url: string; name: string; alt: string }
+export interface RawContext extends SeoContext {
+  categories: CategoryProfile[];
+  zones: ZoneRef[];
+  media: MediaRef[];
+  relatedCovers: { url: string; title: string; terms: string[] }[];
+}
+export interface RawInput { title: string; text: string; coverImage?: string; categoryId?: string }
+export interface PreparedArticle {
+  title: string; kicker: string; subtitle: string; excerpt: string; content: string; slug: string;
+  categoryId: string; zoneId: string; tagNames: string[]; coverImage: string; coverCaption: string;
+  seo: { title: string; description: string; canonical: string; noIndex: boolean; focusKeyword: string };
+  report: string[]; addedLinks: { url: string; title: string; anchor: string }[];
+}
+
+const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+const capFirst = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+const capWords = (s: string) => s.split(' ').map((w) => (CONNECTIVES.has(w) ? w : capFirst(w))).join(' ');
+
+function splitSentences(text: string): string[] {
+  return text.match(/[^.!?…]+[.!?…]+["»”]?|[^.!?…]+$/g)?.map((x) => x.trim()).filter(Boolean) ?? [text];
+}
+
+/** Testo libero (o HTML incollato) → paragrafi puliti. Le righe brevi senza punto finale diventano titoletti. */
+export function normalizeRawText(raw: string): { blocks: { type: 'p' | 'h2'; text: string }[]; headingsFound: number; splitParagraphs: number } {
+  let text = raw;
+  if (/<[a-z][\s\S]*>/i.test(text)) {
+    text = text.replace(/<\/(p|div|h[1-6]|li|br)\s*>|<br\s*\/?>/gi, '\n\n').replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"');
+  }
+  const lines = text.replace(/\r/g, '').split(/\n{2,}|\n(?=\s*[-•*]\s)/).map((l) => l.replace(/\s+/g, ' ').trim()).filter(Boolean);
+  const blocks: { type: 'p' | 'h2'; text: string }[] = [];
+  let headingsFound = 0, splitParagraphs = 0;
+  lines.forEach((line, i) => {
+    const single = line.split('\n').length === 1;
+    const isHeading = single && line.length <= 70 && !/[.!?…:]$/.test(line) && line.split(' ').length <= 10 && i > 0 && i < lines.length - 1;
+    if (isHeading) { blocks.push({ type: 'h2', text: line.replace(/^#+\s*/, '') }); headingsFound++; return; }
+    const words = line.split(' ').length;
+    if (words > 120) {
+      const sents = splitSentences(line);
+      let cur: string[] = []; let count = 0;
+      sents.forEach((s) => { cur.push(s); count += s.split(' ').length; if (count >= 70) { blocks.push({ type: 'p', text: cur.join(' ') }); cur = []; count = 0; } });
+      if (cur.length) blocks.push({ type: 'p', text: cur.join(' ') });
+      splitParagraphs++;
+    } else blocks.push({ type: 'p', text: line.replace(/^#+\s*/, '') });
+  });
+  return { blocks, headingsFound, splitParagraphs };
+}
+
+/** Inserisce titoletti ogni 3-4 paragrafi quando il testo non ne ha, usando la frase chiave del gruppo. */
+export function addHeadings(blocks: { type: 'p' | 'h2'; text: string }[], focus: string): { blocks: { type: 'p' | 'h2'; text: string }[]; added: number } {
+  const paragraphs = blocks.filter((b) => b.type === 'p').length;
+  if (blocks.some((b) => b.type === 'h2') || paragraphs < 5) return { blocks, added: 0 };
+  const out: { type: 'p' | 'h2'; text: string }[] = [];
+  const used = new Set<string>([norm(focus)]);
+  let group: string[] = []; let pIndex = 0; let added = 0;
+  const flushHeading = (groupText: string) => {
+    const kw = extractKeywords('', '', `<p>${groupText}</p>`, 6).find((k) => k.includes(' ') && !used.has(k)) ?? extractKeywords('', '', `<p>${groupText}</p>`, 6).find((k) => !used.has(k));
+    if (!kw) return;
+    used.add(kw);
+    out.push({ type: 'h2', text: capWords(kw) });
+    added++;
+  };
+  blocks.forEach((b) => {
+    if (b.type === 'p') {
+      pIndex++;
+      if (pIndex > 2 && (pIndex - 3) % 3 === 0) { flushHeading(group.join(' ') || b.text); group = []; }
+      group.push(b.text);
+    }
+    out.push(b);
+  });
+  return { blocks: out, added };
+}
+
+export function blocksToHtml(blocks: { type: 'p' | 'h2'; text: string }[]): string {
+  return blocks.map((b) => (b.type === 'h2' ? `<h2>${esc(b.text)}</h2>` : `<p>${esc(b.text)}</p>`)).join('\n');
+}
+
+function guessCategory(text: string, title: string, cats: CategoryProfile[]): { id: string; confidence: number } | null {
+  const usable = cats.filter((c) => c.kind === 'standard' || c.kind === 'local');
+  if (!usable.length) return null;
+  const toks = words(`${title} ${title} ${text}`);
+  const freq = new Map<string, number>();
+  toks.forEach((t) => freq.set(t, (freq.get(t) ?? 0) + 1));
+  let best: { id: string; score: number } | null = null; let second = 0;
+  for (const c of usable) {
+    const nameToks = words(c.name);
+    let s = 0;
+    c.terms.forEach((t, i) => { const f = freq.get(t) ?? 0; if (f) s += f * (1 + (c.terms.length - i) / c.terms.length); });
+    nameToks.forEach((t) => { s += (freq.get(t) ?? 0) * 6; });
+    if (!best || s > best.score) { second = best?.score ?? 0; best = { id: c.id, score: s }; } else if (s > second) second = s;
+  }
+  if (!best || best.score === 0) return null;
+  return { id: best.id, confidence: second ? Math.min(1, (best.score - second) / best.score) : 1 };
+}
+
+/** Costruisce un articolo completo e ottimizzato partendo da titolo e testo grezzo. */
+export function prepareArticle(input: RawInput, ctx: RawContext, opts: { maxLinks: number; siteUrl: string }): PreparedArticle {
+  const report: string[] = [];
+  const norm1 = normalizeRawText(input.text);
+  let blocks = norm1.blocks;
+  if (norm1.splitParagraphs) report.push(`${norm1.splitParagraphs} paragrafi troppo lunghi spezzati in blocchi leggibili`);
+  if (norm1.headingsFound) report.push(`${norm1.headingsFound} righe brevi riconosciute come titoletti (H2)`);
+
+  // Titolo: dal campo, oppure dalla prima frase.
+  let title = input.title.trim();
+  if (!title) {
+    const first = blocks.find((b) => b.type === 'p')?.text ?? 'Articolo';
+    title = cut(splitSentences(first)[0].replace(/[.!?…]+$/, ''), 80);
+    report.push('titolo ricavato dalla prima frase (da verificare)');
+  } else if (title.length > 95) { report.push('titolo molto lungo: valuta di accorciarlo'); }
+
+  const plain = blocks.map((b) => b.text).join('\n');
+  const html0 = blocksToHtml(blocks);
+  const kws = extractKeywords(title, '', html0, 12).filter((k) => !words(ctx.siteName).some((t) => k.split(' ').includes(t)));
+  const focus = kws.find((k) => k.includes(' ') && norm(title).includes(k)) ?? kws.find((k) => norm(title).includes(k)) ?? kws[0] ?? '';
+  if (focus) report.push(`parola chiave scelta: «${focus}»`);
+
+  const h = addHeadings(blocks, focus);
+  blocks = h.blocks;
+  if (h.added) report.push(`${h.added} titoletti H2 aggiunti per strutturare il testo`);
+
+  // Sommario ed estratto: seconda frase o primo paragrafo successivo al titolo.
+  const firstP = blocks.find((b) => b.type === 'p')?.text ?? '';
+  const sents = splitSentences(firstP);
+  const subtitle = cut((sents[1] && sents[1].length > 40 ? sents[1] : sents[0]) ?? title, 160);
+  report.push('sommario ed estratto generati dal primo paragrafo');
+
+  // Categoria e zona.
+  const lower0 = norm(`${title} ${plain}`);
+  const zone0 = ctx.zones.find((z) => new RegExp(`(^|[^\\p{L}])${escapeRe(norm(z.name))}(?=$|[^\\p{L}])`, 'u').test(lower0));
+  let categoryId = input.categoryId ?? '';
+  if (!categoryId) {
+    const g = guessCategory(plain, title, ctx.categories);
+    const local = ctx.categories.find((c) => c.kind === 'local');
+    if (zone0 && local && (!g || g.confidence < 0.5)) { categoryId = local.id; report.push(`categoria assegnata: ${local.name} (zona riconosciuta)`); }
+    else categoryId = g?.id ?? ctx.categories.find((c) => c.kind === 'standard')?.id ?? ctx.categories[0]?.id ?? '';
+    const cName = ctx.categories.find((c) => c.id === categoryId)?.name ?? '';
+    if (!(zone0 && local && (!g || g.confidence < 0.5))) report.push(g ? `categoria assegnata: ${cName}${g.confidence < 0.3 ? ' (incerta, verifica)' : ''}` : `categoria predefinita: ${cName}`);
+  }
+  const lower = norm(`${title} ${plain}`);
+  const zone = ctx.zones.find((z) => new RegExp(`(^|[^\\p{L}])${escapeRe(norm(z.name))}(?=$|[^\\p{L}])`, 'u').test(lower));
+  const zoneId = zone?.id ?? '';
+  if (zone) report.push(`zona riconosciuta: ${zone.name}`);
+
+  // Occhiello: parola singola più forte del titolo, oppure la zona/categoria.
+  const kickerWord = kws.find((k) => !k.includes(' ') && norm(title).includes(k));
+  const kicker = zone && ctx.categories.find((c) => c.id === categoryId)?.kind === 'local' ? zone.name : kickerWord ? capFirst(kickerWord) : (ctx.categories.find((c) => c.id === categoryId)?.name ?? '');
+  report.push(`occhiello: «${kicker}»`);
+
+  // Tag: esistenti trovati nel testo + fino a 2 nuovi dalle frasi chiave del titolo.
+  const tagNames = ctx.tags.filter((t) => new RegExp(`(^|[^\\p{L}])${escapeRe(norm(t.name))}(?=$|[^\\p{L}])`, 'u').test(lower)).slice(0, 5).map((t) => t.name);
+  kws.filter((k) => k.includes(' ') && norm(title).includes(k) && !tagNames.some((t) => norm(t) === k)).slice(0, 2).forEach((k) => tagNames.push(capWords(k)));
+  if (tagNames.length) report.push(`tag: ${tagNames.join(', ')}`);
+
+  // Copertina.
+  let coverImage = input.coverImage ?? '';
+  let coverCaption = '';
+  if (!coverImage) {
+    const kwTokens = new Set(kws.flatMap((k) => k.split(' ')));
+    const m = ctx.media.find((x) => words(`${x.name} ${x.alt}`).some((t) => kwTokens.has(t)));
+    if (m) { coverImage = m.url; coverCaption = m.alt || 'Foto di archivio'; report.push('copertina scelta dalla libreria media (verifica)'); }
+    else {
+      const rel = ctx.relatedCovers.map((r) => ({ r, s: r.terms.filter((t) => kwTokens.has(t)).length })).sort((a, b) => b.s - a.s)[0];
+      if (rel && rel.s > 0) { coverImage = rel.r.url; coverCaption = 'Foto di archivio'; report.push('copertina provvisoria presa da un articolo correlato: sostituiscila'); }
+      else report.push('copertina mancante: aggiungila prima di pubblicare');
+    }
+  }
+
+  // Meta, slug e link interni.
+  let content = fixHtml(blocksToHtml(blocks), title, opts.siteUrl);
+  const linked = autoLinkContent(content, ctx.linkTargets, opts.maxLinks);
+  content = linked.html;
+  if (linked.added.length) report.push(`${linked.added.length} link interni inseriti (${linked.added.map((l) => `«${l.anchor}»`).join(', ')})`);
+  const seo = { title: suggestMetaTitle(title), description: cut(subtitle, 156), canonical: '', noIndex: false, focusKeyword: focus };
+  const slug = suggestSlug(title, focus);
+  report.push('meta title, meta description e slug compilati');
+
+  return { title, kicker, subtitle, excerpt: subtitle, content, slug, categoryId, zoneId, tagNames, coverImage, coverCaption, seo, report, addedLinks: linked.added };
+}
+
+/** Ristruttura un contenuto HTML esistente: paragrafi lunghi spezzati e titoletti se mancano. Mantiene link e grassetti solo se non spezza. */
+export function restructureHtml(html: string, focus: string): { html: string; report: string[] } {
+  const report: string[] = [];
+  const hasHeadings = /<h[23][\s>]/i.test(html);
+  const paragraphs = html.match(/<p[^>]*>[\s\S]*?<\/p>/gi) ?? [];
+  const tooLong = paragraphs.some((p) => stripHtml(p).split(/\s+/).length > 120);
+  if (hasHeadings && !tooLong) return { html, report };
+  const n = normalizeRawText(html);
+  let blocks = n.blocks;
+  if (n.splitParagraphs) report.push(`${n.splitParagraphs} paragrafi spezzati`);
+  const h = addHeadings(blocks, focus);
+  blocks = h.blocks;
+  if (h.added) report.push(`${h.added} titoletti aggiunti`);
+  if (!report.length) return { html, report };
+  report.push('formattazione inline (grassetti, link) rimossa durante la ristrutturazione');
+  return { html: blocksToHtml(blocks), report };
 }

@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation';
 import { AdminShell } from '@/components/admin/admin-shell';
 import { getCurrentUser } from '@/lib/auth';
 import { can, permissionsOf } from '@/lib/permissions';
+import './admin.scss';
 import { countByStatus, getAllEvents, getComments, getReports } from '@/lib/queries';
 
 export const metadata: Metadata = { title: 'Redazione', robots: { index: false, follow: false } };

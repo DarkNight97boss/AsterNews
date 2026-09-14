@@ -1,10 +1,10 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { notFound } from 'next/navigation';
+import { notFound, permanentRedirect } from 'next/navigation';
 import { ArticleCard } from '@/components/site/article-card';
 import { ArticleList } from '@/components/site/article-list';
 import { Sidebar } from '@/components/site/widgets';
-import { articlesByCategory, categoryBySlug, tag } from '@/lib/queries';
+import { articlesByCategory, categoryBySlug, legacyRedirectFor, tag } from '@/lib/queries';
 import { getActiveTheme } from '@/lib/theme-server';
 import { CategoryFanpage } from '@/components/site/fanpage/category-fanpage';
 
@@ -17,7 +17,7 @@ export async function generateMetadata({ params }: PageProps<'/[categorySlug]'>)
 export default async function CategoryPage({ params }: PageProps<'/[categorySlug]'>) {
   const { categorySlug } = await params;
   const c = categoryBySlug(categorySlug);
-  if (!c) notFound();
+  if (!c) { const t = legacyRedirectFor(categorySlug); if (t) permanentRedirect(t); notFound(); }
   const articles = articlesByCategory(c.id);
   const { theme } = await getActiveTheme();
   if (theme.skin === 'fanpage') return <CategoryFanpage c={c} articles={articles} />;

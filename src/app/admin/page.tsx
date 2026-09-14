@@ -27,7 +27,7 @@ export default async function DashboardPage() {
     <>
       <div className="page-title">
         <div><h1>Buongiorno, {me?.name.split(' ')[0]} 👋</h1><p>Ecco cosa succede oggi nella redazione.</p></div>
-        <div className="actions"><Link href="/admin/articoli/nuovo" className="btn btn-primary">+ Nuovo articolo</Link></div>
+        <div className="actions"><Link href="/admin/scrivi" className="btn btn-primary">✨ Scrivi un articolo</Link><Link href="/admin/articoli/nuovo" className="btn btn-outline">Editor completo</Link></div>
       </div>
       <div className="stats">
         <div className="stat" style={{ ['--stat-color' as string]: '#0b7a4b' }}><div className="stat-label">Pubblicati</div><div className="stat-value">{counts.published}</div><div className="stat-sub">{today} oggi</div></div>

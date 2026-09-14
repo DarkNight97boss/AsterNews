@@ -77,6 +77,8 @@ export interface Article {
   seo: SeoMeta;
   views: number;
   seoScore?: number;
+  seoReport?: string[];
+  legacyUrl?: string;
   publishedAt: string | null;
   scheduledAt: string | null;
   createdAt: string;

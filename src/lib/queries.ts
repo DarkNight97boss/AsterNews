@@ -2,7 +2,7 @@ import 'server-only';
 import { cache } from 'react';
 import { getDb } from './db';
 import { resolveTheme } from './themes';
-import { DEFAULT_SEO_SETTINGS, LinkTarget, SeoContext, SeoSettings, phrasesForArticle } from './seo-engine';
+import { DEFAULT_SEO_SETTINGS, LinkTarget, RawContext, SeoContext, SeoSettings, extractKeywords, phrasesForArticle } from './seo-engine';
 import { Article, ArticleStatus, Category, Comment, Event, Report, Tag, User, Zone } from './models';
 
 export const getCategories = cache((): Category[] => [...getDb().categories].sort((a, b) => a.order - b.order));
@@ -107,4 +107,35 @@ export function seoContext(excludeId: string, limit = 150): SeoContext {
     tags: getTags().map((t) => ({ id: t.id, name: t.name })),
     linkTargets,
   };
+}
+
+/** Contesto esteso per la pipeline dell'articolo grezzo: profili di categoria, zone, media e copertine correlate. */
+export function rawContext(excludeId = ''): RawContext {
+  const base = seoContext(excludeId);
+  const published = getPublished();
+  const categories = getCategories().map((c) => {
+    const freq = new Map<string, number>();
+    published.filter((a) => a.categoryId === c.id).forEach((a) => {
+      extractKeywords(a.title, a.kicker, a.content, 15).forEach((k, i) => k.split(' ').forEach((t) => freq.set(t, (freq.get(t) ?? 0) + (15 - i))));
+      a.tagIds.forEach((id) => (tag(id)?.name ?? '').toLowerCase().split(/\s+/).forEach((t) => { if (t.length > 2) freq.set(t, (freq.get(t) ?? 0) + 30); }));
+      (a.kicker || '').toLowerCase().split(/\s+/).forEach((t) => { if (t.length > 3) freq.set(t, (freq.get(t) ?? 0) + 10); });
+    });
+    `${c.description}`.toLowerCase().split(/[^a-zà-ú]+/).forEach((t) => { if (t.length > 3) freq.set(t, (freq.get(t) ?? 0) + 20); });
+    return { id: c.id, name: c.name, kind: c.kind, terms: [...freq.entries()].sort((a, b) => b[1] - a[1]).slice(0, 40).map(([t]) => t) };
+  });
+  return {
+    ...base,
+    categories,
+    zones: getZones().map((z) => ({ id: z.id, name: z.name })),
+    media: getMedia().filter((m) => m.type === 'image').map((m) => ({ url: m.url, name: m.name, alt: m.alt })),
+    relatedCovers: published.filter((a) => a.coverImage && a.id !== excludeId).slice(0, 80).map((a) => ({ url: a.coverImage, title: a.title, terms: extractKeywords(a.title, a.kicker, a.content, 10).flatMap((k) => k.split(' ')) })),
+  };
+}
+
+/** URL WordPress → articolo importato (per i redirect 301 dai vecchi link). */
+export function legacyRedirectFor(path: string): string | null {
+  const p = ('/' + path).replace(/\/{2,}/g, '/').replace(/\/+$/, '').replace(/\.html?$/, '') || '/';
+  const last = p.split('/').filter(Boolean).pop() ?? '';
+  const a = getPublished().find((x) => x.legacyUrl && (x.legacyUrl === p || x.legacyUrl.replace(/\.html?$/, '') === p)) ?? (last ? getPublished().find((x) => x.slug === last) : undefined);
+  return a ? articleUrl(a) : null;
 }

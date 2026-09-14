@@ -24,7 +24,8 @@ export function AdminShell({ user, permissions, reviewCount, pendingComments, pe
           <A href="/admin" exact><span className="ico">▦</span> Dashboard</A>
           <div className="nav-group">Contenuti</div>
           <A href="/admin/articoli"><span className="ico">✎</span> Articoli {reviewCount > 0 && <span className="pill">{reviewCount}</span>}</A>
-          <A href="/admin/articoli/nuovo"><span className="ico">＋</span> Nuovo articolo</A>
+          <A href="/admin/scrivi"><span className="ico">✨</span> Scrivi (semplice)</A>
+          <A href="/admin/articoli/nuovo"><span className="ico">＋</span> Editor completo</A>
           {can('category.manage') && <A href="/admin/categorie"><span className="ico">☰</span> Categorie</A>}
           {can('tag.manage') && <A href="/admin/tag"><span className="ico">#</span> Tag</A>}
           <A href="/admin/media"><span className="ico">▣</span> Media</A>
@@ -48,6 +49,7 @@ export function AdminShell({ user, permissions, reviewCount, pendingComments, pe
               <div className="nav-group">Sistema</div>
               {can('user.manage') && <A href="/admin/utenti"><span className="ico">👥</span> Utenti e ruoli</A>}
               {can('settings.manage') && <A href="/admin/impostazioni"><span className="ico">⚙</span> Impostazioni</A>}
+              {can('settings.manage') && <A href="/admin/importa"><span className="ico">⬇</span> Importa da WordPress</A>}
             </>
           )}
           <div className="nav-group">Sito</div>
@@ -65,7 +67,7 @@ export function AdminShell({ user, permissions, reviewCount, pendingComments, pe
           <button className="btn btn-ghost btn-icon burger-admin" onClick={() => setOpen(true)}>☰</button>
           <span className="crumb">ASTER News / <b>Redazione</b></span>
           <span className="spacer" />
-          <Link href="/admin/articoli/nuovo" className="btn btn-primary btn-sm">+ Nuovo articolo</Link>
+          <Link href="/admin/scrivi" className="btn btn-primary btn-sm">✨ Scrivi un articolo</Link>
         </div>
         <div className="admin-content">{children}</div>
       </div>

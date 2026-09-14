@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { SmartImage } from '@/components/ui/smart-image';
 import { CommentForm, Gallery, ShareBar } from '@/components/site/article-extras';
 import { NewsletterForm } from '@/components/site/newsletter-form';
 import { ArticleCard } from '@/components/site/article-card';
@@ -31,7 +32,7 @@ export function ArticleFanpage({ a, cat, author, tags, rel, comments, zone, mode
         {a.format === 'video' && a.videoUrl ? (
           <iframe className="video-embed" src={a.videoUrl} allowFullScreen loading="lazy" title="Video" />
         ) : a.coverImage ? (
-          <figure className="article-cover"><img src={a.coverImage} alt={a.title} width={1200} height={675} fetchPriority="high" />{a.coverCaption && <figcaption>{a.coverCaption}</figcaption>}</figure>
+          <figure className="article-cover"><div className="cover-frame"><SmartImage src={a.coverImage} alt={a.title} priority sizes="(max-width: 768px) 100vw, 800px" /></div>{a.coverCaption && <figcaption>{a.coverCaption}</figcaption>}</figure>
         ) : null}
         <p className="fp-lead">{a.subtitle}</p>
         {a.format === 'live' && liveUpdates.length > 0 && (
@@ -44,7 +45,7 @@ export function ArticleFanpage({ a, cat, author, tags, rel, comments, zone, mode
         {googleNewsUrl && <p className="fp-gnews">Scegli <a href={googleNewsUrl} target="_blank" rel="noopener">{siteName}</a> come fonte preferita su Google News</p>}
         <div className="fp-foot"><span>© Riproduzione riservata</span><ShareBar title={a.title} withMail /></div>
         {author && (
-          <div className="author-box"><img src={author.avatar} alt={author.name} /><div><div className="role">{ROLE_LABELS[author.role]}</div><h4><Link href={`/autore/${author.id}`}>{author.name}</Link></h4><p>{author.bio}</p></div></div>
+          <div className="author-box"><img src={author.avatar} alt={author.name} /><div><div className="role">{ROLE_LABELS[author.role]}</div><h3><Link href={`/autore/${author.id}`}>{author.name}</Link></h3><p>{author.bio}</p></div></div>
         )}
         {a.allowComments && (
           <section className="comments">

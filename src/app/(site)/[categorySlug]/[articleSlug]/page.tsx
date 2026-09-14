@@ -6,7 +6,7 @@ import { CommentForm, Gallery, ReadingProgress, ShareBar, ViewCounter } from '@/
 import { MostRead, NewsletterWidget } from '@/components/site/widgets';
 import { SmartImage } from '@/components/ui/smart-image';
 import { ROLE_LABELS } from '@/lib/models';
-import { approvedComments, articleBySlug, articleUrl, category, getFeatured, getMostRead, getPublished, getSettings, related, tag, user, zone } from '@/lib/queries';
+import { approvedComments, articleBySlug, articleUrl, category, getFeatured, getMostRead, getPublished, getSettings, legacyRedirectFor, related, tag, user, zone } from '@/lib/queries';
 import { formatDate, readingTime, relativeDate, timeAgo } from '@/lib/utils';
 import { getActiveTheme } from '@/lib/theme-server';
 import { ArticleFanpage } from '@/components/site/fanpage/article-fanpage';
@@ -37,7 +37,7 @@ export async function generateMetadata({ params }: PageProps<'/[categorySlug]/[a
 export default async function ArticlePage({ params }: PageProps<'/[categorySlug]/[articleSlug]'>) {
   const { categorySlug, articleSlug } = await params;
   const a = articleBySlug(articleSlug);
-  if (!a) notFound();
+  if (!a) { const t = legacyRedirectFor(`${categorySlug}/${articleSlug}`); if (t) permanentRedirect(t); notFound(); }
   const cat = category(a.categoryId);
   if (cat && cat.slug !== categorySlug) permanentRedirect(articleUrl(a));
   const author = user(a.authorId);
@@ -98,7 +98,7 @@ export default async function ArticlePage({ params }: PageProps<'/[categorySlug]
         <div>
           {video && a.format !== 'video' && (
             <div className="video-box">
-              <Link href={articleUrl(video)} className="vb-img"><SmartImage src={video.coverImage} alt={video.title} sizes="200px" /><span className="card-format" style={{ position: 'absolute', right: 8, bottom: 8 }}>▶</span></Link>
+              <Link href={articleUrl(video)} className="vb-img"><SmartImage src={video.coverImage} alt={video.title} sizes="(max-width: 768px) 92vw, 200px" /><span className="card-format" style={{ position: 'absolute', right: 8, bottom: 8 }}>▶</span></Link>
               <div className="vb-body"><div className="vb-label">Video del giorno</div><p><Link href={articleUrl(video)}>{video.title}</Link></p></div>
             </div>
           )}
@@ -112,7 +112,7 @@ export default async function ArticlePage({ params }: PageProps<'/[categorySlug]
           {a.format === 'video' && a.videoUrl ? (
             <iframe className="video-embed" src={a.videoUrl} allowFullScreen loading="lazy" title="Video" />
           ) : a.coverImage ? (
-            <figure className="article-cover"><img src={a.coverImage} alt={a.title} width={1200} height={675} fetchPriority="high" />{a.coverCaption && <figcaption>{a.coverCaption}</figcaption>}</figure>
+            <figure className="article-cover"><div className="cover-frame"><SmartImage src={a.coverImage} alt={a.title} priority sizes="(max-width: 768px) 100vw, 800px" /></div>{a.coverCaption && <figcaption>{a.coverCaption}</figcaption>}</figure>
           ) : null}
           {a.format === 'live' && liveUpdates.length > 0 && (
             <section className="live-feed">
@@ -126,7 +126,7 @@ export default async function ArticlePage({ params }: PageProps<'/[categorySlug]
           <div className="article-foot"><span className="copy">© Riproduzione riservata</span><ShareBar title={a.title} withMail /></div>
           {tags.length > 0 && <div className="article-tags">{tags.map((t) => <Link key={t.id} href={`/tag/${t.slug}`}>#{t.name}</Link>)}</div>}
           {author && (
-            <div className="author-box"><img src={author.avatar} alt={author.name} /><div><div className="role">{ROLE_LABELS[author.role]}</div><h4><Link href={`/autore/${author.id}`}>{author.name}</Link></h4><p>{author.bio}</p></div></div>
+            <div className="author-box"><img src={author.avatar} alt={author.name} /><div><div className="role">{ROLE_LABELS[author.role]}</div><h3><Link href={`/autore/${author.id}`}>{author.name}</Link></h3><p>{author.bio}</p></div></div>
           )}
           <section className="section">
             <div className="section-title"><h2>Leggi anche</h2></div>
