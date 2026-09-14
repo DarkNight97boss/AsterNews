@@ -187,11 +187,12 @@ const reports: Report[] = [
 
 export function buildSeed(): Database {
   return {
-    version: 3,
+    version: 4,
     zones, events, reports,
     categories, tags, users, articles, comments, media,
     subscribers: [{ id: 's1', email: 'lettore@example.com', createdAt: hoursAgo(48) }],
     settings: {
+      theme: { preset: 'today' },
       siteName: 'ASTER News',
       tagline: 'Ultime notizie dall\'Italia e dal mondo',
       description: 'ASTER News è il quotidiano online con attualità, politica, economia, sport, life e vision. Le notizie dall\'Italia e dal mondo, aggiornate 24 ore su 24.',

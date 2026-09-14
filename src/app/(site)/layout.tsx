@@ -6,10 +6,12 @@ import { cookies } from 'next/headers';
 import { getCurrentUser } from '@/lib/auth';
 import { articleUrl, getCategories, getLiveArticles, getPublished, getSettings, getZones, user, zoneCounts } from '@/lib/queries';
 import { getWeather, weatherIcon, weatherLabel } from '@/lib/weather';
+import { getActiveTheme } from '@/lib/theme-server';
+import { PreviewBar } from '@/components/site/preview-bar';
 
 export default async function SiteLayout({ children }: LayoutProps<'/'>) {
   const s = getSettings();
-  const [me, weather, cookieStore] = await Promise.all([getCurrentUser(), getWeather(s.weatherCity, s.weatherLat, s.weatherLon), cookies()]);
+  const [me, weather, cookieStore, { theme, preview }] = await Promise.all([getCurrentUser(), getWeather(s.weatherCity, s.weatherLat, s.weatherLon), cookies(), getActiveTheme()]);
   const categories = getCategories();
   const opinionIds = new Set(categories.filter((c) => c.kind === 'opinion').map((c) => c.id));
   const opinions = getPublished().filter((a) => opinionIds.has(a.categoryId)).slice(0, 2).map((a) => ({ title: a.title, url: articleUrl(a), author: user(a.authorId)?.name ?? '', avatar: user(a.authorId)?.avatar ?? '' }));
@@ -19,7 +21,8 @@ export default async function SiteLayout({ children }: LayoutProps<'/'>) {
   const today = new Date().toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
   return (
     <>
-      <SiteHeader categories={categories} zones={topZones} opinions={opinions} weather={weather ? { icon: weatherIcon(weather.current.code), label: weatherLabel(weather.current.code), temp: weather.current.temp, city: weather.city } : null} liveLink={live ? articleUrl(live) : null} isLoggedIn={!!me} today={today} subscribeUrl={s.subscribeUrl} siteName={s.siteName} />
+      {preview && <PreviewBar themeName={theme.name} />}
+      <SiteHeader categories={categories} zones={topZones} opinions={opinions} weather={weather ? { icon: weatherIcon(weather.current.code), label: weatherLabel(weather.current.code), temp: weather.current.temp, city: weather.city } : null} liveLink={live ? articleUrl(live) : null} isLoggedIn={!!me} today={today} subscribeUrl={s.subscribeUrl} siteName={s.siteName} tagline={s.tagline} socials={s.socials} headerStyle={theme.headerStyle} />
       <Ticker />
       <main className="page"><div className="container">{children}</div></main>
       <Footer />

@@ -4,15 +4,16 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { Category, EVENT_TYPE_LABELS, Zone } from '@/lib/models';
+import type { HeaderStyle } from '@/lib/themes';
 import { ThemeToggle } from './theme-toggle';
 
 export interface OpinionTeaser { title: string; url: string; author: string; avatar: string }
 export interface WeatherTeaser { icon: string; label: string; temp: number; city: string }
-interface Props { categories: Category[]; zones: Zone[]; opinions: OpinionTeaser[]; weather: WeatherTeaser | null; liveLink: string | null; isLoggedIn: boolean; today: string; subscribeUrl: string; siteName: string }
+interface Props { categories: Category[]; zones: Zone[]; opinions: OpinionTeaser[]; weather: WeatherTeaser | null; liveLink: string | null; isLoggedIn: boolean; today: string; subscribeUrl: string; siteName: string; tagline: string; socials: Record<string, string>; headerStyle: HeaderStyle }
 
 const STATIC_NAMES: Record<string, string> = { notizie: 'Notizie', cerca: 'Cerca', tag: 'Argomenti', autore: 'Firme', meteo: 'Meteo', eventi: 'Cosa fare in città', zone: 'Zone', segnalazioni: 'Segnalazioni', video: 'Video', foto: 'Foto' };
 
-export function SiteHeader({ categories, zones, opinions, weather, liveLink, isLoggedIn, today, subscribeUrl, siteName }: Props) {
+export function SiteHeader({ categories, zones, opinions, weather, liveLink, isLoggedIn, today, subscribeUrl, siteName, tagline, socials, headerStyle }: Props) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [q, setQ] = useState('');
@@ -23,9 +24,12 @@ export function SiteHeader({ categories, zones, opinions, weather, liveLink, isL
   const sectionName = STATIC_NAMES[first] ?? categories.find((c) => c.slug === first)?.name ?? '';
   const menu = categories.filter((c) => c.showInMenu);
   const mainMenu = [{ slug: 'notizie', name: 'Notizie' }, { slug: 'eventi', name: 'Cosa fare in città' }, { slug: 'zone', name: 'Zone' }, ...menu.filter((c) => c.kind === 'dossier' || c.kind === 'opinion')];
+  const wideMenu = [{ slug: 'notizie', name: 'Ultime' }, ...menu.filter((c) => c.kind !== 'local'), { slug: 'eventi', name: 'Eventi' }, { slug: 'zone', name: 'Zone' }];
+  const active = (slug: string) => (first === slug ? 'active' : undefined);
   const close = () => setMenuOpen(false);
   const submit = (e: React.FormEvent) => { e.preventDefault(); if (q.trim()) { router.push(`/cerca?q=${encodeURIComponent(q)}`); setSearchOpen(false); } };
-  const Burger = () => <button className="burger" onClick={() => setMenuOpen((v) => !v)} aria-label="Tutte le sezioni">{menuOpen ? '✕' : '☰'}</button>;
+  const Burger = ({ cls = 'burger' }: { cls?: string }) => <button className={cls} onClick={() => setMenuOpen((v) => !v)} aria-label="Tutte le sezioni">{menuOpen ? '✕' : '☰'}</button>;
+  const Logo = ({ cls = 'logo' }: { cls?: string }) => <Link href="/" className={cls} aria-label={siteName}>Aster<small>news</small></Link>;
 
   return (
     <>
@@ -43,14 +47,37 @@ export function SiteHeader({ categories, zones, opinions, weather, liveLink, isL
         </div>
       </div>
 
-      {isHome ? (
+      {headerStyle === 'centered' && (
+        <header className="header-centered">
+          <div className="container hc-top">
+            <div className="hc-socials"><a href={socials.facebook} target="_blank" rel="noopener">f</a><a href={socials.instagram} target="_blank" rel="noopener">◎</a><a href={socials.x} target="_blank" rel="noopener">𝕏</a><a href={socials.youtube} target="_blank" rel="noopener">▶</a></div>
+            <Logo cls="logo logo-center" />
+            <div className="hc-tools"><button className="search-btn" onClick={() => setSearchOpen((v) => !v)} aria-label="Cerca">⌕</button>{liveLink && <Link href={liveLink} className="nav-live">Diretta</Link>}</div>
+          </div>
+          <nav className="hc-nav"><div className="container">
+            <Burger />
+            {wideMenu.map((c) => <Link key={c.slug} href={`/${c.slug}`} className={active(c.slug)}>{c.name}</Link>)}
+            <div className="hc-local">{categories.filter((c) => c.kind === 'local').map((c) => <Link key={c.id} href={`/${c.slug}`}>{c.name}</Link>)}</div>
+          </div></nav>
+        </header>
+      )}
+
+      {headerStyle === 'classic' && (
+        <header className="header-classic">
+          <div className="container hcl-mast"><Logo /><div className="tagline">{tagline}</div></div>
+          <nav className="hcl-nav"><div className="container">
+            <Burger />
+            {wideMenu.map((c) => <Link key={c.slug} href={`/${c.slug}`} className={active(c.slug)}>{c.name}</Link>)}
+            <button className="search-btn" onClick={() => setSearchOpen((v) => !v)} aria-label="Cerca">⌕</button>
+          </div></nav>
+        </header>
+      )}
+
+      {headerStyle === 'today' && (isHome ? (
         <header className="site-header">
           <div className="container">
             <div className="brand-col">
-              <div className="brand-row">
-                <Link href="/" className="logo" aria-label={siteName}>Aster<small>news</small></Link>
-                <button className="burger burger-mobile" onClick={() => setMenuOpen(true)} aria-label="Menu">☰</button>
-              </div>
+              <div className="brand-row"><Logo /><button className="burger burger-mobile" onClick={() => setMenuOpen(true)} aria-label="Menu">☰</button></div>
               <nav className="main-nav">
                 {mainMenu.map((c) => <Link key={c.slug} href={`/${c.slug}`}>{c.name}</Link>)}
                 <div className="nav-tools"><Burger /><button onClick={() => setSearchOpen((v) => !v)} aria-label="Cerca">⌕</button></div>
@@ -69,12 +96,12 @@ export function SiteHeader({ categories, zones, opinions, weather, liveLink, isL
         <header className="header-compact">
           <div className="container">
             <Burger />
-            <Link href="/" className="logo logo-sm" aria-label={siteName}>Aster<small>news</small></Link>
+            <Logo cls="logo logo-sm" />
             {sectionName && <span className="section-name">{sectionName}</span>}
             <button className="search-btn" onClick={() => setSearchOpen((v) => !v)} aria-label="Cerca">⌕</button>
           </div>
         </header>
-      )}
+      ))}
 
       {menuOpen && (
         <div className="mega">

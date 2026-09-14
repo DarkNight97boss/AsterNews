@@ -46,6 +46,14 @@ Password unica per tutti: `aster2026`
 - **Eventi** (approvazione delle segnalazioni dei lettori), **Zone**, **Segnalazioni** (stati: nuova, in lavorazione, pubblicata, archiviata; risposta pubblica), meteo e città nelle impostazioni
 - **Categorie**, **Tag**, **Media** (upload drag&drop o URL), **Commenti**, **Newsletter** (export CSV), **Utenti e ruoli**, **Impostazioni** (identità, ticker, social, sezioni home, moderazione, export/reset dati)
 
+## Sistema di temi
+
+Il motore (dati, rotte, CMS, componenti) è unico; il **tema** decide colori, font, stile della testata, layout della home e stile delle card.
+Si sceglie da **Impostazioni → Tema del sito**: sei preset (Today, Fanpage, Quotidiano, Magazine, Territorio, Minimal), personalizzabili in colore principale, colore accento, font titoli/testo, testata, layout home, stile card e raggio degli angoli.
+«Anteprima sul sito» mostra il tema solo all'amministratore (cookie di 30 minuti) con una barra gialla per applicarlo o uscire; «Salva impostazioni» lo rende definitivo.
+
+Per aggiungere un tema basta un nuovo oggetto in `src/lib/themes.ts` (`THEMES`); i token CSS vengono iniettati nel layout radice come variabili (`--blue`, `--red`, `--font-serif`, `--radius-card`, ecc.), le varianti strutturali sono selezionate con `data-header`, `data-card-style` e `data-site-theme` sull'elemento `html`.
+
 ## Dati
 
 Lo store è un file JSON (`data/db.json`, creato al primo avvio dai dati demo in `src/lib/seed.ts`) letto e scritto solo lato server da `src/lib/db.ts`.

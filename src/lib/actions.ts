@@ -9,6 +9,8 @@ import { Article, ArticleStatus, Category, Comment, CommentStatus, Event, MediaI
 import { can, canEdit } from './permissions';
 import { article as findArticle, getCategories } from './queries';
 import { slugify, uid } from './utils';
+import { PREVIEW_COOKIE } from './theme-server';
+import type { ThemeSettings } from './themes';
 
 export type ActionResult = { ok: boolean; message?: string; id?: string };
 
@@ -395,4 +397,39 @@ export async function deleteReportAction(id: string): Promise<ActionResult> {
 export async function setCookieConsentAction(value: 'all' | 'necessary'): Promise<void> {
   const store = await cookies();
   store.set('cookie_consent', value, { path: '/', maxAge: 60 * 60 * 24 * 180, sameSite: 'lax' });
+}
+
+// ---------------- Temi ----------------
+export async function previewThemeAction(theme: ThemeSettings): Promise<void> {
+  await requirePermission('settings.manage');
+  const store = await cookies();
+  store.set(PREVIEW_COOKIE, JSON.stringify(theme), { path: '/', maxAge: 60 * 30, sameSite: 'lax', httpOnly: true });
+  redirect('/');
+}
+
+export async function clearThemePreviewAction(): Promise<void> {
+  const store = await cookies();
+  store.delete(PREVIEW_COOKIE);
+  redirect('/admin/impostazioni');
+}
+
+export async function applyThemeAction(theme: ThemeSettings): Promise<ActionResult> {
+  await requirePermission('settings.manage');
+  mutate((d) => ({ settings: { ...d.settings, theme } }));
+  const store = await cookies();
+  store.delete(PREVIEW_COOKIE);
+  refresh();
+  return ok(`Tema "${theme.preset}" applicato a tutto il sito.`);
+}
+
+export async function applyThemeFromPreviewAction(): Promise<void> {
+  await requirePermission('settings.manage');
+  const store = await cookies();
+  const raw = store.get(PREVIEW_COOKIE)?.value;
+  if (raw) {
+    try { const theme = JSON.parse(raw) as ThemeSettings; mutate((d) => ({ settings: { ...d.settings, theme } })); } catch { /* ignore */ }
+  }
+  store.delete(PREVIEW_COOKIE);
+  refresh();
+  redirect('/');
 }

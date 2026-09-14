@@ -4,7 +4,7 @@ import { articleUrl, category, user } from '@/lib/queries';
 import { relativeDate } from '@/lib/utils';
 import { SmartImage } from '@/components/ui/smart-image';
 
-export type CardVariant = 'hero' | 'md' | 'sm' | 'horizontal' | 'horizontal-sm' | 'compact' | 'number' | 'city' | 'opinion';
+export type CardVariant = 'hero' | 'md' | 'sm' | 'horizontal' | 'horizontal-sm' | 'compact' | 'number' | 'city' | 'opinion' | 'overlay' | 'overlay-sm';
 interface Props { article: Article; variant?: CardVariant; index?: number; showExcerpt?: boolean; showMeta?: boolean; showImage?: boolean; priority?: boolean }
 
 export function Kicker({ article: a, className = 'kicker' }: { article: Article; className?: string }) {
@@ -46,6 +46,19 @@ export function ArticleCard({ article: a, variant = 'md', index = 0, showExcerpt
         {author && <div className="op-head"><img src={author.avatar} alt={author.name} /><div><Link className="op-name" href={`/autore/${author.id}`}>{author.name}</Link><div className="op-role">{ROLE_LABELS[author.role]}</div></div></div>}
         <h3 className="card-title"><Link href={link}>{a.title}</Link></h3>
         {showExcerpt && <p className="card-excerpt">{a.excerpt}</p>}
+      </article>
+    );
+  }
+  if (variant === 'overlay' || variant === 'overlay-sm') {
+    return (
+      <article className={`card card-overlay ${variant === 'overlay-sm' ? 'card-overlay-sm' : ''}`}>
+        <Link className="card-img" href={link} aria-label={a.title}><SmartImage src={a.coverImage} alt={a.title} priority={priority} sizes={variant === 'overlay' ? '(max-width: 768px) 100vw, 800px' : '(max-width: 768px) 100vw, 400px'} />{a.format === 'video' && <span className="card-format">▶</span>}</Link>
+        <div className="card-body">
+          <Kicker article={a} />
+          <h3 className="card-title"><Link href={link}>{a.title}</Link></h3>
+          {showExcerpt && variant === 'overlay' && <p className="card-excerpt">{a.excerpt}</p>}
+          {showMeta && <div className="meta"><span>{relativeDate(a.publishedAt)}</span></div>}
+        </div>
       </article>
     );
   }

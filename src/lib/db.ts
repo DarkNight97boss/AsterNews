@@ -26,7 +26,7 @@ export function getDb(): Database {
     try {
       if (fs.existsSync(FILE)) {
         const parsed = JSON.parse(fs.readFileSync(FILE, 'utf8')) as Database;
-        if (parsed.version === 3) g.__asterDb = parsed;
+        if (parsed.version === 4) g.__asterDb = parsed;
       }
     } catch {
       /* file corrotto: riparto dal seed */

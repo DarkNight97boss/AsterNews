@@ -108,7 +108,10 @@ export interface Subscriber {
   createdAt: string;
 }
 
+import type { ThemeSettings } from './themes';
+
 export interface SiteSettings {
+  theme: ThemeSettings;
   siteName: string;
   tagline: string;
   description: string;

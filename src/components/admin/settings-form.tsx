@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useState, useTransition } from 'react';
 import { exportJsonAction, resetDemoAction, saveSettingsAction } from '@/lib/actions';
 import { Category, SiteSettings } from '@/lib/models';
+import { ThemePicker } from './theme-picker';
 import { toast } from '@/components/ui/toaster';
 
 export function SettingsForm({ initial, categories }: { initial: SiteSettings; categories: Category[] }) {
@@ -15,6 +16,10 @@ export function SettingsForm({ initial, categories }: { initial: SiteSettings; c
   return (
     <>
       <div className="page-title"><div><h1>Impostazioni</h1><p>Configurazione generale del sito.</p></div><div className="actions"><button className="btn btn-primary" disabled={pending} onClick={() => start(async () => { const r = await saveSettingsAction(s); (r.ok ? toast.success : toast.error)(r.message ?? ''); router.refresh(); })}>Salva impostazioni</button></div></div>
+      <div className="panel"><div className="panel-title">Tema del sito</div>
+        <p className="help" style={{ marginBottom: 14 }}>Il motore è lo stesso: cambiano colori, font, testata, layout della home e stile delle card. Scegli un preset e, se vuoi, personalizzalo.</p>
+        <ThemePicker value={s.theme} onChange={(theme) => setS({ ...s, theme })} />
+      </div>
       <div className="admin-grid-2">
         <div>
           <div className="panel"><div className="panel-title">Identità</div>

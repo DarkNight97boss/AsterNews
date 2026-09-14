@@ -1,6 +1,7 @@
 import 'server-only';
 import { cache } from 'react';
 import { getDb } from './db';
+import { resolveTheme } from './themes';
 import { Article, ArticleStatus, Category, Comment, Event, Report, Tag, User, Zone } from './models';
 
 export const getCategories = cache((): Category[] => [...getDb().categories].sort((a, b) => a.order - b.order));
@@ -87,3 +88,5 @@ export const getEvents = cache((): Event[] => {
 export const eventBySlug = (slug: string) => getEvents().find((e) => e.slug === slug);
 export const getReports = cache((): Report[] => [...getDb().reports].sort((a, b) => b.createdAt.localeCompare(a.createdAt)));
 export const getPublishedReports = () => getReports().filter((r) => r.status === 'published');
+
+export const getTheme = () => resolveTheme(getSettings().theme);
