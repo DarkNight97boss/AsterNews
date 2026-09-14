@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { ArticleList } from '@/components/site/article-list';
-import { Sidebar } from '@/components/site/sidebar';
+import { Sidebar } from '@/components/site/widgets';
 import { articlesByTag, tagBySlug } from '@/lib/queries';
 
 export async function generateMetadata({ params }: PageProps<'/tag/[slug]'>): Promise<Metadata> {

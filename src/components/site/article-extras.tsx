@@ -29,10 +29,10 @@ export function ShareBar({ title }: { title: string }) {
   const u = encodeURIComponent(url); const t = encodeURIComponent(title);
   return (
     <div className="share">
-      <a className="share-btn" href={`https://www.facebook.com/sharer/sharer.php?u=${u}`} target="_blank" rel="noopener" title="Condividi su Facebook">f</a>
-      <a className="share-btn" href={`https://x.com/intent/tweet?url=${u}&text=${t}`} target="_blank" rel="noopener" title="Condividi su X">𝕏</a>
-      <a className="share-btn" href={`https://wa.me/?text=${t}%20${u}`} target="_blank" rel="noopener" title="Condividi su WhatsApp">W</a>
-      <button className="share-btn" title="Copia link" onClick={() => navigator.clipboard?.writeText(url).then(() => toast.info('Link copiato negli appunti'))}>🔗</button>
+      <a className="share-btn fb" href={`https://www.facebook.com/sharer/sharer.php?u=${u}`} target="_blank" rel="noopener" title="Condividi su Facebook">f</a>
+      <a className="share-btn x" href={`https://x.com/intent/tweet?url=${u}&text=${t}`} target="_blank" rel="noopener" title="Condividi su X">𝕏</a>
+      <a className="share-btn wa" href={`https://wa.me/?text=${t}%20${u}`} target="_blank" rel="noopener" title="Condividi su WhatsApp">W</a>
+      <button className="share-btn copy" title="Copia link" onClick={() => navigator.clipboard?.writeText(url).then(() => toast.info('Link copiato negli appunti'))}>🔗</button>
     </div>
   );
 }

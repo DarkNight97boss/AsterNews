@@ -2,28 +2,29 @@ import { Article, Category, Comment, Database, MediaItem, Tag, User } from './mo
 import { hoursAgo, img, slugify } from './utils';
 
 const categories: Category[] = [
-  { id: 'c_cronaca', slug: 'cronaca', name: 'Cronaca', color: '#e2001a', description: 'Fatti, indagini e notizie dal territorio.', order: 1, showInMenu: true, showOnHome: true },
-  { id: 'c_politica', slug: 'politica', name: 'Politica', color: '#1f4e9c', description: 'Governo, Parlamento, partiti e istituzioni.', order: 2, showInMenu: true, showOnHome: true },
-  { id: 'c_economia', slug: 'economia', name: 'Economia', color: '#0b7a4b', description: 'Mercati, lavoro, imprese e finanza personale.', order: 3, showInMenu: true, showOnHome: true },
-  { id: 'c_roma', slug: 'roma', name: 'Roma', color: '#8a1c7c', description: 'La città, i quartieri, la mobilità e gli eventi.', order: 4, showInMenu: true, showOnHome: true },
-  { id: 'c_sport', slug: 'sport', name: 'Sport', color: '#e67e00', description: 'Calcio, tennis, motori e tutte le discipline.', order: 5, showInMenu: true, showOnHome: true },
-  { id: 'c_spettacolo', slug: 'spettacolo', name: 'Spettacolo', color: '#c2185b', description: 'Cinema, TV, musica e gossip.', order: 6, showInMenu: true, showOnHome: true },
-  { id: 'c_tecnologia', slug: 'tecnologia', name: 'Tecnologia', color: '#0277bd', description: 'Innovazione, app, AI e scienza.', order: 7, showInMenu: true, showOnHome: true },
-  { id: 'c_salute', slug: 'salute', name: 'Salute', color: '#00897b', description: 'Benessere, sanità e ricerca medica.', order: 8, showInMenu: true, showOnHome: false },
-  { id: 'c_esteri', slug: 'esteri', name: 'Esteri', color: '#455a64', description: 'Il mondo visto da vicino.', order: 9, showInMenu: true, showOnHome: false },
+  { id: 'c_attualita', slug: 'attualita', name: 'Attualità', kind: 'standard', color: '#d7262d', description: 'I fatti del giorno in Italia.', order: 1, showInMenu: true, showOnHome: true },
+  { id: 'c_politica', slug: 'politica', name: 'Politica', kind: 'standard', color: '#1e3a8a', description: 'Governo, Parlamento, partiti e istituzioni.', order: 2, showInMenu: true, showOnHome: true },
+  { id: 'c_economia', slug: 'economia', name: 'Economia e soldi', kind: 'standard', color: '#0b7a4b', description: 'Lavoro, fisco, bonus, prezzi e risparmio.', order: 3, showInMenu: true, showOnHome: true },
+  { id: 'c_mondo', slug: 'mondo', name: 'Le notizie dal mondo', kind: 'standard', color: '#455a64', description: 'Esteri, Europa e geopolitica.', order: 4, showInMenu: true, showOnHome: true },
+  { id: 'c_citta', slug: 'citta', name: 'Dalle città', kind: 'local', color: '#8a1c7c', description: 'Le storie dai territori raccontate dalle redazioni locali.', order: 5, showInMenu: true, showOnHome: false },
+  { id: 'c_sport', slug: 'sport', name: 'Sport', kind: 'standard', color: '#e67e00', description: 'Calcio, tennis, motori e tutte le discipline.', order: 6, showInMenu: true, showOnHome: true },
+  { id: 'c_life', slug: 'life', name: 'Life', kind: 'standard', color: '#00897b', description: 'Salute, benessere, casa, viaggi e stili di vita.', order: 7, showInMenu: true, showOnHome: true },
+  { id: 'c_vision', slug: 'vision', name: 'Vision', kind: 'standard', color: '#c2185b', description: 'Cinema, serie tv, musica, libri e cultura pop.', order: 8, showInMenu: true, showOnHome: true },
+  { id: 'c_opinioni', slug: 'opinioni', name: 'Opinioni', kind: 'opinion', color: '#1e3a8a', description: 'Editoriali, commenti e analisi delle firme di ASTER News.', order: 9, showInMenu: true, showOnHome: false },
+  { id: 'c_dossier', slug: 'dossier', name: 'Dossier', kind: 'dossier', color: '#111111', description: 'Inchieste, approfondimenti e guide per capire meglio.', order: 10, showInMenu: true, showOnHome: false },
 ];
 
-const tagNames = ['Governo', 'Elezioni', 'Maltempo', 'Trasporti', 'Serie A', 'Champions League', 'Intelligenza artificiale', 'Smartphone', 'Inflazione', 'Lavoro', 'Sanità', 'Scuola', 'Cinema', 'Musica', 'Televisione', 'Metro C', 'Traffico', 'Ambiente', 'Giustizia', 'Europa', 'Bonus', 'Vaccini', 'Startup', 'Turismo'];
+const tagNames = ['Governo Meloni', 'Elezioni', 'Manovra', 'Campo largo', 'Maltempo', 'Trasporti', 'Serie A', 'Champions League', 'Intelligenza artificiale', 'Smartphone', 'Inflazione', 'Lavoro', 'Sanità', 'Scuola', 'Cinema', 'Musica', 'Televisione', 'Ambiente', 'Giustizia', 'Europa', 'Bonus', 'Vaccini', 'Startup', 'Turismo', 'Ucraina', 'Migranti', 'Carburanti', 'Casa'];
 const tags: Tag[] = tagNames.map((n) => ({ id: 't_' + slugify(n), slug: slugify(n), name: n }));
 const T = (n: string) => 't_' + slugify(n);
 
 const users: User[] = [
-  { id: 'u_admin', name: 'Giulia Ferrante', email: 'admin@asternews.it', role: 'admin', avatar: img('giulia', 200, 200), bio: 'Direttrice responsabile di ASTER News.', active: true, createdAt: hoursAgo(24 * 400) },
-  { id: 'u_editor', name: 'Marco Vitali', email: 'editor@asternews.it', role: 'editor', avatar: img('marco', 200, 200), bio: 'Caporedattore centrale, coordina cronaca e politica.', active: true, createdAt: hoursAgo(24 * 380) },
-  { id: 'u_author1', name: 'Sara Conti', email: 'sara@asternews.it', role: 'author', avatar: img('sara', 200, 200), bio: 'Segue economia e lavoro. Prima a Il Sole, poi in redazione digitale.', active: true, createdAt: hoursAgo(24 * 300) },
+  { id: 'u_admin', name: 'Giulia Ferrante', email: 'admin@asternews.it', role: 'admin', avatar: img('giulia', 200, 200), bio: 'Direttrice responsabile di ASTER News. Scrive di politica e istituzioni.', active: true, createdAt: hoursAgo(24 * 400) },
+  { id: 'u_editor', name: 'Marco Vitali', email: 'editor@asternews.it', role: 'editor', avatar: img('marco', 200, 200), bio: 'Caporedattore centrale, coordina attualità e cronaca.', active: true, createdAt: hoursAgo(24 * 380) },
+  { id: 'u_author1', name: 'Sara Conti', email: 'sara@asternews.it', role: 'author', avatar: img('sara', 200, 200), bio: 'Giornalista. Segue economia, lavoro e consumi.', active: true, createdAt: hoursAgo(24 * 300) },
   { id: 'u_author2', name: 'Luca Moretti', email: 'luca@asternews.it', role: 'author', avatar: img('luca', 200, 200), bio: 'Inviato sportivo, racconta il calcio dal campo.', active: true, createdAt: hoursAgo(24 * 250) },
-  { id: 'u_author3', name: 'Elena Russo', email: 'elena@asternews.it', role: 'author', avatar: img('elena', 200, 200), bio: 'Tecnologia, scienza e cultura digitale.', active: true, createdAt: hoursAgo(24 * 200) },
-  { id: 'u_contrib', name: 'Davide Greco', email: 'davide@asternews.it', role: 'contributor', avatar: img('davide', 200, 200), bio: 'Collaboratore per spettacolo e cultura.', active: true, createdAt: hoursAgo(24 * 90) },
+  { id: 'u_author3', name: 'Elena Russo', email: 'elena@asternews.it', role: 'author', avatar: img('elena', 200, 200), bio: 'Giornalista. Tecnologia, scienza e cultura digitale.', active: true, createdAt: hoursAgo(24 * 200) },
+  { id: 'u_contrib', name: 'Davide Greco', email: 'davide@asternews.it', role: 'contributor', avatar: img('davide', 200, 200), bio: 'Critico cinematografico e collaboratore per Vision.', active: true, createdAt: hoursAgo(24 * 90) },
 ];
 
 interface Seed {
@@ -32,7 +33,7 @@ interface Seed {
 }
 
 const body = (t: string, cat: string) => `
-<p><strong>${t.split(':')[0]}.</strong> La notizia è arrivata nelle prime ore della mattinata ed è stata confermata da fonti qualificate contattate dalla redazione di ASTER News. Le informazioni raccolte finora delineano un quadro ancora in evoluzione, sul quale sono attesi ulteriori aggiornamenti nelle prossime ore.</p>
+<p>${t.split(':')[0]}. La notizia è arrivata nelle prime ore della mattinata ed è stata confermata da fonti qualificate contattate dalla redazione di ASTER News. Le informazioni raccolte finora delineano un quadro ancora in evoluzione, sul quale sono attesi ulteriori aggiornamenti nelle prossime ore.</p>
 <p>Secondo quanto ricostruito, gli elementi al centro della vicenda sono stati verificati attraverso più fonti indipendenti. Gli interlocutori istituzionali hanno chiesto prudenza e invitato a evitare speculazioni prima della conclusione degli accertamenti in corso.</p>
 <h2>Cosa sappiamo finora</h2>
 <p>I punti fermi sono pochi ma significativi. In primo luogo, la tempistica: tutto è avvenuto in un arco di poche ore, con una rapida escalation di reazioni. In secondo luogo, l'impatto sul settore ${cat.toLowerCase()} è già misurabile e viene monitorato da osservatori e analisti.</p>
@@ -45,42 +46,54 @@ const body = (t: string, cat: string) => `
 <li>Prevista una conferenza stampa nel pomeriggio.</li>
 </ul>
 <h2>Cosa succede adesso</h2>
-<p>Nelle prossime ore sono attesi nuovi sviluppi. La redazione continuerà a seguire la vicenda con aggiornamenti in tempo reale su questa pagina e sui canali social di ASTER News. Per approfondire, consulta gli articoli correlati in fondo alla pagina.</p>
+<p>Nelle prossime ore sono attesi nuovi sviluppi. La redazione continuerà a seguire la vicenda con aggiornamenti su questa pagina e sui canali social di ASTER News. Per approfondire, consulta gli articoli correlati.</p>
 `;
 
 const seeds: Seed[] = [
-  { cat: 'c_cronaca', author: 'u_editor', kicker: 'Maltempo', title: 'Nubifragio sulla Capitale: allagamenti, metro chiusa e scuole evacuate', subtitle: 'Allerta arancione prorogata fino a domani. Il Campidoglio: «Restate a casa se potete»', tags: ['Maltempo', 'Trasporti', 'Traffico'], h: 1, views: 48210, featured: true, breaking: true, format: 'live' },
-  { cat: 'c_politica', author: 'u_editor', kicker: 'Governo', title: 'Manovra, via libera del Consiglio dei ministri: taglio del cuneo e bonus famiglie', subtitle: 'Il testo passa ora al Parlamento. Opposizioni: «Coperture incerte»', tags: ['Governo', 'Bonus', 'Lavoro'], h: 2, views: 31200, featured: true },
-  { cat: 'c_sport', author: 'u_author2', kicker: 'Serie A', title: 'Il derby finisce 2-2: rimonta nel recupero e polemiche sul VAR', subtitle: 'Due gol negli ultimi cinque minuti. L\'allenatore: «Così non si può giocare»', tags: ['Serie A'], h: 3, views: 27800, featured: true },
-  { cat: 'c_economia', author: 'u_author1', kicker: 'Prezzi', title: 'Inflazione in calo al 1,4%: cosa cambia per spesa, mutui e bollette', subtitle: 'Il dato Istat sotto le attese. Ma il carrello della spesa resta caro', tags: ['Inflazione'], h: 4, views: 19500, featured: true },
-  { cat: 'c_tecnologia', author: 'u_author3', kicker: 'AI', title: 'Intelligenza artificiale a scuola: parte la sperimentazione in 500 istituti', subtitle: 'Tutor digitali per studenti e docenti. Il Ministero: «Nessuna sostituzione degli insegnanti»', tags: ['Intelligenza artificiale', 'Scuola'], h: 5, views: 15400 },
-  { cat: 'c_roma', author: 'u_editor', kicker: 'Mobilità', title: 'Metro C, apre la stazione Colosseo: orari, collegamenti e cosa cambia per i pendolari', subtitle: 'Dopo dieci anni di cantieri il Colosseo è finalmente collegato alla linea C', tags: ['Metro C', 'Trasporti'], h: 6, views: 22300, format: 'gallery' },
-  { cat: 'c_spettacolo', author: 'u_contrib', kicker: 'Cinema', title: 'Il film italiano che sta conquistando i festival: recensione e curiosità', subtitle: 'Standing ovation di dieci minuti alla prima. In sala dal prossimo giovedì', tags: ['Cinema'], h: 7, views: 9800, format: 'video' },
-  { cat: 'c_salute', author: 'u_author3', kicker: 'Sanità', title: 'Liste d\'attesa, il nuovo piano: visite entro 30 giorni o rimborso', subtitle: 'Arriva la piattaforma unica per le prenotazioni. Le Regioni frenano', tags: ['Sanità'], h: 9, views: 12100 },
-  { cat: 'c_cronaca', author: 'u_editor', kicker: 'Giustizia', title: 'Maxi operazione contro le frodi sui bonus edilizi: 40 arresti in tutta Italia', subtitle: 'Sequestrati beni per 120 milioni. Coinvolte imprese e professionisti', tags: ['Giustizia', 'Bonus'], h: 11, views: 17600 },
-  { cat: 'c_politica', author: 'u_editor', kicker: 'Elezioni', title: 'Regionali, i sondaggi a un mese dal voto: testa a testa nelle grandi città', subtitle: 'Affluenza attesa in calo. I candidati puntano su sanità e trasporti', tags: ['Elezioni'], h: 13, views: 8900 },
+  { cat: 'c_attualita', author: 'u_editor', kicker: 'Start, la rassegna', title: 'Il maltempo sulla Capitale, la manovra al voto, il derby e le altre notizie da sapere per iniziare la giornata', subtitle: 'Start, la rassegna stampa di ASTER News: le notizie del giorno in cinque minuti', tags: ['Maltempo', 'Manovra'], h: 1, views: 48210, featured: true },
+  { cat: 'c_politica', author: 'u_admin', kicker: 'Clima teso', title: 'Manovra, via libera del Consiglio dei ministri: taglio del cuneo e bonus famiglie. Opposizioni: «Coperture incerte»', subtitle: 'Il testo passa ora al Parlamento. Il ministro: «Nessuna nuova tassa». La segretaria dem: «È una manovra di annunci»', tags: ['Governo Meloni', 'Manovra', 'Bonus'], h: 2, views: 31200, featured: true },
+  { cat: 'c_mondo', author: 'u_editor', kicker: "L'esito delle urne", title: "Elezioni in Svezia, l'estrema destra perde voti ma è stallo sul governo", subtitle: 'Nessuna maggioranza chiara dopo lo spoglio. Trattative lunghe per il nuovo esecutivo', tags: ['Europa', 'Elezioni'], h: 3, views: 21800, featured: true },
+  { cat: 'c_attualita', author: 'u_editor', kicker: 'Maltempo', title: 'Nubifragio sulla Capitale: allagamenti, metro chiusa e scuole evacuate', subtitle: 'Allerta arancione prorogata fino a domani. Il Campidoglio: «Restate a casa se potete»', tags: ['Maltempo', 'Trasporti'], h: 1.5, views: 44100, breaking: true, format: 'live' },
+  { cat: 'c_citta', author: 'u_editor', kicker: 'Rieti', title: 'Masso travolge le auto del corteo funebre: donna muore mentre va al funerale della madre', subtitle: 'La frana sulla strada provinciale. Indagini della procura', tags: [], h: 4, views: 19500 },
+  { cat: 'c_citta', author: 'u_editor', kicker: 'Rimini', title: 'Ragazzina di 17 anni torna in albergo in stato confusionale: aperta un\'inchiesta', subtitle: 'I carabinieri hanno acquisito le immagini delle telecamere del lungomare', tags: ['Giustizia'], h: 6, views: 15400 },
+  { cat: 'c_citta', author: 'u_author1', kicker: 'Frosinone', title: 'Dimentica le chiavi di casa e prova a entrare dalla finestra: donna cade e muore', subtitle: 'La tragedia in un palazzo del centro. Inutili i soccorsi', tags: [], h: 8, views: 12100 },
+  { cat: 'c_citta', author: 'u_editor', kicker: 'Matera', title: 'Spara ai cinghiali ma colpisce in testa il fratello e lo uccide', subtitle: 'Battuta di caccia finita in tragedia. L\'uomo è indagato per omicidio colposo', tags: ['Giustizia'], h: 10, views: 17600 },
+  { cat: 'c_economia', author: 'u_author1', kicker: 'Il peso delle scelte', title: 'Carburanti verso i 2,5 euro al litro: il costo "invisibile" delle raffinerie chiuse', subtitle: 'Perché il prezzo alla pompa sale anche quando il petrolio scende', tags: ['Carburanti', 'Inflazione'], h: 5, views: 26700 },
+  { cat: 'c_economia', author: 'u_author1', kicker: 'Prezzi', title: 'Inflazione in calo all\'1,4%: cosa cambia per spesa, mutui e bollette', subtitle: 'Il dato Istat sotto le attese. Ma il carrello della spesa resta caro', tags: ['Inflazione'], h: 9, views: 19500 },
   { cat: 'c_economia', author: 'u_author1', kicker: 'Lavoro', title: 'Smart working, nuove regole dal 1° gennaio: cosa devono sapere dipendenti e aziende', subtitle: 'Accordi individuali, diritto alla disconnessione e buoni pasto', tags: ['Lavoro'], h: 15, views: 14300 },
+  { cat: 'c_economia', author: 'u_author1', kicker: 'Verso la legge di bilancio', title: 'Flat tax al 5% per gli aumenti di stipendio dei giovani lavoratori: l\'idea per l\'"ultima" manovra', subtitle: 'La misura costerebbe 400 milioni. Il nodo delle coperture', tags: ['Manovra', 'Lavoro'], h: 20, views: 9800 },
+  { cat: 'c_politica', author: 'u_admin', kicker: 'Il dibattito', title: '"Il piano scuola è illegale, al massimo qualche aggiustamento". Disabili e immigrati, parla il capo dei presidi', subtitle: 'Il presidente dell\'associazione nazionale: «Educare alla solidarietà non è una scelta»', tags: ['Scuola'], h: 12, views: 8900 },
+  { cat: 'c_politica', author: 'u_admin', kicker: 'Elezioni', title: 'Regionali, i sondaggi a un mese dal voto: testa a testa nelle grandi città', subtitle: 'Affluenza attesa in calo. I candidati puntano su sanità e trasporti', tags: ['Elezioni', 'Campo largo'], h: 26, views: 7300 },
+  { cat: 'c_politica', author: 'u_admin', kicker: 'Parlamento', title: 'Riforma della giustizia, il testo in Aula: i nodi ancora aperti', subtitle: 'Separazione delle carriere e sorteggio del Csm', tags: ['Giustizia', 'Governo Meloni'], h: 40, views: 5800 },
+  { cat: 'c_mondo', author: 'u_editor', kicker: 'Europa', title: 'Bruxelles approva il nuovo patto sui migranti: cosa prevede e chi lo contesta', subtitle: 'Il voto finale dopo tre anni di negoziati', tags: ['Europa', 'Migranti'], h: 14, views: 9100 },
+  { cat: 'c_mondo', author: 'u_editor', kicker: 'Guerra in Ucraina', title: 'Kiev, notte di raid sulla capitale: colpite le infrastrutture energetiche', subtitle: 'Blackout in tre regioni. L\'Europa annuncia nuovi aiuti', tags: ['Ucraina'], h: 7, views: 13400 },
+  { cat: 'c_mondo', author: 'u_editor', kicker: 'Clima', title: 'Vertice sul clima, accordo al ribasso: «Un passo avanti, ma non basta»', subtitle: 'Le delegazioni lasciano il tavolo dopo una notte di trattative', tags: ['Ambiente'], h: 30, views: 6100 },
+  { cat: 'c_sport', author: 'u_author2', kicker: 'Serie A', title: 'Il derby finisce 2-2: rimonta nel recupero e polemiche sul Var', subtitle: 'Due gol negli ultimi cinque minuti. L\'allenatore: «Così non si può giocare»', tags: ['Serie A'], h: 11, views: 27800 },
   { cat: 'c_sport', author: 'u_author2', kicker: 'Champions', title: 'Notte di Champions: le italiane in campo, dove vederle e le probabili formazioni', subtitle: 'Tre squadre a caccia dei quarti', tags: ['Champions League'], h: 17, views: 11000 },
-  { cat: 'c_tecnologia', author: 'u_author3', kicker: 'Smartphone', title: 'Il nuovo smartphone pieghevole alla prova: pregi, difetti e prezzo', subtitle: 'Sette giorni di test. Batteria ottima, fotocamera migliorabile', tags: ['Smartphone'], h: 20, views: 7600 },
-  { cat: 'c_roma', author: 'u_editor', kicker: 'Quartieri', title: 'Ztl fascia verde, parte la fase due: nuovi varchi e multe dal 1° del mese', subtitle: 'Cosa cambia per chi ha un diesel Euro 4 e le deroghe previste', tags: ['Traffico', 'Ambiente'], h: 22, views: 20100 },
-  { cat: 'c_spettacolo', author: 'u_contrib', kicker: 'TV', title: 'Ascolti tv, la fiction batte il reality: i dati della serata', subtitle: 'Oltre 5 milioni di spettatori per la prima puntata', tags: ['Televisione'], h: 26, views: 6700 },
-  { cat: 'c_esteri', author: 'u_editor', kicker: 'Europa', title: 'Bruxelles approva il nuovo patto sui migranti: cosa prevede e chi lo contesta', subtitle: 'Il voto finale dopo tre anni di negoziati', tags: ['Europa'], h: 28, views: 9100 },
-  { cat: 'c_cronaca', author: 'u_editor', kicker: 'Incidente', title: 'Tamponamento a catena sul Raccordo: code per 10 chilometri, due feriti', subtitle: 'Traffico in tilt in carreggiata interna tra Appia e Tuscolana', tags: ['Traffico'], h: 30, views: 13400 },
-  { cat: 'c_economia', author: 'u_author1', kicker: 'Startup', title: 'La startup romana che ha raccolto 20 milioni per la logistica green', subtitle: 'Consegne con cargo bike elettriche in dieci città', tags: ['Startup', 'Ambiente'], h: 34, views: 5400 },
-  { cat: 'c_salute', author: 'u_author3', kicker: 'Prevenzione', title: 'Influenza, al via la campagna vaccinale: chi ha diritto alla dose gratuita', subtitle: 'Prenotazioni in farmacia e dal medico di base', tags: ['Vaccini', 'Sanità'], h: 40, views: 8200 },
-  { cat: 'c_sport', author: 'u_author2', kicker: 'Tennis', title: 'Finale da sogno: l\'azzurro vola in finale dopo cinque set', subtitle: 'Una maratona di quattro ore e mezza', tags: [], h: 45, views: 16800 },
-  { cat: 'c_tecnologia', author: 'u_author3', kicker: 'Sicurezza', title: 'Truffa del finto corriere via SMS: come riconoscerla e cosa fare', subtitle: 'Migliaia di segnalazioni in una settimana', tags: ['Smartphone'], h: 50, views: 21000 },
-  { cat: 'c_roma', author: 'u_editor', kicker: 'Eventi', title: 'Weekend a Roma: dieci cose da fare tra mostre, concerti e mercatini', subtitle: 'La guida della redazione agli eventi del fine settimana', tags: ['Turismo'], h: 55, views: 7300, sponsored: true },
-  { cat: 'c_esteri', author: 'u_editor', kicker: 'Mondo', title: 'Vertice sul clima, accordo al ribasso: «Un passo avanti, ma non basta»', subtitle: 'Le delegazioni lasciano il tavolo dopo una notte di trattative', tags: ['Ambiente'], h: 60, views: 6100 },
-  { cat: 'c_spettacolo', author: 'u_contrib', kicker: 'Musica', title: 'Il tour estivo parte dallo Stadio Olimpico: scaletta, orari e come arrivare', subtitle: 'Sessantamila biglietti venduti in due ore', tags: ['Musica'], h: 70, views: 10200 },
-  { cat: 'c_politica', author: 'u_editor', kicker: 'Parlamento', title: 'Riforma della giustizia, il testo in Aula: i nodi ancora aperti', subtitle: 'Separazione delle carriere e sorteggio del Csm', tags: ['Giustizia', 'Governo'], h: 80, views: 5800 },
-  { cat: 'c_cronaca', author: 'u_author1', kicker: 'Bozza', title: 'Inchiesta sui rifiuti: cosa emerge dai documenti', subtitle: 'Un anno di lavoro sui dati delle discariche', tags: ['Ambiente'], h: 0.5, views: 0, status: 'draft' },
+  { cat: 'c_sport', author: 'u_author2', kicker: 'Tennis', title: 'Finale da sogno: l\'azzurro vola in finale dopo cinque set', subtitle: 'Una maratona di quattro ore e mezza', tags: [], h: 45, views: 16800, format: 'video' },
+  { cat: 'c_life', author: 'u_author3', kicker: 'Sanità', title: 'Liste d\'attesa, il nuovo piano: visite entro 30 giorni o rimborso', subtitle: 'Arriva la piattaforma unica per le prenotazioni. Le Regioni frenano', tags: ['Sanità'], h: 13, views: 12100 },
+  { cat: 'c_life', author: 'u_author3', kicker: 'Prevenzione', title: 'Influenza, al via la campagna vaccinale: chi ha diritto alla dose gratuita', subtitle: 'Prenotazioni in farmacia e dal medico di base', tags: ['Vaccini', 'Sanità'], h: 22, views: 8200 },
+  { cat: 'c_life', author: 'u_author3', kicker: 'Casa', title: 'Bonus ristrutturazioni 2027: la guida completa alle detrazioni', subtitle: 'Tutte le percentuali e le scadenze', tags: ['Bonus', 'Casa'], h: 36, views: 9900 },
+  { cat: 'c_vision', author: 'u_contrib', kicker: 'Cinema', title: 'Com\'è "La casa sul fiume", vincitore a Venezia (e unico film diretto da una donna in gara)', subtitle: 'Standing ovation di dieci minuti alla prima. In sala dal prossimo giovedì', tags: ['Cinema'], h: 4.5, views: 9800, format: 'gallery' },
+  { cat: 'c_vision', author: 'u_contrib', kicker: 'Tv', title: 'Ascolti tv, la fiction batte il reality: i dati della serata', subtitle: 'Oltre 5 milioni di spettatori per la prima puntata', tags: ['Televisione'], h: 18, views: 6700 },
+  { cat: 'c_vision', author: 'u_contrib', kicker: 'Musica', title: 'Il tour estivo parte dallo Stadio Olimpico: scaletta, orari e come arrivare', subtitle: 'Sessantamila biglietti venduti in due ore', tags: ['Musica'], h: 50, views: 10200 },
+  { cat: 'c_opinioni', author: 'u_author3', kicker: 'Il commento', title: 'Quando la pseudoscienza trova spazio sui grandi giornali', subtitle: 'Iridologia, digiuno-terapia e altre pratiche senza basi scientifiche presentate come cure: perché è un problema', tags: ['Sanità'], h: 3.5, views: 7200 },
+  { cat: 'c_opinioni', author: 'u_admin', kicker: 'L\'editoriale', title: 'La manovra dei bonus e il coraggio che manca', subtitle: 'Distribuire piccoli incentivi non è una politica economica. Serve una visione sul lavoro e sui salari', tags: ['Manovra'], h: 5.5, views: 6400 },
+  { cat: 'c_opinioni', author: 'u_contrib', kicker: 'Il punto', title: 'Perché senza le periferie non esisterebbe il cinema italiano', subtitle: 'Dai quartieri popolari ai festival: una storia che ricomincia ogni volta', tags: ['Cinema'], h: 28, views: 3100 },
+  { cat: 'c_dossier', author: 'u_author1', kicker: 'Spesa consapevole', title: 'Quando comprare il pesce per risparmiare: i giorni migliori e quelli da evitare', subtitle: 'Dalla freschezza del pescato alle offerte, cosa sapere su stagionalità, prezzi e promozioni. E un calendario di stagione con le specie da scegliere ogni mese', tags: ['Inflazione'], h: 6.5, views: 18800, featured: true },
+  { cat: 'c_dossier', author: 'u_author3', kicker: 'I documenti esclusivi', title: 'I cavi del Ponte "galoppano", ma mancano calcoli e progetti: bisogna ricominciare da capo', subtitle: 'Il carteggio dei tecnici del ministero con la società: cosa dicono le carte', tags: ['Trasporti'], h: 24, views: 14100 },
+  { cat: 'c_dossier', author: 'u_editor', kicker: 'C\'era una volta', title: 'Il quartiere che ha resistito al cemento: storia di una battaglia lunga trent\'anni', subtitle: 'Dal comitato di quartiere al parco pubblico: come una comunità ha cambiato il destino di un pezzo di città', tags: ['Ambiente'], h: 60, views: 5400 },
+  { cat: 'c_attualita', author: 'u_editor', kicker: 'Giustizia', title: 'Maxi operazione contro le frodi sui bonus edilizi: 40 arresti in tutta Italia', subtitle: 'Sequestrati beni per 120 milioni. Coinvolte imprese e professionisti', tags: ['Giustizia', 'Bonus'], h: 16, views: 17600 },
+  { cat: 'c_attualita', author: 'u_author3', kicker: 'Sicurezza', title: 'Truffa del finto corriere via sms: come riconoscerla e cosa fare', subtitle: 'Migliaia di segnalazioni in una settimana', tags: ['Smartphone'], h: 33, views: 21000 },
+  { cat: 'c_attualita', author: 'u_author3', kicker: 'Scuola', title: 'Intelligenza artificiale in classe: parte la sperimentazione in 500 istituti', subtitle: 'Tutor digitali per studenti e docenti. Il Ministero: «Nessuna sostituzione degli insegnanti»', tags: ['Intelligenza artificiale', 'Scuola'], h: 19, views: 15400 },
+  { cat: 'c_life', author: 'u_author1', kicker: 'Weekend', title: 'Dieci cose da fare nel fine settimana tra mostre, concerti e mercatini', subtitle: 'La guida della redazione agli eventi', tags: ['Turismo'], h: 55, views: 7300, sponsored: true },
+  { cat: 'c_attualita', author: 'u_author1', kicker: 'Bozza', title: 'Inchiesta sui rifiuti: cosa emerge dai documenti', subtitle: 'Un anno di lavoro sui dati delle discariche', tags: ['Ambiente'], h: 0.5, views: 0, status: 'draft' },
   { cat: 'c_sport', author: 'u_contrib', kicker: 'Revisione', title: 'Calciomercato, le trattative dell\'ultima ora', subtitle: 'Tutti i nomi caldi', tags: ['Serie A'], h: 1.5, views: 0, status: 'review' },
-  { cat: 'c_economia', author: 'u_author1', kicker: 'Programmato', title: 'Bonus casa 2027: la guida completa alle detrazioni', subtitle: 'Tutte le percentuali e le scadenze', tags: ['Bonus'], h: -24, views: 0, status: 'scheduled' },
+  { cat: 'c_economia', author: 'u_author1', kicker: 'Programmato', title: 'Pensioni 2027: le novità in arrivo', subtitle: 'Tutte le finestre di uscita', tags: ['Lavoro'], h: -24, views: 0, status: 'scheduled' },
 ];
 
 const articles: Article[] = seeds.map((s, i) => {
-  const slug = slugify(s.title);
+  const slug = slugify(s.title).slice(0, 80).replace(/-$/, '');
   const status = s.status ?? 'published';
   const publishedAt = status === 'published' ? hoursAgo(s.h) : null;
   const scheduledAt = status === 'scheduled' ? hoursAgo(s.h) : null;
@@ -92,7 +105,7 @@ const articles: Article[] = seeds.map((s, i) => {
     kicker: s.kicker,
     title: s.title,
     subtitle: s.subtitle,
-    excerpt: s.subtitle + '. Tutti gli aggiornamenti e gli approfondimenti sulla vicenda nella pagina dedicata di ASTER News.',
+    excerpt: s.subtitle,
     content: body(s.title, catName),
     coverImage: img(slug.slice(0, 20)),
     coverCaption: 'Foto di repertorio',
@@ -123,57 +136,41 @@ const articles: Article[] = seeds.map((s, i) => {
 });
 
 const comments: Comment[] = [
-  { id: 'cm1', articleId: 'a_1', authorName: 'Paolo R.', email: 'paolo@example.com', body: 'Anche a Prati è tutto allagato, non si passa.', status: 'approved', createdAt: hoursAgo(0, 30) },
-  { id: 'cm2', articleId: 'a_1', authorName: 'Francesca', email: 'fra@example.com', body: 'Grazie per gli aggiornamenti in tempo reale!', status: 'approved', createdAt: hoursAgo(0, 50) },
-  { id: 'cm3', articleId: 'a_1', authorName: 'Anonimo', email: 'x@example.com', body: 'Compra follower qui www.spam.example', status: 'spam', createdAt: hoursAgo(1) },
+  { id: 'cm1', articleId: 'a_4', authorName: 'Paolo R.', email: 'paolo@example.com', body: 'Anche a Prati è tutto allagato, non si passa.', status: 'approved', createdAt: hoursAgo(0, 30) },
+  { id: 'cm2', articleId: 'a_4', authorName: 'Francesca', email: 'fra@example.com', body: 'Grazie per gli aggiornamenti in tempo reale!', status: 'approved', createdAt: hoursAgo(0, 50) },
+  { id: 'cm3', articleId: 'a_4', authorName: 'Anonimo', email: 'x@example.com', body: 'Compra follower qui www.spam.example', status: 'spam', createdAt: hoursAgo(1) },
   { id: 'cm4', articleId: 'a_2', authorName: 'Giorgio', email: 'g@example.com', body: 'Vedremo se le coperture reggono davvero.', status: 'pending', createdAt: hoursAgo(1, 20) },
-  { id: 'cm5', articleId: 'a_3', authorName: 'Tifoso81', email: 't@example.com', body: 'Il VAR doveva intervenire sul secondo gol.', status: 'pending', createdAt: hoursAgo(2) },
-  { id: 'cm6', articleId: 'a_6', authorName: 'Maria', email: 'm@example.com', body: 'Finalmente! Era ora.', status: 'approved', createdAt: hoursAgo(5) },
-  { id: 'cm7', articleId: 'a_14', authorName: 'Carlo', email: 'c@example.com', body: 'E chi non può permettersi un\'auto nuova?', status: 'pending', createdAt: hoursAgo(20) },
+  { id: 'cm5', articleId: 'a_19', authorName: 'Tifoso81', email: 't@example.com', body: 'Il Var doveva intervenire sul secondo gol.', status: 'pending', createdAt: hoursAgo(2) },
+  { id: 'cm6', articleId: 'a_9', authorName: 'Maria', email: 'm@example.com', body: 'E chi fa 60 km al giorno per lavorare?', status: 'approved', createdAt: hoursAgo(5) },
+  { id: 'cm7', articleId: 'a_28', authorName: 'Carlo', email: 'c@example.com', body: 'Finalmente qualcuno lo dice.', status: 'pending', createdAt: hoursAgo(20) },
 ];
 
 const media: MediaItem[] = articles.slice(0, 12).map((a, i) => ({
-  id: `m_${i + 1}`,
-  name: `${a.slug.slice(0, 30)}.jpg`,
-  url: a.coverImage,
-  alt: a.title,
-  type: 'image' as const,
-  size: 240000 + i * 13000,
-  uploadedBy: a.authorId,
-  createdAt: a.createdAt,
+  id: `m_${i + 1}`, name: `${a.slug.slice(0, 30)}.jpg`, url: a.coverImage, alt: a.title, type: 'image' as const, size: 240000 + i * 13000, uploadedBy: a.authorId, createdAt: a.createdAt,
 }));
 
 export function buildSeed(): Database {
   return {
-    version: 1,
-    categories,
-    tags,
-    users,
-    articles,
-    comments,
-    media,
+    version: 2,
+    categories, tags, users, articles, comments, media,
     subscribers: [{ id: 's1', email: 'lettore@example.com', createdAt: hoursAgo(48) }],
     settings: {
       siteName: 'ASTER News',
-      tagline: 'Le notizie, in tempo reale',
-      description: 'ASTER News è il quotidiano online con cronaca, politica, economia, sport e spettacolo. Aggiornamenti 24 ore su 24.',
-      ticker: [
-        'Maltempo, allerta arancione prorogata a domani',
-        'Manovra approvata dal Cdm: taglio del cuneo confermato',
-        'Metro C: inaugurata la stazione Colosseo',
-        'Inflazione in calo all\'1,4%',
-      ],
+      tagline: 'Ultime notizie dall\'Italia e dal mondo',
+      description: 'ASTER News è il quotidiano online con attualità, politica, economia, sport, life e vision. Le notizie dall\'Italia e dal mondo, aggiornate 24 ore su 24.',
+      ticker: ['Maltempo, allerta arancione prorogata a domani', 'Manovra approvata dal Cdm: taglio del cuneo confermato', 'Inflazione in calo all\'1,4%'],
       tickerEnabled: true,
-      homeSections: ['c_cronaca', 'c_politica', 'c_roma', 'c_economia', 'c_sport', 'c_spettacolo', 'c_tecnologia'],
+      homeSections: ['c_attualita', 'c_politica', 'c_mondo', 'c_economia', 'c_sport', 'c_life', 'c_vision'],
       articlesPerPage: 12,
+      subscribeUrl: '',
       socials: { facebook: 'https://facebook.com', instagram: 'https://instagram.com', x: 'https://x.com', youtube: 'https://youtube.com', telegram: 'https://t.me' },
       footerText: 'ASTER News è una testata giornalistica registrata. Direttore responsabile: Giulia Ferrante.',
       commentsModeration: true,
     },
     activity: [
       { id: 'ac1', userId: 'u_editor', action: 'ha pubblicato', target: articles[0].title, createdAt: hoursAgo(1) },
-      { id: 'ac2', userId: 'u_author1', action: 'ha creato la bozza', target: articles[25].title, createdAt: hoursAgo(0, 30) },
-      { id: 'ac3', userId: 'u_contrib', action: 'ha inviato in revisione', target: articles[26].title, createdAt: hoursAgo(1, 30) },
+      { id: 'ac2', userId: 'u_author1', action: 'ha creato la bozza', target: articles[37].title, createdAt: hoursAgo(0, 30) },
+      { id: 'ac3', userId: 'u_contrib', action: 'ha inviato in revisione', target: articles[38].title, createdAt: hoursAgo(1, 30) },
     ],
   };
 }

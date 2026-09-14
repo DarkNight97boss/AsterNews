@@ -7,10 +7,8 @@ export function LoadMore({ children, step, label = 'Carica altri articoli' }: { 
   const [n, setN] = useState(step);
   return (
     <>
-      <div className="grid" style={{ gap: 28 }}>{items.slice(0, n)}</div>
-      {n < items.length && (
-        <div className="load-more"><button className="btn btn-dark btn-lg" onClick={() => setN((x) => x + step)}>{label}</button></div>
-      )}
+      <div className="list-divided">{items.slice(0, n)}</div>
+      {n < items.length && <div className="load-more"><button className="btn btn-dark btn-lg" onClick={() => setN((x) => x + step)}>{label}</button></div>}
     </>
   );
 }

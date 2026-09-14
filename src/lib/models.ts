@@ -3,10 +3,13 @@ export type ArticleStatus = 'draft' | 'review' | 'scheduled' | 'published' | 'ar
 export type ArticleFormat = 'standard' | 'video' | 'gallery' | 'live';
 export type CommentStatus = 'pending' | 'approved' | 'rejected' | 'spam';
 
+export type CategoryKind = 'standard' | 'local' | 'opinion' | 'dossier';
+
 export interface Category {
   id: string;
   slug: string;
   name: string;
+  kind: CategoryKind;
   color: string;
   description: string;
   order: number;
@@ -111,6 +114,7 @@ export interface SiteSettings {
   tickerEnabled: boolean;
   homeSections: string[];
   articlesPerPage: number;
+  subscribeUrl: string;
   socials: { facebook: string; instagram: string; x: string; youtube: string; telegram: string };
   footerText: string;
   commentsModeration: boolean;
@@ -164,4 +168,11 @@ export const COMMENT_STATUS_LABELS: Record<CommentStatus, string> = {
   approved: 'Approvato',
   rejected: 'Rifiutato',
   spam: 'Spam',
+};
+
+export const CATEGORY_KIND_LABELS: Record<CategoryKind, string> = {
+  standard: 'Notizie',
+  local: 'Dalle città (occhiello = città)',
+  opinion: 'Opinioni (firma in evidenza)',
+  dossier: 'Dossier (badge giallo)',
 };

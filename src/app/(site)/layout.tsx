@@ -2,16 +2,19 @@ import { SiteHeader } from '@/components/site/header';
 import { Ticker } from '@/components/site/ticker';
 import { Footer } from '@/components/site/footer';
 import { getCurrentUser } from '@/lib/auth';
-import { articleUrl, getCategories, getLiveArticles, getSettings } from '@/lib/queries';
+import { articleUrl, getCategories, getLiveArticles, getPublished, getSettings, user } from '@/lib/queries';
 
 export default async function SiteLayout({ children }: LayoutProps<'/'>) {
-  const user = await getCurrentUser();
+  const me = await getCurrentUser();
   const categories = getCategories();
+  const opinionIds = new Set(categories.filter((c) => c.kind === 'opinion').map((c) => c.id));
+  const opinions = getPublished().filter((a) => opinionIds.has(a.categoryId)).slice(0, 2).map((a) => ({ title: a.title, url: articleUrl(a), author: user(a.authorId)?.name ?? '', avatar: user(a.authorId)?.avatar ?? '' }));
   const live = getLiveArticles()[0];
+  const s = getSettings();
   const today = new Date().toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
   return (
     <>
-      <SiteHeader categories={categories} menuCategories={categories.filter((c) => c.showInMenu)} liveLink={live ? articleUrl(live) : null} isLoggedIn={!!user} today={today} socials={getSettings().socials} />
+      <SiteHeader categories={categories} opinions={opinions} liveLink={live ? articleUrl(live) : null} isLoggedIn={!!me} today={today} subscribeUrl={s.subscribeUrl} siteName={s.siteName} />
       <Ticker />
       <main className="page"><div className="container">{children}</div></main>
       <Footer />

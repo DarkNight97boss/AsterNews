@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import Form from 'next/form';
 import { ArticleList } from '@/components/site/article-list';
-import { Sidebar } from '@/components/site/sidebar';
+import { Sidebar } from '@/components/site/widgets';
 import { search } from '@/lib/queries';
 
 export async function generateMetadata({ searchParams }: PageProps<'/cerca'>): Promise<Metadata> {

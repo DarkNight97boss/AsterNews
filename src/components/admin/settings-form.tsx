@@ -20,6 +20,7 @@ export function SettingsForm({ initial, categories }: { initial: SiteSettings; c
           <div className="panel"><div className="panel-title">Identità</div>
             <div className="form-row"><div className="field"><label>Nome testata</label><input className="input" value={s.siteName} onChange={(e) => setS({ ...s, siteName: e.target.value })} /></div><div className="field"><label>Payoff</label><input className="input" value={s.tagline} onChange={(e) => setS({ ...s, tagline: e.target.value })} /></div></div>
             <div className="field"><label>Descrizione (meta description home)</label><textarea className="textarea" value={s.description} onChange={(e) => setS({ ...s, description: e.target.value })} /></div>
+            <div className="field"><label>Link "Abbonati" (vuoto = newsletter)</label><input className="input" value={s.subscribeUrl} onChange={(e) => setS({ ...s, subscribeUrl: e.target.value })} placeholder="https://..." /></div>
             <div className="field"><label>Testo footer / gerenza</label><textarea className="textarea" style={{ minHeight: 60 }} value={s.footerText} onChange={(e) => setS({ ...s, footerText: e.target.value })} /></div>
           </div>
           <div className="panel"><div className="panel-title">Ticker Ultim&apos;ora <label className="switch"><input type="checkbox" checked={s.tickerEnabled} onChange={(e) => setS({ ...s, tickerEnabled: e.target.checked })} /> Attivo</label></div>

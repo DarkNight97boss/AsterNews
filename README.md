@@ -1,7 +1,7 @@
 # ASTER News
 
 CMS editoriale e sito di notizie realizzato in **Next.js 16** (App Router, React Server Components, Server Actions) con rendering lato server per la SEO.
-Design ispirato a Fanpage.it / tema Ciao People: layout bianco, titoli in grassetto, accento rosso, ticker "Ultim'ora", dirette, video e fotogallery.
+Design e funzioni ispirati a Today.it (Citynews): header blu con logo serif e box delle firme, titoli in serif, occhielli rossi, tema chiaro/scuro, "Dalle città", Dossier con badge giallo, Opinioni con firma in evidenza, "I più letti", ticker "Ultim'ora", dirette, video e fotogallery.
 
 ## Avvio
 
@@ -27,8 +27,11 @@ Password unica per tutti: `aster2026`
 ## Funzionalità
 
 ### Sito pubblico (server-rendered)
-- Homepage con hero, "Ultime notizie" con orario, blocchi per categoria configurabili, video, sidebar (più letti, newsletter, in diretta, argomenti)
-- URL stile Fanpage: `/cronaca` (categoria), `/cronaca/slug-articolo` (articolo), tag, autore, archivio, ricerca
+- Homepage stile Today: apertura con titolo serif e immagine, coppia di notizie, colonna "Dalle città", fascia Dossier in evidenza, blocco Dossier scuro, sezioni per categoria a 4 colonne, "Le opinioni" con avatar delle firme, video, "I più letti" e newsletter
+- Tipi di sezione configurabili dal CMS: notizie, **Dalle città** (occhiello = città), **Opinioni** (firma in evidenza, box nell'header), **Dossier** (badge giallo)
+- Tema chiaro / scuro con toggle nella barra superiore (persistito via cookie, senza flash)
+- URL: `/politica` (sezione con sotto-argomenti automatici dai tag), `/politica/slug-articolo`, tag, autore, archivio, ricerca
+- Pagina articolo a tre colonne: firma, data, condivisione, "Si parla di" e "Sullo stesso argomento" a sinistra; testo serif con capolettera; "Video del giorno"; "I più letti" e newsletter a destra
 - Formati articolo: standard, **video** (YouTube), **fotogallery** (lightbox), **diretta** (live blog con aggiornamenti)
 - Ticker Ultim'ora, barra di lettura, condivisione social, correlati, commenti moderati, iscrizione newsletter
 - **SEO**: HTML completo dal server, `generateMetadata` per pagina (title, description, OpenGraph, Twitter card, canonical, noindex), JSON-LD `NewsArticle`, `sitemap.xml` e `robots.txt` generati, redirect 308 se un articolo viene richiesto con la categoria sbagliata, immagini ottimizzate con `next/image`, font con `next/font`

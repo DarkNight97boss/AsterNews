@@ -8,17 +8,18 @@ export function Footer() {
       <div className="container">
         <div className="footer-grid">
           <div>
-            <Link href="/" className="logo">Aster<span>news</span></Link>
+            <Link href="/" className="logo logo-sm">Aster<small>news</small></Link>
             <p style={{ marginTop: 12 }}>{s.description}</p>
             <p>{s.footerText}</p>
           </div>
           <div><h4>Sezioni</h4><ul>{getCategories().map((c) => <li key={c.id}><Link href={`/${c.slug}`}>{c.name}</Link></li>)}</ul></div>
-          <div><h4>Servizi</h4><ul><li><Link href="/notizie">Tutte le notizie</Link></li><li><Link href="/cerca">Cerca</Link></li><li><Link href="/login">Area redazione</Link></li></ul></div>
+          <div><h4>Servizi</h4><ul><li><Link href="/notizie">Tutte le notizie</Link></li><li><Link href="/cerca">Cerca</Link></li><li><Link href="#newsletter">Newsletter</Link></li><li><Link href="/login">Area redazione</Link></li></ul></div>
           <div><h4>Seguici</h4><ul>
             <li><a href={s.socials.facebook} target="_blank" rel="noopener">Facebook</a></li>
             <li><a href={s.socials.instagram} target="_blank" rel="noopener">Instagram</a></li>
             <li><a href={s.socials.x} target="_blank" rel="noopener">X</a></li>
             <li><a href={s.socials.youtube} target="_blank" rel="noopener">YouTube</a></li>
+            <li><a href={s.socials.telegram} target="_blank" rel="noopener">Telegram</a></li>
           </ul></div>
         </div>
         <div className="footer-bottom">

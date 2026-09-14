@@ -59,3 +59,19 @@ export function hoursAgo(h: number, min = 0): string {
 export function img(seed: string, w = 1200, h = 800): string {
   return `https://picsum.photos/seed/${seed}/${w}/${h}`;
 }
+
+/** Data relativa in stile Today.it: "oggi, 9:01", "ieri mattina, 8:28", "12 settembre, 18:40". */
+export function relativeDate(iso: string | null | undefined): string {
+  if (!iso) return '';
+  const d = new Date(iso);
+  const now = new Date();
+  const time = d.toLocaleTimeString('it-IT', { hour: 'numeric', minute: '2-digit' });
+  const startToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  const startYesterday = startToday - 86400000;
+  const h = d.getHours();
+  const slot = h < 13 ? 'mattina' : h < 19 ? 'pomeriggio' : 'sera';
+  if (d.getTime() >= startToday) return `oggi, ${time}`;
+  if (d.getTime() >= startYesterday) return `ieri ${slot}, ${time}`;
+  const date = d.toLocaleDateString('it-IT', { day: 'numeric', month: 'long' });
+  return `${date}, ${time}`;
+}

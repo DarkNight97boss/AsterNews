@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { ArticleList } from '@/components/site/article-list';
-import { Sidebar } from '@/components/site/sidebar';
+import { Sidebar } from '@/components/site/widgets';
 import { getPublished } from '@/lib/queries';
 
 export const metadata: Metadata = { title: 'Tutte le notizie' };
