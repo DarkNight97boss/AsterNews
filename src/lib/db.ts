@@ -31,7 +31,9 @@ async function makeDriver(): Promise<Driver> {
   if (url) {
     // node-postgres: protocollo semplice e affidabile con i pooler in transaction mode (Supavisor/pgbouncer), timeout nativi per query.
     const { Pool } = await import('pg');
-    const open = () => new Pool({ connectionString: url, ssl: url.includes('localhost') ? undefined : { rejectUnauthorized: false }, max: isServerless() ? 4 : 10, idleTimeoutMillis: 10_000, connectionTimeoutMillis: 15_000, query_timeout: 20_000, allowExitOnIdle: true });
+    // sslmode=require nell'URL farebbe verificare la catena di certificati (Supabase usa una CA propria): si toglie e si passa ssl esplicito.
+    const connectionString = url.replace(/([?&])sslmode=[^&]*&?/, '$1').replace(/[?&]$/, '');
+    const open = () => new Pool({ connectionString, ssl: url.includes('localhost') ? undefined : { rejectUnauthorized: false }, max: isServerless() ? 4 : 10, idleTimeoutMillis: 10_000, connectionTimeoutMillis: 15_000, query_timeout: 20_000, allowExitOnIdle: true });
     let pool = open();
     pool.on('error', () => {}); // errori sui client inattivi (chiusi dal pooler): niente crash del processo
     // In serverless l'istanza viene "congelata" tra una richiesta e l'altra: una connessione tenuta aperta può risultare morta al risveglio.
