@@ -25,8 +25,10 @@ export function toPg(sql: string): string {
 const norm = (v: unknown) => (v === undefined ? null : v);
 
 async function makeDriver(): Promise<Driver> {
-  const url = process.env.DATABASE_URL ?? process.env.POSTGRES_URL ?? process.env.POSTGRES_PRISMA_URL;
-  if (url && !url.includes('[SENSITIVE]')) {
+  // Preferisce la connessione in "session mode" (porta 5432: protocollo Postgres completo). Il pooler in "transaction mode" (6543) di Supabase
+  // può lasciare appese le query pipelined di postgres.js. DATABASE_URL, se presente, vince su tutto.
+  const url = [process.env.DATABASE_URL, process.env.POSTGRES_URL_NON_POOLING, process.env.POSTGRES_URL, process.env.POSTGRES_PRISMA_URL].find((u) => u && !u.includes('[SENSITIVE]'));
+  if (url) {
     const postgres = (await import('postgres')).default;
     const open = () => postgres(url, { prepare: false, ssl: url.includes('localhost') ? undefined : 'require', max: isServerless() ? 3 : 8, idle_timeout: 10, max_lifetime: 300, connect_timeout: 15, transform: { undefined: null }, onnotice: () => {} });
     let sql = open();
@@ -38,12 +40,13 @@ async function makeDriver(): Promise<Driver> {
       run().then((v) => { clearTimeout(timer); resolve(v); }, (e) => { clearTimeout(timer); reject(e); });
     });
     const guarded = async <T,>(run: () => Promise<T>, ms: number): Promise<T> => {
-      try { return await withTimeout(run, ms); }
-      catch (e) {
-        if (!(e instanceof DbTimeout) && !isDeadConnection(e)) throw e;
-        const dead = sql; sql = open();
-        void dead.end({ timeout: 0 }).catch(() => {});
-        return await withTimeout(run, ms);
+      for (let attempt = 0; ; attempt++) {
+        try { return await withTimeout(run, ms); }
+        catch (e) {
+          if (attempt >= 2 || (!(e instanceof DbTimeout) && !isDeadConnection(e))) throw e;
+          if (e instanceof DbTimeout) { const dead = sql; sql = open(); void dead.end({ timeout: 5 }).catch(() => {}); } // pool sospetto: se ne apre uno nuovo, il vecchio si chiude quando le query in corso finiscono
+          else await new Promise((r) => setTimeout(r, 200 * (attempt + 1))); // connessione chiusa da un altro tentativo: si riprova sul pool corrente
+        }
       }
     };
     return {
@@ -141,7 +144,7 @@ export function isServerless(): boolean { return !!(process.env.VERCEL_REGION ||
 function writableDir(dir: string): string | undefined {
   try { fs.mkdirSync(dir, { recursive: true }); fs.accessSync(dir, fs.constants.W_OK); return dir; } catch { return undefined; }
 }
-export function isRemote(): boolean { const u = process.env.DATABASE_URL ?? process.env.POSTGRES_URL; return !!u && !u.includes('[SENSITIVE]'); }
+export function isRemote(): boolean { return [process.env.DATABASE_URL, process.env.POSTGRES_URL_NON_POOLING, process.env.POSTGRES_URL, process.env.POSTGRES_PRISMA_URL].some((u) => u && !u.includes('[SENSITIVE]')); }
 
 async function driver(): Promise<Driver> {
   if (!g.__asterDriver) g.__asterDriver = await makeDriver();
