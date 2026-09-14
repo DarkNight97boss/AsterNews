@@ -1,0 +1,167 @@
+export type Role = 'admin' | 'editor' | 'author' | 'contributor';
+export type ArticleStatus = 'draft' | 'review' | 'scheduled' | 'published' | 'archived';
+export type ArticleFormat = 'standard' | 'video' | 'gallery' | 'live';
+export type CommentStatus = 'pending' | 'approved' | 'rejected' | 'spam';
+
+export interface Category {
+  id: string;
+  slug: string;
+  name: string;
+  color: string;
+  description: string;
+  order: number;
+  showInMenu: boolean;
+  showOnHome: boolean;
+}
+
+export interface Tag {
+  id: string;
+  slug: string;
+  name: string;
+}
+
+export interface User {
+  id: string;
+  name: string;
+  email: string;
+  role: Role;
+  avatar: string;
+  bio: string;
+  active: boolean;
+  createdAt: string;
+}
+
+export interface LiveUpdate {
+  id: string;
+  time: string;
+  title: string;
+  body: string;
+}
+
+export interface SeoMeta {
+  title: string;
+  description: string;
+  canonical: string;
+  noIndex: boolean;
+}
+
+export interface Article {
+  id: string;
+  slug: string;
+  kicker: string;
+  title: string;
+  subtitle: string;
+  excerpt: string;
+  content: string;
+  coverImage: string;
+  coverCaption: string;
+  categoryId: string;
+  tagIds: string[];
+  authorId: string;
+  status: ArticleStatus;
+  format: ArticleFormat;
+  videoUrl: string;
+  gallery: string[];
+  liveUpdates: LiveUpdate[];
+  liveActive: boolean;
+  featured: boolean;
+  breaking: boolean;
+  sponsored: boolean;
+  allowComments: boolean;
+  seo: SeoMeta;
+  views: number;
+  publishedAt: string | null;
+  scheduledAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Comment {
+  id: string;
+  articleId: string;
+  authorName: string;
+  email: string;
+  body: string;
+  status: CommentStatus;
+  createdAt: string;
+}
+
+export interface MediaItem {
+  id: string;
+  name: string;
+  url: string;
+  alt: string;
+  type: 'image' | 'video';
+  size: number;
+  uploadedBy: string;
+  createdAt: string;
+}
+
+export interface Subscriber {
+  id: string;
+  email: string;
+  createdAt: string;
+}
+
+export interface SiteSettings {
+  siteName: string;
+  tagline: string;
+  description: string;
+  ticker: string[];
+  tickerEnabled: boolean;
+  homeSections: string[];
+  articlesPerPage: number;
+  socials: { facebook: string; instagram: string; x: string; youtube: string; telegram: string };
+  footerText: string;
+  commentsModeration: boolean;
+}
+
+export interface ActivityEntry {
+  id: string;
+  userId: string;
+  action: string;
+  target: string;
+  createdAt: string;
+}
+
+export interface Database {
+  version: number;
+  categories: Category[];
+  tags: Tag[];
+  users: User[];
+  articles: Article[];
+  comments: Comment[];
+  media: MediaItem[];
+  subscribers: Subscriber[];
+  settings: SiteSettings;
+  activity: ActivityEntry[];
+}
+
+export const STATUS_LABELS: Record<ArticleStatus, string> = {
+  draft: 'Bozza',
+  review: 'In revisione',
+  scheduled: 'Programmato',
+  published: 'Pubblicato',
+  archived: 'Archiviato',
+};
+
+export const FORMAT_LABELS: Record<ArticleFormat, string> = {
+  standard: 'Articolo',
+  video: 'Video',
+  gallery: 'Fotogallery',
+  live: 'Diretta',
+};
+
+export const ROLE_LABELS: Record<Role, string> = {
+  admin: 'Amministratore',
+  editor: 'Caporedattore',
+  author: 'Redattore',
+  contributor: 'Collaboratore',
+};
+
+export const COMMENT_STATUS_LABELS: Record<CommentStatus, string> = {
+  pending: 'In attesa',
+  approved: 'Approvato',
+  rejected: 'Rifiutato',
+  spam: 'Spam',
+};
