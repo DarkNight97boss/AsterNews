@@ -9,11 +9,11 @@ import { ThemeToggle } from './theme-toggle';
 
 export interface OpinionTeaser { title: string; url: string; author: string; avatar: string }
 export interface WeatherTeaser { icon: string; label: string; temp: number; city: string }
-interface Props { categories: Category[]; zones: Zone[]; opinions: OpinionTeaser[]; weather: WeatherTeaser | null; liveLink: string | null; isLoggedIn: boolean; today: string; subscribeUrl: string; siteName: string; tagline: string; socials: Record<string, string>; headerStyle: HeaderStyle }
+interface Props { categories: Category[]; zones: Zone[]; opinions: OpinionTeaser[]; weather: WeatherTeaser | null; liveLink: string | null; isLoggedIn: boolean; today: string; subscribeUrl: string; siteName: string; tagline: string; socials: Record<string, string>; headerStyle: HeaderStyle; topicsByCategory?: Record<string, { name: string; slug: string }[]>; pills?: { name: string; href: string }[] }
 
 const STATIC_NAMES: Record<string, string> = { notizie: 'Notizie', cerca: 'Cerca', tag: 'Argomenti', autore: 'Firme', meteo: 'Meteo', eventi: 'Cosa fare in città', zone: 'Zone', segnalazioni: 'Segnalazioni', video: 'Video', foto: 'Foto' };
 
-export function SiteHeader({ categories, zones, opinions, weather, liveLink, isLoggedIn, today, subscribeUrl, siteName, tagline, socials, headerStyle }: Props) {
+export function SiteHeader({ categories, zones, opinions, weather, liveLink, isLoggedIn, today, subscribeUrl, siteName, tagline, socials, headerStyle, topicsByCategory = {}, pills = [] }: Props) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [q, setQ] = useState('');
@@ -46,6 +46,45 @@ export function SiteHeader({ categories, zones, opinions, weather, liveLink, isL
           </div>
         </div>
       </div>
+
+      {headerStyle === 'fanpage' && (
+        <header className={`header-fanpage ${isHome ? 'is-home' : 'is-inner'}`}>
+          <div className="container fp-top">
+            {isHome ? (
+              <>
+                <div className="fp-socials"><a href={socials.facebook} target="_blank" rel="noopener" title="Facebook">f</a><a href={socials.instagram} target="_blank" rel="noopener" title="Instagram">◎</a><a href={socials.x} target="_blank" rel="noopener" title="X">𝕏</a><a href={socials.youtube} target="_blank" rel="noopener" title="YouTube">▶</a></div>
+                <Link href="/" className="fp-logo" aria-label={siteName}>aster<small>news</small></Link>
+                <div className="fp-tools"><button className="fp-round" onClick={() => setSearchOpen((v) => !v)} aria-label="Cerca">⌕</button><Link className="fp-round" href={isLoggedIn ? '/admin' : '/login'} title={isLoggedIn ? 'Redazione' : 'Accedi'}>👤</Link><a className="fp-round fp-bell" href="#newsletter" title="Newsletter">🔔</a></div>
+              </>
+            ) : (
+              <>
+                <Link href="/" className="fp-logo fp-logo-sm" aria-label={siteName}>aster<small>news</small></Link>
+                <div className="fp-tools">
+                  <div className="fp-socials fp-socials-sm"><a href={socials.facebook} target="_blank" rel="noopener">f</a><a href={socials.instagram} target="_blank" rel="noopener">◎</a><a href={socials.x} target="_blank" rel="noopener">𝕏</a><a href={socials.youtube} target="_blank" rel="noopener">▶</a></div>
+                  <span className="fp-sep" />
+                  <button className="fp-round" onClick={() => setSearchOpen((v) => !v)} aria-label="Cerca">⌕</button><Link className="fp-round" href={isLoggedIn ? '/admin' : '/login'} title={isLoggedIn ? 'Redazione' : 'Accedi'}>👤</Link>
+                </div>
+              </>
+            )}
+          </div>
+          <nav className="fp-nav">
+            <div className="container">
+              <Burger cls="fp-burger" />
+              {isHome ? (
+                <>
+                  <div className="fp-links">{categories.filter((c) => c.showInMenu && c.kind === 'standard').map((c) => <Link key={c.id} href={`/${c.slug}`}>{c.name}</Link>)}</div>
+                  <div className="fp-pills">{categories.filter((c) => c.kind === 'local').map((c) => <Link key={c.id} href={`/${c.slug}`}>{c.name}</Link>)}{pills.map((p) => <Link key={p.href} href={p.href}>{p.name}</Link>)}</div>
+                </>
+              ) : (
+                <>
+                  <Link href={first ? `/${first}` : '/'} className="fp-current">{sectionName || 'Notizie'}</Link>
+                  <div className="fp-links">{(topicsByCategory[first] ?? []).map((t) => <Link key={t.slug} href={`/tag/${t.slug}`}>{t.name}</Link>)}{!(topicsByCategory[first] ?? []).length && categories.filter((c) => c.showInMenu && c.kind === 'standard').slice(0, 7).map((c) => <Link key={c.id} href={`/${c.slug}`}>{c.name}</Link>)}</div>
+                </>
+              )}
+            </div>
+          </nav>
+        </header>
+      )}
 
       {headerStyle === 'centered' && (
         <header className="header-centered">

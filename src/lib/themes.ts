@@ -2,8 +2,9 @@
  * Sistema di temi: preset + personalizzazioni. Il motore (dati, rotte, CMS) è unico;
  * il tema decide colori, font, stile dell'header, layout della home e stile delle card.
  */
-export type HeaderStyle = 'today' | 'centered' | 'classic';
-export type HomeLayout = 'today' | 'grid' | 'magazine';
+export type HeaderStyle = 'today' | 'centered' | 'classic' | 'fanpage';
+export type HomeLayout = 'today' | 'grid' | 'magazine' | 'fanpage';
+export type Skin = 'default' | 'fanpage';
 export type CardStyle = 'flat' | 'boxed';
 export type FontKey = 'serif' | 'sans' | 'display' | 'condensed';
 
@@ -37,16 +38,16 @@ export interface ThemeSettings {
   radius?: number;
 }
 
-export type ResolvedTheme = Omit<ThemePreset, 'swatch' | 'description'> & { presetId: string };
+export type ResolvedTheme = Omit<ThemePreset, 'swatch' | 'description'> & { presetId: string; skin: Skin };
 
 export const FONT_LABELS: Record<FontKey, string> = { serif: 'Serif editoriale (Source Serif)', sans: 'Sans moderno (Inter)', display: 'Serif classico (Playfair Display)', condensed: 'Condensato bold (Oswald)' };
-export const HEADER_LABELS: Record<HeaderStyle, string> = { today: 'Testata colorata con firme (Today)', centered: 'Barra scura con logo centrato (Fanpage)', classic: 'Testata bianca da quotidiano' };
-export const HOME_LABELS: Record<HomeLayout, string> = { today: 'Apertura + Dalle città + Dossier', grid: 'Griglia con foto grandi e orari', magazine: 'Magazine a mosaico' };
+export const HEADER_LABELS: Record<HeaderStyle, string> = { today: 'Testata colorata con firme (Today)', fanpage: 'Testata nera con logo slab e barra menu (Fanpage)', centered: 'Barra scura con logo centrato', classic: 'Testata bianca da quotidiano' };
+export const HOME_LABELS: Record<HomeLayout, string> = { today: 'Apertura + Dalle città + Dossier', fanpage: 'Card Fanpage: hero scuro, Flash, Ultime notizie, blocchi tema', grid: 'Griglia con foto grandi e orari', magazine: 'Magazine a mosaico' };
 export const CARD_LABELS: Record<CardStyle, string> = { flat: 'Piatte con filetti', boxed: 'Riquadri con ombra' };
 
 export const THEMES: ThemePreset[] = [
   { id: 'today', name: 'Today', description: 'Testata blu, titoli serif, occhielli rossi. Il tema di riferimento ispirato a Citynews.', brand: '#22418f', brandDark: '#182f6b', accent: '#d7262d', highlight: '#f2e600', headFont: 'serif', bodyFont: 'sans', headerStyle: 'today', homeLayout: 'today', cardStyle: 'flat', radius: 0, pageBg: 'white', swatch: ['#22418f', '#d7262d', '#f2e600', '#ffffff'] },
-  { id: 'fanpage', name: 'Fanpage', description: 'Barra nera con logo centrato, titoli sans bold, card arrotondate su fondo grigio, orari in rosso.', brand: '#141414', brandDark: '#000000', accent: '#e2001a', highlight: '#ffd500', headFont: 'sans', bodyFont: 'sans', headerStyle: 'centered', homeLayout: 'grid', cardStyle: 'boxed', radius: 10, pageBg: 'paper', swatch: ['#141414', '#e2001a', '#ffd500', '#f3f3f3'] },
+  { id: 'fanpage', name: 'Fanpage', description: 'Replica di Fanpage.it: cornice scura, logo slab centrato, barra menu con città, hero in card nera, Flash, Ultime notizie con orari arancio, blocchi tema, articolo a due colonne.', brand: '#1b1b1b', brandDark: '#111111', accent: '#ff4a1a', highlight: '#ffd500', headFont: 'sans', bodyFont: 'sans', headerStyle: 'fanpage', homeLayout: 'fanpage', cardStyle: 'boxed', radius: 12, pageBg: 'paper', swatch: ['#1b1b1b', '#ff4a1a', '#ffffff', '#f0f0f0'] },
   { id: 'quotidiano', name: 'Quotidiano', description: 'Testata bianca centrata, serif classico Playfair, filetti neri: l’aspetto di un giornale di carta.', brand: '#111111', brandDark: '#000000', accent: '#9b1b1b', highlight: '#e9d8a6', headFont: 'display', bodyFont: 'serif', headerStyle: 'classic', homeLayout: 'today', cardStyle: 'flat', radius: 0, pageBg: 'white', swatch: ['#111111', '#9b1b1b', '#e9d8a6', '#ffffff'] },
   { id: 'magazine', name: 'Magazine', description: 'Viola profondo e corallo, foto grandi, mosaico in home, card con ombra: per un taglio da rivista.', brand: '#3b1e6e', brandDark: '#2a1550', accent: '#ff5a5f', highlight: '#ffd166', headFont: 'condensed', bodyFont: 'sans', headerStyle: 'centered', homeLayout: 'magazine', cardStyle: 'boxed', radius: 14, pageBg: 'paper', swatch: ['#3b1e6e', '#ff5a5f', '#ffd166', '#f3f3f3'] },
   { id: 'verde', name: 'Territorio', description: 'Verde bosco e ocra, serif editoriale, header classico: adatto a testate locali e ambientali.', brand: '#1f5a3a', brandDark: '#143d27', accent: '#c46a1a', highlight: '#f2c94c', headFont: 'serif', bodyFont: 'sans', headerStyle: 'today', homeLayout: 'grid', cardStyle: 'flat', radius: 4, pageBg: 'white', swatch: ['#1f5a3a', '#c46a1a', '#f2c94c', '#ffffff'] },
@@ -69,6 +70,7 @@ export function resolveTheme(s: ThemeSettings | undefined): ResolvedTheme {
     headFont: s?.headFont ?? p.headFont, bodyFont: s?.bodyFont ?? p.bodyFont,
     headerStyle: s?.headerStyle ?? p.headerStyle, homeLayout: s?.homeLayout ?? p.homeLayout, cardStyle: s?.cardStyle ?? p.cardStyle,
     radius: typeof s?.radius === 'number' ? Math.max(0, Math.min(24, s.radius)) : p.radius, pageBg: p.pageBg,
+    skin: (s?.homeLayout ?? p.homeLayout) === 'fanpage' ? 'fanpage' : 'default',
   };
 }
 
@@ -79,6 +81,7 @@ function darken(hex: string): string {
   return `#${[r, g, b].map((c) => c.toString(16).padStart(2, '0')).join('')}`;
 }
 
+export const SLAB_FONT = "var(--font-slab, 'Roboto Slab'), Georgia, serif";
 const FONT_VARS: Record<FontKey, string> = {
   serif: "var(--font-serif-src, 'Source Serif 4'), Georgia, serif",
   sans: "var(--font-inter, 'Inter'), system-ui, sans-serif",

@@ -5,6 +5,8 @@ import { ArticleCard } from '@/components/site/article-card';
 import { ArticleList } from '@/components/site/article-list';
 import { Sidebar } from '@/components/site/widgets';
 import { articlesByCategory, categoryBySlug, tag } from '@/lib/queries';
+import { getActiveTheme } from '@/lib/theme-server';
+import { CategoryFanpage } from '@/components/site/fanpage/category-fanpage';
 
 export async function generateMetadata({ params }: PageProps<'/[categorySlug]'>): Promise<Metadata> {
   const { categorySlug } = await params;
@@ -17,6 +19,8 @@ export default async function CategoryPage({ params }: PageProps<'/[categorySlug
   const c = categoryBySlug(categorySlug);
   if (!c) notFound();
   const articles = articlesByCategory(c.id);
+  const { theme } = await getActiveTheme();
+  if (theme.skin === 'fanpage') return <CategoryFanpage c={c} articles={articles} />;
   const tagCount = new Map<string, number>();
   articles.forEach((a) => a.tagIds.forEach((t) => tagCount.set(t, (tagCount.get(t) ?? 0) + 1)));
   const topics = [...tagCount.entries()].sort((a, b) => b[1] - a[1]).slice(0, 6).map(([id]) => tag(id)).filter((t): t is NonNullable<typeof t> => !!t);

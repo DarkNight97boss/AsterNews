@@ -8,6 +8,8 @@ import { SmartImage } from '@/components/ui/smart-image';
 import { ROLE_LABELS } from '@/lib/models';
 import { approvedComments, articleBySlug, articleUrl, category, getFeatured, getMostRead, getPublished, getSettings, related, tag, user, zone } from '@/lib/queries';
 import { formatDate, readingTime, relativeDate, timeAgo } from '@/lib/utils';
+import { getActiveTheme } from '@/lib/theme-server';
+import { ArticleFanpage } from '@/components/site/fanpage/article-fanpage';
 
 function shortTime(iso: string): string {
   const d = new Date(iso);
@@ -53,6 +55,17 @@ export default async function ArticlePage({ params }: PageProps<'/[categorySlug]
     publisher: { '@type': 'Organization', name: getSettings().siteName }, articleSection: cat?.name, keywords: tags.map((t) => t.name).join(', '),
   };
 
+  const { theme } = await getActiveTheme();
+  if (theme.skin === 'fanpage') {
+    return (
+      <>
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
+        <ReadingProgress />
+        <ViewCounter id={a.id} />
+        <ArticleFanpage a={a} cat={cat} author={author} tags={tags} rel={rel} comments={comments} zone={z} moderated={settings.commentsModeration} googleNewsUrl={settings.googleNewsUrl} siteName={settings.siteName} />
+      </>
+    );
+  }
   return (
     <>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
