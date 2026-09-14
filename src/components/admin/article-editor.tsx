@@ -1,0 +1,181 @@
+'use client';
+
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { useMemo, useState, useTransition } from 'react';
+import { ensureTagAction, deleteArticleAction, saveArticleAction } from '@/lib/actions';
+import { Article, ArticleFormat, ArticleStatus, Category, FORMAT_LABELS, LiveUpdate, MediaItem, STATUS_LABELS, Tag, User } from '@/lib/models';
+import { Permission } from '@/lib/permissions';
+import { formatDate, readingTime, slugify, stripHtml, toLocalInput, uid } from '@/lib/utils';
+import { toast } from '@/components/ui/toaster';
+import { statusBadgeClass } from './badges';
+import { MediaPicker } from './media-picker';
+import { RichEditor } from './rich-editor';
+
+interface Props { initial: Article; isNew: boolean; isPublic: boolean; categories: Category[]; tags: Tag[]; users: User[]; media: MediaItem[]; permissions: Permission[] }
+const FORMATS: ArticleFormat[] = ['standard', 'video', 'gallery', 'live'];
+
+function shortTime(iso: string): string {
+  const d = new Date(iso);
+  return d.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+}
+
+export function ArticleEditor({ initial, isNew, isPublic, categories, tags: allTags, users, media, permissions }: Props) {
+  const router = useRouter();
+  const [a, setA] = useState<Article>(initial);
+  const [tags, setTags] = useState<Tag[]>(allTags);
+  const [dirty, setDirty] = useState(false);
+  const [picker, setPicker] = useState<'cover' | 'gallery' | null>(null);
+  const [tagInput, setTagInput] = useState(''); const [luTitle, setLuTitle] = useState(''); const [luBody, setLuBody] = useState('');
+  const [scheduledAt, setScheduledAt] = useState(toLocalInput(initial.scheduledAt));
+  const [slugTouched, setSlugTouched] = useState(!isNew);
+  const [pending, start] = useTransition();
+  const can = (p: Permission) => permissions.includes(p);
+  const set = <K extends keyof Article>(k: K, v: Article[K]) => { setA((x) => ({ ...x, [k]: v })); setDirty(true); };
+  const setSeo = (k: keyof Article['seo'], v: string | boolean) => { setA((x) => ({ ...x, seo: { ...x.seo, [k]: v } })); setDirty(true); };
+  const cat = categories.find((c) => c.id === a.categoryId);
+  const words = useMemo(() => stripHtml(a.content).split(' ').filter(Boolean).length, [a.content]);
+  const tagOf = (id: string) => tags.find((t) => t.id === id);
+  const suggestions = tagInput.trim() ? tags.filter((t) => t.name.toLowerCase().includes(tagInput.toLowerCase()) && !a.tagIds.includes(t.id)).slice(0, 6) : [];
+  const allowed: ArticleStatus[] = can('article.publish') ? ['draft', 'review', 'scheduled', 'published', 'archived'] : ['draft', 'review'];
+
+  const save = (status: ArticleStatus) => start(async () => {
+    const payload: Article = { ...a, scheduledAt: status === 'scheduled' && scheduledAt ? new Date(scheduledAt).toISOString() : a.scheduledAt };
+    if (status === 'scheduled' && !scheduledAt) { toast.error('Imposta data e ora di programmazione.'); return; }
+    const r = await saveArticleAction(payload, status);
+    if (!r.ok) { toast.error(r.message ?? 'Errore'); return; }
+    toast.success(r.message ?? 'Salvato.');
+    setDirty(false);
+    if (isNew && r.id) router.replace(`/admin/articoli/${r.id}`); else router.refresh();
+  });
+  const addTag = async (name: string) => { const t = await ensureTagAction(name); if (!t) return; if (!tags.some((x) => x.id === t.id)) setTags((l) => [...l, t]); if (!a.tagIds.includes(t.id)) set('tagIds', [...a.tagIds, t.id]); setTagInput(''); };
+  const setVideo = (url: string) => { const m = url.match(/(?:v=|youtu\.be\/|embed\/)([\w-]{11})/); set('videoUrl', m ? `https://www.youtube.com/embed/${m[1]}` : url); };
+  const onPicked = (m: MediaItem) => { if (picker === 'cover') set('coverImage', m.url); else set('gallery', [...a.gallery, m.url]); setPicker(null); router.refresh(); };
+  const seoTitle = a.seo.title || a.title; const seoDesc = a.seo.description || a.excerpt || a.subtitle;
+
+  return (
+    <>
+      <div className="page-title">
+        <div>
+          <h1>{isNew ? 'Nuovo articolo' : 'Modifica articolo'}</h1>
+          <p><span className={statusBadgeClass(a.status)}>{STATUS_LABELS[a.status]}</span> · {words} parole · {readingTime(a.content)} min di lettura {dirty && <>· <b style={{ color: 'var(--amber)' }}>modifiche non salvate</b></>}</p>
+        </div>
+        <div className="actions">
+          <Link href="/admin/articoli" className="btn btn-ghost">← Articoli</Link>
+          {isPublic && <Link className="btn btn-outline" href={`/${cat?.slug}/${a.slug}`} target="_blank">Vedi sul sito ↗</Link>}
+          <button className="btn btn-outline" disabled={pending} onClick={() => save('draft')}>Salva bozza</button>
+          {!can('article.publish') && <button className="btn btn-dark" disabled={pending} onClick={() => save('review')}>Invia in revisione</button>}
+          {can('article.publish') && (a.status === 'scheduled' || scheduledAt) && <button className="btn btn-dark" disabled={pending} onClick={() => save('scheduled')}>Programma</button>}
+          {can('article.publish') && <button className="btn btn-primary" disabled={pending} onClick={() => save('published')}>{a.status === 'published' ? 'Aggiorna' : 'Pubblica'}</button>}
+        </div>
+      </div>
+
+      <div className="editor-grid">
+        <div>
+          <div className="panel">
+            <input className="input" style={{ textTransform: 'uppercase', fontWeight: 800, fontSize: 13, letterSpacing: '.08em', color: 'var(--red)', border: 0, paddingLeft: 0 }} placeholder="OCCHIELLO (es. MALTEMPO)" value={a.kicker} onChange={(e) => set('kicker', e.target.value)} />
+            <textarea className="title-input" rows={2} style={{ resize: 'none', lineHeight: 1.2 }} placeholder="Titolo dell'articolo" value={a.title} onChange={(e) => { set('title', e.target.value); if (!slugTouched) set('slug', slugify(e.target.value)); }} />
+            <textarea className="subtitle-input" rows={2} placeholder="Sommario / sottotitolo" value={a.subtitle} onChange={(e) => set('subtitle', e.target.value)} />
+            <div style={{ marginTop: 14 }}><RichEditor value={a.content} onChange={(v) => set('content', v)} /></div>
+          </div>
+
+          <div className="panel">
+            <div className="panel-title">Anteprima e riassunto</div>
+            <div className="field"><label>Estratto (mostrato nelle card e nei social)</label>
+              <textarea className="textarea" value={a.excerpt} onChange={(e) => set('excerpt', e.target.value)} placeholder="Lascia vuoto per generarlo dal sottotitolo" />
+              <div className={`char-count ${a.excerpt.length > 200 ? 'over' : ''}`}>{a.excerpt.length}/200</div></div>
+          </div>
+
+          {a.format === 'video' && (
+            <div className="panel"><div className="panel-title">Video</div>
+              <div className="field"><label>URL YouTube (embed o link)</label><input className="input" value={a.videoUrl} onChange={(e) => setVideo(e.target.value)} placeholder="https://www.youtube.com/watch?v=..." /></div>
+              {a.videoUrl && <div className="help">Embed: {a.videoUrl}</div>}
+            </div>
+          )}
+          {a.format === 'gallery' && (
+            <div className="panel"><div className="panel-title">Fotogallery <button className="btn btn-outline btn-sm" onClick={() => setPicker('gallery')}>+ Aggiungi foto</button></div>
+              <div className="media-grid">
+                {a.gallery.map((g, i) => (
+                  <div key={i} className="media-item"><div className="m-img"><img src={g} alt="" /></div><div className="m-name" style={{ display: 'flex', justifyContent: 'space-between' }}><span>Foto {i + 1}</span><button className="icon-btn danger" style={{ padding: 0 }} onClick={() => set('gallery', a.gallery.filter((_, x) => x !== i))}>✕</button></div></div>
+                ))}
+                {a.gallery.length === 0 && <p className="help">Nessuna foto. Aggiungi immagini dalla libreria.</p>}
+              </div>
+            </div>
+          )}
+          {a.format === 'live' && (
+            <div className="panel">
+              <div className="panel-title">Diretta <label className="switch"><input type="checkbox" checked={a.liveActive} onChange={(e) => set('liveActive', e.target.checked)} /> Diretta attiva</label></div>
+              <div className="field"><label>Titolo aggiornamento</label><input className="input" value={luTitle} onChange={(e) => setLuTitle(e.target.value)} placeholder="es. Riaperta la metro A" /></div>
+              <div className="field"><label>Testo</label><textarea className="textarea" style={{ minHeight: 70 }} value={luBody} onChange={(e) => setLuBody(e.target.value)} /></div>
+              <button className="btn btn-dark btn-sm" disabled={!luTitle.trim()} onClick={() => { const u: LiveUpdate = { id: uid('lu'), time: new Date().toISOString(), title: luTitle.trim(), body: luBody.trim() }; set('liveUpdates', [u, ...a.liveUpdates]); setLuTitle(''); setLuBody(''); }}>+ Aggiungi aggiornamento</button>
+              <div className="live-feed" style={{ marginTop: 16, borderColor: 'var(--gray-300)' }}>
+                {[...a.liveUpdates].sort((x, y) => y.time.localeCompare(x.time)).map((u) => (
+                  <div key={u.id} className="live-item"><time>{shortTime(u.time)}</time><div><h4>{u.title}</h4><p>{u.body}</p><button className="icon-btn danger" style={{ padding: '2px 6px', fontSize: 12 }} onClick={() => set('liveUpdates', a.liveUpdates.filter((x) => x.id !== u.id))}>Elimina</button></div></div>
+                ))}
+                {a.liveUpdates.length === 0 && <p className="help" style={{ padding: 12 }}>Nessun aggiornamento.</p>}
+              </div>
+            </div>
+          )}
+
+          <div className="panel">
+            <div className="panel-title">SEO</div>
+            <div className="seo-preview">
+              <div className="s-url">asternews.it › {cat?.slug} › {a.slug || slugify(a.title)}</div>
+              <div className="s-title">{seoTitle || 'Titolo articolo'}</div>
+              <div className="s-desc">{seoDesc || 'Descrizione...'}</div>
+            </div>
+            <div className="form-row" style={{ marginTop: 16 }}>
+              <div className="field"><label>Meta title</label><input className="input" value={a.seo.title} onChange={(e) => setSeo('title', e.target.value)} placeholder={a.title} /><div className={`char-count ${seoTitle.length > 60 ? 'over' : ''}`}>{seoTitle.length}/60</div></div>
+              <div className="field"><label>Slug URL</label><input className="input" value={a.slug} onChange={(e) => { setSlugTouched(true); set('slug', slugify(e.target.value)); }} /></div>
+            </div>
+            <div className="field"><label>Meta description</label><textarea className="textarea" style={{ minHeight: 60 }} value={a.seo.description} onChange={(e) => setSeo('description', e.target.value)} /><div className={`char-count ${seoDesc.length > 160 ? 'over' : ''}`}>{seoDesc.length}/160</div></div>
+            <div className="form-row">
+              <div className="field"><label>Canonical URL</label><input className="input" value={a.seo.canonical} onChange={(e) => setSeo('canonical', e.target.value)} placeholder="https://..." /></div>
+              <div className="field"><label>&nbsp;</label><label className="checkbox"><input type="checkbox" checked={a.seo.noIndex} onChange={(e) => setSeo('noIndex', e.target.checked)} /> Nascondi ai motori di ricerca (noindex)</label></div>
+            </div>
+          </div>
+        </div>
+
+        <aside className="editor-side">
+          <div className="panel">
+            <div className="panel-title">Pubblicazione</div>
+            <div className="field"><label>Stato</label><select className="select" value={a.status} onChange={(e) => set('status', e.target.value as ArticleStatus)}>{allowed.map((s) => <option key={s} value={s}>{STATUS_LABELS[s]}</option>)}</select></div>
+            {can('article.publish') && <div className="field"><label>Programma pubblicazione</label><input className="input" type="datetime-local" value={scheduledAt} onChange={(e) => { setScheduledAt(e.target.value); setDirty(true); }} /><div className="help">Imposta data e ora futura, poi premi &quot;Programma&quot;.</div></div>}
+            {a.publishedAt && <div className="field"><label>Pubblicato il</label><input className="input" type="datetime-local" value={toLocalInput(a.publishedAt)} onChange={(e) => set('publishedAt', e.target.value ? new Date(e.target.value).toISOString() : null)} /></div>}
+            <div className="field"><label>Autore</label><select className="select" value={a.authorId} disabled={!can('article.edit.any')} onChange={(e) => set('authorId', e.target.value)}>{users.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}</select></div>
+            <div className="field"><label>Formato</label><select className="select" value={a.format} onChange={(e) => set('format', e.target.value as ArticleFormat)}>{FORMATS.map((f) => <option key={f} value={f}>{FORMAT_LABELS[f]}</option>)}</select></div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 6 }}>
+              <label className="switch"><input type="checkbox" checked={a.featured} onChange={(e) => set('featured', e.target.checked)} /> In evidenza (hero homepage)</label>
+              <label className="switch"><input type="checkbox" checked={a.breaking} onChange={(e) => set('breaking', e.target.checked)} /> Ultim&apos;ora (ticker)</label>
+              <label className="switch"><input type="checkbox" checked={a.sponsored} onChange={(e) => set('sponsored', e.target.checked)} /> Contenuto sponsorizzato</label>
+              <label className="switch"><input type="checkbox" checked={a.allowComments} onChange={(e) => set('allowComments', e.target.checked)} /> Consenti commenti</label>
+            </div>
+          </div>
+          <div className="panel"><div className="panel-title">Categoria</div>
+            <select className="select" value={a.categoryId} onChange={(e) => set('categoryId', e.target.value)}>{categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</select>
+          </div>
+          <div className="panel"><div className="panel-title">Tag</div>
+            <div className="chips" style={{ marginBottom: 8 }}>{a.tagIds.map((id) => <span key={id} className="chip">{tagOf(id)?.name}<button onClick={() => set('tagIds', a.tagIds.filter((t) => t !== id))}>✕</button></span>)}</div>
+            <input className="input" placeholder="Aggiungi tag e premi Invio" value={tagInput} onChange={(e) => setTagInput(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); if (tagInput.trim()) addTag(tagInput.trim()); } }} />
+            {suggestions.length > 0 && <div className="suggest">{suggestions.map((t) => <button key={t.id} onClick={() => addTag(t.name)}>{t.name}</button>)}</div>}
+          </div>
+          <div className="panel cover-picker"><div className="panel-title">Immagine di copertina</div>
+            <div className="cover-preview">{a.coverImage ? <img src={a.coverImage} alt="" /> : 'Nessuna immagine'}</div>
+            <div className="cover-actions">
+              <button className="btn btn-outline btn-sm" onClick={() => setPicker('cover')}>Scegli dalla libreria</button>
+              {a.coverImage && <button className="btn btn-ghost btn-sm" onClick={() => set('coverImage', '')}>Rimuovi</button>}
+            </div>
+            <div className="field" style={{ marginTop: 12 }}><label>Didascalia / credit</label><input className="input" value={a.coverCaption} onChange={(e) => set('coverCaption', e.target.value)} /></div>
+          </div>
+          {!isNew && (
+            <div className="panel"><div className="panel-title">Info</div>
+              <div className="help">Creato: {formatDate(a.createdAt)}<br />Aggiornato: {formatDate(a.updatedAt)}<br />Visualizzazioni: {a.views}</div>
+              {can('article.delete') && <button className="btn btn-danger btn-sm" style={{ marginTop: 12 }} onClick={() => { if (confirm('Eliminare definitivamente questo articolo?')) start(async () => { await deleteArticleAction(a.id); router.push('/admin/articoli'); }); }}>Elimina articolo</button>}
+            </div>
+          )}
+        </aside>
+      </div>
+      {picker && <MediaPicker media={media} onPick={onPicked} onClose={() => setPicker(null)} />}
+    </>
+  );
+}

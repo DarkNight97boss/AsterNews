@@ -42,3 +42,22 @@ __screenshots__/
 # System files
 .DS_Store
 Thumbs.db
+
+# Claude / tooling
+/.claude
+/.vercel
+/.idea
+/.vscode
+.DS_Store
+
+# Env & local data
+.env
+.env.*
+!.env.example
+/data/db.json
+
+# Next.js
+/.next
+/out
+next-env.d.ts
+*.tsbuildinfo
