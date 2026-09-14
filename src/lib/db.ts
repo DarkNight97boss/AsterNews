@@ -25,16 +25,18 @@ export function toPg(sql: string): string {
 const norm = (v: unknown) => (v === undefined ? null : v);
 
 async function makeDriver(): Promise<Driver> {
-  // Preferisce la connessione in "session mode" (porta 5432: protocollo Postgres completo). Il pooler in "transaction mode" (6543) di Supabase
-  // può lasciare appese le query pipelined di postgres.js. DATABASE_URL, se presente, vince su tutto.
-  const url = [process.env.DATABASE_URL, process.env.POSTGRES_URL_NON_POOLING, process.env.POSTGRES_URL, process.env.POSTGRES_PRISMA_URL].find((u) => u && !u.includes('[SENSITIVE]'));
+  // Pooler in transaction mode (Supabase porta 6543: centinaia di client) — la connessione in session mode è limitata a pool_size client.
+  // DATABASE_URL, se presente, vince su tutto.
+  const url = [process.env.DATABASE_URL, process.env.POSTGRES_URL, process.env.POSTGRES_PRISMA_URL, process.env.POSTGRES_URL_NON_POOLING].find((u) => u && !u.includes('[SENSITIVE]'));
   if (url) {
-    const postgres = (await import('postgres')).default;
-    const open = () => postgres(url, { prepare: false, ssl: url.includes('localhost') ? undefined : 'require', max: isServerless() ? 3 : 8, idle_timeout: 10, max_lifetime: 300, connect_timeout: 15, transform: { undefined: null }, onnotice: () => {} });
-    let sql = open();
-    // In serverless l'istanza viene "congelata" tra una richiesta e l'altra: una connessione tenuta aperta può risultare morta al risveglio
-    // e una query resterebbe appesa per minuti. Ogni operazione ha quindi un timeout: se scatta, il pool viene chiuso e ricreato e si riprova una volta.
-    const QUERY_MS = 20_000, TX_MS = 60_000;
+    // node-postgres: protocollo semplice e affidabile con i pooler in transaction mode (Supavisor/pgbouncer), timeout nativi per query.
+    const { Pool } = await import('pg');
+    const open = () => new Pool({ connectionString: url, ssl: url.includes('localhost') ? undefined : { rejectUnauthorized: false }, max: isServerless() ? 4 : 10, idleTimeoutMillis: 10_000, connectionTimeoutMillis: 15_000, query_timeout: 20_000, allowExitOnIdle: true });
+    let pool = open();
+    pool.on('error', () => {}); // errori sui client inattivi (chiusi dal pooler): niente crash del processo
+    // In serverless l'istanza viene "congelata" tra una richiesta e l'altra: una connessione tenuta aperta può risultare morta al risveglio.
+    // Se una query non risponde, il pool viene sostituito e si riprova; errori di connessione vengono ritentati.
+    const QUERY_MS = 25_000, TX_MS = 60_000;
     const withTimeout = <T,>(run: () => Promise<T>, ms: number): Promise<T> => new Promise<T>((resolve, reject) => {
       const timer = setTimeout(() => reject(new DbTimeout(`Database non risponde da ${ms / 1000}s`)), ms);
       run().then((v) => { clearTimeout(timer); resolve(v); }, (e) => { clearTimeout(timer); reject(e); });
@@ -44,16 +46,21 @@ async function makeDriver(): Promise<Driver> {
         try { return await withTimeout(run, ms); }
         catch (e) {
           if (attempt >= 2 || (!(e instanceof DbTimeout) && !isDeadConnection(e))) throw e;
-          if (e instanceof DbTimeout) { const dead = sql; sql = open(); void dead.end({ timeout: 5 }).catch(() => {}); } // pool sospetto: se ne apre uno nuovo, il vecchio si chiude quando le query in corso finiscono
-          else await new Promise((r) => setTimeout(r, 200 * (attempt + 1))); // connessione chiusa da un altro tentativo: si riprova sul pool corrente
+          if (e instanceof DbTimeout) { const dead = pool; pool = open(); pool.on('error', () => {}); void dead.end().catch(() => {}); }
+          else await new Promise((r) => setTimeout(r, 200 * (attempt + 1)));
         }
       }
     };
     return {
-      all: (q, args) => guarded(async () => (await sql.unsafe(toPg(q), args.map(norm) as never)) as unknown as Record<string, unknown>[], QUERY_MS),
-      exec: (q) => guarded(async () => { await sql.unsafe(q); }, QUERY_MS),
-      tx: (stmts) => guarded(async () => { await sql.begin(async (t) => { for (const s of stmts) await t.unsafe(toPg(s.sql), (s.args ?? []).map(norm) as never); }); }, TX_MS),
-      close: async () => { await sql.end({ timeout: 5 }); },
+      all: (q, args) => guarded(async () => (await pool.query(toPg(q), args.map(norm))).rows as Record<string, unknown>[], QUERY_MS),
+      exec: (q) => guarded(async () => { await pool.query(q); }, QUERY_MS),
+      tx: (stmts) => guarded(async () => {
+        const c = await pool.connect();
+        try { await c.query('BEGIN'); for (const s of stmts) await c.query(toPg(s.sql), (s.args ?? []).map(norm)); await c.query('COMMIT'); }
+        catch (e) { await c.query('ROLLBACK').catch(() => {}); throw e; }
+        finally { c.release(); }
+      }, TX_MS),
+      close: async () => { await pool.end(); },
     };
   }
   const { PGlite } = await import('@electric-sql/pglite');
@@ -71,7 +78,7 @@ class DbTimeout extends Error {}
 /** Errori di rete/connessione per cui ha senso riaprire il pool e riprovare (mai errori SQL). */
 function isDeadConnection(e: unknown): boolean {
   const err = e as { code?: string; message?: string };
-  return ['CONNECTION_CLOSED', 'CONNECTION_ENDED', 'CONNECTION_DESTROYED', 'ECONNRESET', 'EPIPE', 'ETIMEDOUT', '57P01', '57014'].includes(err?.code ?? '');
+  return ['CONNECTION_CLOSED', 'CONNECTION_ENDED', 'CONNECTION_DESTROYED', 'ECONNRESET', 'EPIPE', 'ETIMEDOUT', 'ECONNREFUSED', '57P01', '57014', '08006', '08003', 'XX000'].includes(err?.code ?? '') || /Connection terminated|timeout exceeded when trying to connect|Query read timeout|max clients reached/i.test(err?.message ?? '');
 }
 function isDuplicate(e: unknown): boolean {
   const err = e as { code?: string; message?: string };

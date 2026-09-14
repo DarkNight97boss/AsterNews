@@ -14,7 +14,7 @@ export function AdminShell({ user, permissions, reviewCount, pendingComments, pe
   const pathname = usePathname();
   const can = (p: Permission) => permissions.includes(p);
   const A = ({ href, exact, children }: { href: string; exact?: boolean; children: ReactNode }) => (
-    <Link href={href} className={(exact ? pathname === href : pathname.startsWith(href)) ? 'active' : undefined} onClick={() => setOpen(false)}>{children}</Link>
+    <Link href={href} prefetch={false} className={(exact ? pathname === href : pathname.startsWith(href)) ? 'active' : undefined} onClick={() => setOpen(false)}>{children}</Link>
   );
   return (
     <div className="admin">
