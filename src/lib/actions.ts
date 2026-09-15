@@ -170,7 +170,7 @@ export async function addMediaAction(m: { name: string; url: string; alt: string
   return item;
 }
 export async function updateMediaAction(m: MediaItem): Promise<ActionResult> { await requirePermission('media.manage'); await repo.updateMediaRow(m); refresh(); return ok('Salvato.'); }
-export async function deleteMediaAction(id: string): Promise<ActionResult> { await requirePermission('media.manage'); await repo.deleteMediaRow(id); refresh(); return ok('File eliminato.'); }
+export async function deleteMediaAction(id: string): Promise<ActionResult> { await requirePermission('media.manage'); const m = await repo.findMedia(id); if (m) { const { deleteStoredMedia } = await import('./storage'); await deleteStoredMedia(m); } await repo.deleteMediaRow(id); refresh(); return ok('File eliminato.'); }
 
 // ---------------- Commenti ----------------
 export async function setCommentStatusAction(id: string, status: CommentStatus): Promise<ActionResult> { await requirePermission('comment.moderate'); await repo.setCommentStatus(id, status); refresh(); return ok('Commento aggiornato.'); }

@@ -8,16 +8,25 @@ import { toast } from '@/components/ui/toaster';
 export function readFileAsDataUrl(file: File): Promise<string> {
   return new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result as string); r.onerror = rej; r.readAsDataURL(file); });
 }
+/** Carica un file sull'API di upload (ridimensionamento + WebP + storage). */
+export async function uploadFile(file: File, onProgress?: (pct: number) => void): Promise<MediaItem> {
+  return new Promise((res, rej) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', '/api/media/upload');
+    xhr.setRequestHeader('Content-Type', file.type || 'application/octet-stream');
+    xhr.setRequestHeader('X-File-Name', encodeURIComponent(file.name));
+    xhr.upload.onprogress = (e) => { if (e.lengthComputable && onProgress) onProgress(Math.round((e.loaded / e.total) * 100)); };
+    xhr.onload = () => { try { const d = JSON.parse(xhr.responseText); if (xhr.status >= 200 && xhr.status < 300) res(d as MediaItem); else rej(new Error(d.error ?? `Errore ${xhr.status}`)); } catch { rej(new Error(`Errore ${xhr.status}`)); } };
+    xhr.onerror = () => rej(new Error('Errore di rete durante il caricamento'));
+    xhr.send(file);
+  });
+}
 
 export function MediaPicker({ media, onPick, onClose }: { media: MediaItem[]; onPick: (m: MediaItem) => void; onClose: () => void }) {
-  const [q, setQ] = useState(''); const [url, setUrl] = useState(''); const [sel, setSel] = useState<MediaItem | null>(null); const [busy, setBusy] = useState(false);
-  const items = media.filter((m) => m.type === 'image' && (!q || m.name.toLowerCase().includes(q.toLowerCase())));
-  const add = async (m: { name: string; url: string; alt: string; size: number }) => {
-    setBusy(true);
-    const item = await addMediaAction(m);
-    setBusy(false);
-    if (item) onPick(item); else toast.error('Impossibile aggiungere il file.');
-  };
+  const [q, setQ] = useState(''); const [url, setUrl] = useState(''); const [sel, setSel] = useState<MediaItem | null>(null); const [busy, setBusy] = useState(false); const [pct, setPct] = useState(0);
+  const items = media.filter((m) => m.type === 'image' && (!q || m.name.toLowerCase().includes(q.toLowerCase()) || m.alt.toLowerCase().includes(q.toLowerCase())));
+  const addUrl = async () => { setBusy(true); const item = await addMediaAction({ name: url.split('/').pop() || 'immagine', url, alt: '', size: 0 }); setBusy(false); if (item) onPick(item); else toast.error('Impossibile aggiungere il file.'); };
+  const upload = async (f: File) => { setBusy(true); try { const item = await uploadFile(f, setPct); onPick(item); } catch (e) { toast.error((e as Error).message); } finally { setBusy(false); setPct(0); } };
   return (
     <div className="modal-backdrop" onClick={onClose}>
       <div className="modal" onClick={(e) => e.stopPropagation()}>
@@ -26,13 +35,13 @@ export function MediaPicker({ media, onPick, onClose }: { media: MediaItem[]; on
           <div className="filters">
             <input className="input grow" placeholder="Cerca..." value={q} onChange={(e) => setQ(e.target.value)} />
             <input className="input grow" placeholder="Oppure incolla un URL immagine" value={url} onChange={(e) => setUrl(e.target.value)} />
-            <button className="btn btn-outline" disabled={!url || busy} onClick={() => add({ name: url.split('/').pop() || 'immagine', url, alt: '', size: 0 })}>Usa URL</button>
-            <label className="btn btn-dark">Carica<input type="file" accept="image/*" hidden onChange={async (e) => { const f = e.target.files?.[0]; if (!f) return; if (f.size > 2 * 1024 * 1024) { toast.error('Massimo 2 MB nella demo.'); return; } add({ name: f.name, url: await readFileAsDataUrl(f), alt: f.name, size: f.size }); }} /></label>
+            <button className="btn btn-outline" disabled={!url || busy} onClick={addUrl}>Usa URL</button>
+            <label className="btn btn-dark">{busy ? `Caricamento ${pct}%` : 'Carica'}<input type="file" accept="image/*" hidden disabled={busy} onChange={(e) => { const f = e.target.files?.[0]; if (f) upload(f); }} /></label>
           </div>
           <div className="media-grid">
             {items.map((m) => (
               <div key={m.id} className={`media-item ${sel?.id === m.id ? 'selected' : ''}`} onClick={() => setSel(m)} onDoubleClick={() => onPick(m)}>
-                <div className="m-img"><img src={m.url} alt={m.alt} loading="lazy" /></div><div className="m-name">{m.name}</div>
+                <div className="m-img"><img src={m.variants?.['480'] ?? m.url} alt={m.alt} loading="lazy" /></div><div className="m-name">{m.name}</div>
               </div>
             ))}
           </div>

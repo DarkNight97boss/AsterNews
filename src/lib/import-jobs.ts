@@ -216,27 +216,25 @@ async function runJob(id: string, budgetMs: number): Promise<boolean> {
 
 /** Scarica le copertine remote in public/uploads (solo su filesystem persistente) con concorrenza limitata. */
 async function downloadMedia(jobId: string, state: { cancel: boolean }): Promise<void> {
-  if (isServerless()) { await repo.updateJob(jobId, { message: 'Immagini lasciate sul dominio originale (filesystem non persistente).' }); return; }
-  const dir = path.join(process.cwd(), 'public', 'uploads', 'import');
-  fs.mkdirSync(dir, { recursive: true });
+  // Scarica copertine e immagini nel testo dal sito di origine e le salva nello storage configurato, riscrivendo gli URL.
+  const { importRemoteImage } = await import('./storage');
+  const cache = new Map<string, string>();
+  const fetchOne = async (src: string): Promise<string | null> => { if (cache.has(src)) return cache.get(src)!; const f = await importRemoteImage(src); if (f) cache.set(src, f.url); return f?.url ?? null; };
+  const isRemote = (u: string) => /^https?:\/\//.test(u) && !u.includes('picsum.photos') && !/supabase\.co\/storage|blob\.vercel-storage\.com/.test(u);
   let offset = 0, done = 0;
   for (;;) {
     if (state.cancel) return;
-    const batch = await repo.listArticles({}, 'created', 100, offset);
+    const batch = await repo.listArticles({}, 'created', 50, offset);
     if (!batch.length) break;
     offset += batch.length;
-    const remote = batch.filter((a) => a.coverImage && /^https?:\/\//.test(a.coverImage) && !a.coverImage.includes('picsum.photos'));
-    await Promise.all(remote.map(async (a) => {
-      try {
-        const res = await fetch(a.coverImage, { signal: AbortSignal.timeout(15000) });
-        if (!res.ok) return;
-        const ext = (res.headers.get('content-type') ?? '').includes('png') ? 'png' : (res.headers.get('content-type') ?? '').includes('webp') ? 'webp' : 'jpg';
-        const name = `${createHash('md5').update(a.coverImage).digest('hex')}.${ext}`;
-        fs.writeFileSync(path.join(dir, name), Buffer.from(await res.arrayBuffer()));
-        await repo.patchArticle(a.id, { cover_image: `/uploads/import/${name}` });
-        done++;
-      } catch { /* immagine non scaricabile: resta remota */ }
-    }));
-    await repo.updateJob(jobId, { message: `Completata. Immagini scaricate: ${done}` });
+    for (const a of batch) {
+      if (state.cancel) return;
+      let content = a.content; let cover = a.coverImage; let changed = false;
+      if (cover && isRemote(cover)) { const u = await fetchOne(cover); if (u) { cover = u; changed = true; done++; } }
+      const srcs = [...content.matchAll(/<img[^>]+src="([^"]+)"/g)].map((m) => m[1]).filter(isRemote);
+      for (const src of [...new Set(srcs)].slice(0, 30)) { const u = await fetchOne(src); if (u) { content = content.split(src).join(u); changed = true; done++; } }
+      if (changed) await repo.upsertArticle({ ...a, coverImage: cover, content });
+    }
+    await repo.updateJob(jobId, { message: `Completata. Immagini trasferite nello storage: ${done}` });
   }
 }
