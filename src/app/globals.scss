@@ -525,3 +525,4 @@ html[data-skin='fanpage'] {
   .notice { background: #fff8e1; border: 1px solid #ffe08a; padding: 10px 12px; border-radius: 6px; &.ok { background: #e8f5ee; border-color: #b7e0c8; } } } }
 .flag-btn { background: none; border: 0; color: var(--muted); font-size: 11px; cursor: pointer; margin-left: 8px; &:hover { color: var(--red); } }
 .badge-reader { color: #0b7a4b; font-size: 12px; }
+.author-page .author-socials { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; a { font-size: 12px; font-weight: 700; border: 1px solid var(--border, #ddd); padding: 3px 10px; border-radius: 12px; color: inherit; } }

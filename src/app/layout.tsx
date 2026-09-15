@@ -23,6 +23,7 @@ export async function generateMetadata(): Promise<Metadata> {
     description: s.description,
     metadataBase: new URL(siteUrl()),
     openGraph: { siteName: s.siteName, locale: 'it_IT', type: 'website' },
+    robots: { index: true, follow: true, 'max-image-preview': 'large', 'max-snippet': -1, 'max-video-preview': -1 },
     verification: seo.searchConsoleToken ? { google: seo.searchConsoleToken } : undefined,
   };
 }

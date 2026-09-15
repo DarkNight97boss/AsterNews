@@ -25,7 +25,7 @@ export function TagsManager({ tags, counts, serverQuery = '' }: { tags: Tag[]; c
         <tbody>
           {filtered.map((t) => (
             <tr key={t.id}>
-              <td className="t-title">{editing?.id === t.id ? <input className="input" value={editing.name} onChange={(e) => setEditing({ ...editing, name: e.target.value, slug: '' })} onKeyDown={(e) => e.key === 'Enter' && save(editing)} /> : t.name}</td>
+              <td className="t-title">{editing?.id === t.id ? <><input className="input" value={editing.name} onChange={(e) => setEditing({ ...editing, name: e.target.value, slug: '' })} onKeyDown={(e) => e.key === 'Enter' && save(editing)} /><textarea className="textarea" style={{ minHeight: 56, marginTop: 6 }} placeholder="Descrizione SEO dell'argomento (vuota = generata automaticamente)" value={editing.description ?? ''} onChange={(e) => setEditing({ ...editing, description: e.target.value })} /></> : <>{t.name}{t.description && <div className="t-sub">{t.description.slice(0, 90)}</div>}</>}</td>
               <td><code>/tag/{t.slug}</code></td><td>{counts[t.id] ?? 0}</td>
               <td><div className="t-actions">
                 {editing?.id === t.id ? <><button className="btn btn-primary btn-sm" onClick={() => save(editing)}>Salva</button><button className="btn btn-ghost btn-sm" onClick={() => setEditing(null)}>Annulla</button></>

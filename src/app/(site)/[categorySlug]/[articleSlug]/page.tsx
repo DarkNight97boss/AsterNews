@@ -55,11 +55,16 @@ export default async function ArticlePage({ params }: PageProps<'/[categorySlug]
   const video = videos[0];
   const featured = featuredAll.filter((f) => f.id !== a.id).slice(0, 4);
   const mostWeek = mostAll.filter((m) => m.id !== a.id).slice(0, 6);
-  const jsonLd = {
-    '@context': 'https://schema.org', '@type': 'NewsArticle', headline: a.title, description: a.excerpt, image: a.coverImage ? [a.coverImage] : undefined,
-    datePublished: a.publishedAt, dateModified: a.updatedAt, author: author ? [{ '@type': 'Person', name: author.name }] : undefined,
-    publisher: { "@type": "Organization", name: settings.siteName }, articleSection: cat?.name, keywords: tags.map((t) => t.name).join(', '),
+  const base0 = siteUrl();
+  const jsonLd: Record<string, unknown> = {
+    '@context': 'https://schema.org', '@type': a.format === 'live' ? 'LiveBlogPosting' : 'NewsArticle', headline: a.title, description: a.excerpt, image: a.coverImage ? [a.coverImage] : undefined,
+    datePublished: a.publishedAt, dateModified: a.updatedAt, author: author ? [{ '@type': 'Person', name: author.name, url: `${base0}/autore/${author.id}` }] : undefined,
+    publisher: { '@type': 'Organization', name: settings.siteName, logo: { '@type': 'ImageObject', url: `${base0}/icon.png` } }, articleSection: cat?.name, keywords: tags.map((t) => t.name).join(', '),
+    mainEntityOfPage: `${base0}${articleUrlWith(a, cats)}`, isAccessibleForFree: !a.premium, ...(a.premium ? { hasPart: { '@type': 'WebPageElement', isAccessibleForFree: false, cssSelector: '.article-body' } } : {}),
+    ...(a.format === 'live' ? { coverageStartTime: a.publishedAt, coverageEndTime: a.liveActive ? undefined : a.updatedAt, liveBlogUpdate: a.liveUpdates.map((u) => ({ '@type': 'BlogPosting', headline: u.title, articleBody: u.body, datePublished: u.time })) } : {}),
+    ...(a.format === 'video' && a.videoUrl ? { video: { '@type': 'VideoObject', name: a.title, description: a.excerpt, thumbnailUrl: a.coverImage ? [a.coverImage] : undefined, uploadDate: a.publishedAt, embedUrl: a.videoUrl } } : {}),
   };
+  const faqLd = a.faq && a.faq.length ? { '@context': 'https://schema.org', '@type': 'FAQPage', mainEntity: a.faq.map((f) => ({ '@type': 'Question', name: f.q, acceptedAnswer: { '@type': 'Answer', text: f.a } })) } : null;
 
   const base = siteUrl();
   const breadcrumb = { '@context': 'https://schema.org', '@type': 'BreadcrumbList', itemListElement: [
@@ -87,6 +92,7 @@ export default async function ArticlePage({ params }: PageProps<'/[categorySlug]
     <>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumb) }} />
+      {faqLd && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqLd) }} />}
       <ReadingProgress />
       <ViewCounter id={a.id} />
       <Analytics articleId={a.id} />
