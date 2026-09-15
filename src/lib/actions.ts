@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
-import { createSessionToken, DEMO_PASSWORD, getCurrentUser, requirePermission, requireUser, SESSION_COOKIE } from './auth';
+import { clientIp, getCurrentUser, requirePermission, requireUser } from './auth';
 import { resetDb } from './db';
 import * as repo from './repo';
 import { Article, ArticleStatus, Category, Comment, CommentStatus, Event, MediaItem, Report, SiteSettings, Tag, User, Zone } from './models';
@@ -19,24 +19,8 @@ export type ActionResult = { ok: boolean; message?: string; id?: string };
 const ok = (message?: string, id?: string): ActionResult => ({ ok: true, message, id });
 const fail = (message: string): ActionResult => ({ ok: false, message });
 function refresh(): void { revalidatePath('/', 'layout'); }
-async function log(userId: string, action: string, target: string): Promise<void> { await repo.insertActivity({ id: uid('ac'), userId, action, target, createdAt: new Date().toISOString() }); }
+async function log(userId: string, action: string, target: string, articleId = '', details = ''): Promise<void> { await repo.insertActivity({ id: uid('ac'), userId, action, target, articleId, details, ip: await clientIp(), createdAt: new Date().toISOString() }); }
 
-
-// ---------------- Auth ----------------
-export async function loginAction(_prev: ActionResult | null, formData: FormData): Promise<ActionResult> {
-  const email = String(formData.get('email') ?? '').trim().toLowerCase();
-  const password = String(formData.get('password') ?? '');
-  const redirectTo = String(formData.get('redirect') ?? '') || '/admin';
-  const u = await repo.findUserByEmail(email);
-  if (!u) return fail('Nessun utente con questa email.');
-  if (!u.active) return fail('Account disattivato. Contatta un amministratore.');
-  if (password !== DEMO_PASSWORD) return fail('Password errata.');
-  const store = await cookies();
-  store.set(SESSION_COOKIE, createSessionToken(u.id), { httpOnly: true, sameSite: 'lax', path: '/', maxAge: 60 * 60 * 24 * 7, secure: process.env.NODE_ENV === 'production' });
-  redirect(redirectTo.startsWith('/') ? redirectTo : '/admin');
-}
-export async function logoutAction(): Promise<void> { (await cookies()).delete(SESSION_COOKIE); redirect('/login'); }
-export async function currentUserAction(): Promise<User | null> { return getCurrentUser(); }
 
 // ---------------- Articoli ----------------
 async function uniqueSlug(base: string, excludeId: string): Promise<string> {

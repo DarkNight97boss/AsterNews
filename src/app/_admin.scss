@@ -106,3 +106,30 @@
 
 .job { padding: 12px 0; border-bottom: 1px solid var(--gray-200); &:last-of-type { border-bottom: 0; margin-bottom: 12px; } }
 .progress { height: 8px; background: var(--gray-200); border-radius: 4px; overflow: hidden; margin: 8px 0 6px; div { height: 100%; background: var(--blue); transition: width .4s; } }
+
+// ---------- Installazione guidata ----------
+.setup { min-height: 100vh; display: grid; grid-template-columns: 300px 1fr; background: var(--gray-50); color: var(--black);
+  .setup-side { background: var(--black); color: #fff; padding: 36px 28px; display: flex; flex-direction: column; gap: 18px;
+    .logo { font-size: 32px; font-weight: 900; letter-spacing: -.02em; color: #fff; span { color: var(--red); } }
+    .setup-lead { color: #bbb; font-size: 13px; text-transform: uppercase; letter-spacing: .1em; font-weight: 700; }
+    .setup-steps { list-style: none; padding: 0; margin: 8px 0 0; display: flex; flex-direction: column; gap: 10px;
+      li { display: flex; align-items: center; gap: 12px; color: #999; font-size: 14px; span { width: 26px; height: 26px; border-radius: 50%; border: 2px solid #555; display: grid; place-items: center; font-size: 12px; font-weight: 800; }
+        &.current { color: #fff; font-weight: 700; span { border-color: var(--red); background: var(--red); } }
+        &.done { color: #ddd; span { border-color: #0b7a4b; background: #0b7a4b; color: #fff; } } } }
+    .setup-foot { margin-top: auto; color: #888; font-size: 12px; line-height: 1.5; } }
+  .setup-main { padding: 48px 56px; max-width: 900px; width: 100%;
+    h1 { font-size: 30px; margin: 0 0 8px; letter-spacing: -.02em; } .lead { color: var(--gray-600); margin-bottom: 24px; font-size: 15px; line-height: 1.5; }
+    section { background: #fff; border: 1px solid var(--gray-200); border-radius: 10px; padding: 28px; }
+    .setup-check { border: 1px solid var(--gray-200); border-left: 4px solid #0b7a4b; border-radius: 6px; padding: 12px 14px; margin-top: 12px; &.ko { border-left-color: var(--red); } b { display: block; margin-bottom: 4px; } }
+    .setup-option { display: flex; gap: 12px; align-items: flex-start; border: 1px solid var(--gray-200); border-radius: 8px; padding: 14px; margin-bottom: 10px; cursor: pointer; &.selected { border-color: var(--red); background: #fff7f7; } input { margin-top: 4px; } b { display: block; margin-bottom: 2px; } }
+    .theme-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; }
+    .theme-card { text-align: left; border: 2px solid var(--gray-200); border-radius: 10px; padding: 12px; background: #fff; cursor: pointer; display: flex; flex-direction: column; gap: 6px; font: inherit; &.selected { border-color: var(--red); box-shadow: 0 0 0 3px rgba(215,38,45,.15); }
+      .swatches { display: flex; gap: 4px; span { flex: 1; height: 26px; border-radius: 4px; border: 1px solid rgba(0,0,0,.08); } } b { font-size: 14px; } small { color: var(--gray-600); font-size: 11px; line-height: 1.4; } }
+    .setup-nav { display: flex; align-items: center; gap: 12px; margin-top: 20px; .spacer { flex: 1; } }
+    .setup-summary th { text-align: left; width: 160px; color: var(--gray-600); font-weight: 600; } }
+  @media (max-width: 800px) { grid-template-columns: 1fr; .setup-side { padding: 24px; .setup-steps { flex-direction: row; flex-wrap: wrap; gap: 8px 14px; li { font-size: 12px; } } .setup-foot { display: none; } } .setup-main { padding: 20px 16px; section { padding: 18px; } } }
+}
+.login-card .help a { color: var(--red); font-weight: 700; }
+.sessions-list li { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--gray-200); font-size: 13px; .grow { flex: 1; } .tag { font-size: 11px; background: #e8f5ee; color: #0b7a4b; padding: 2px 8px; border-radius: 10px; font-weight: 700; } }
+.qr-box { display: flex; gap: 20px; align-items: center; flex-wrap: wrap; img { border: 1px solid var(--gray-200); border-radius: 6px; } code { font-size: 13px; background: var(--gray-100); padding: 4px 8px; border-radius: 4px; letter-spacing: .08em; } }
+.audit-table td { font-size: 13px; vertical-align: top; } .audit-table .ip { color: var(--gray-500); font-family: monospace; font-size: 12px; }

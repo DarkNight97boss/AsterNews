@@ -2,12 +2,13 @@ import { Article, Role, User } from './models';
 
 export type Permission =
   | 'article.create' | 'article.edit.any' | 'article.publish' | 'article.delete'
-  | 'category.manage' | 'tag.manage' | 'media.manage' | 'comment.moderate' | 'user.manage' | 'settings.manage';
+  | 'category.manage' | 'tag.manage' | 'media.manage' | 'comment.moderate' | 'user.manage' | 'settings.manage'
+  | 'audit.view' | 'redirect.manage' | 'newsletter.send' | 'stats.view' | 'article.assign';
 
 const PERMISSIONS: Record<Role, Permission[]> = {
-  admin: ['article.create', 'article.edit.any', 'article.publish', 'article.delete', 'category.manage', 'tag.manage', 'media.manage', 'comment.moderate', 'user.manage', 'settings.manage'],
-  editor: ['article.create', 'article.edit.any', 'article.publish', 'article.delete', 'category.manage', 'tag.manage', 'media.manage', 'comment.moderate'],
-  author: ['article.create', 'article.publish', 'tag.manage', 'media.manage'],
+  admin: ['article.create', 'article.edit.any', 'article.publish', 'article.delete', 'category.manage', 'tag.manage', 'media.manage', 'comment.moderate', 'user.manage', 'settings.manage', 'audit.view', 'redirect.manage', 'newsletter.send', 'stats.view', 'article.assign'],
+  editor: ['article.create', 'article.edit.any', 'article.publish', 'article.delete', 'category.manage', 'tag.manage', 'media.manage', 'comment.moderate', 'audit.view', 'redirect.manage', 'newsletter.send', 'stats.view', 'article.assign'],
+  author: ['article.create', 'article.publish', 'tag.manage', 'media.manage', 'stats.view'],
   contributor: ['article.create', 'media.manage'],
 };
 

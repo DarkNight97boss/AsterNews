@@ -145,7 +145,68 @@ CREATE TABLE IF NOT EXISTS events (id TEXT PRIMARY KEY, slug TEXT UNIQUE NOT NUL
 CREATE INDEX IF NOT EXISTS idx_events_status_date ON events(status, date_from, date_to);
 CREATE TABLE IF NOT EXISTS reports (id TEXT PRIMARY KEY, name TEXT, email TEXT, zone_id TEXT DEFAULT '', subject TEXT, body TEXT, image TEXT DEFAULT '', status TEXT NOT NULL DEFAULT 'new', reply TEXT DEFAULT '', created_at TEXT);
 CREATE INDEX IF NOT EXISTS idx_reports_status ON reports(status, created_at DESC);
+CREATE TABLE IF NOT EXISTS sessions (id TEXT PRIMARY KEY, user_id TEXT NOT NULL, kind TEXT NOT NULL DEFAULT 'staff', created_at TEXT, last_seen TEXT, expires_at TEXT, user_agent TEXT DEFAULT '', ip TEXT DEFAULT '', revoked INTEGER DEFAULT 0);
+CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id, revoked);
+CREATE TABLE IF NOT EXISTS tokens (token TEXT PRIMARY KEY, kind TEXT NOT NULL, subject TEXT NOT NULL, payload TEXT DEFAULT '', expires_at TEXT NOT NULL, created_at TEXT);
+CREATE INDEX IF NOT EXISTS idx_tokens_subject ON tokens(kind, subject);
+CREATE TABLE IF NOT EXISTS article_revisions (id TEXT PRIMARY KEY, article_id TEXT NOT NULL, user_id TEXT, note TEXT DEFAULT '', data TEXT NOT NULL, created_at TEXT);
+CREATE INDEX IF NOT EXISTS idx_revisions_article ON article_revisions(article_id, created_at DESC);
+CREATE TABLE IF NOT EXISTS article_notes (id TEXT PRIMARY KEY, article_id TEXT NOT NULL, user_id TEXT, kind TEXT NOT NULL DEFAULT 'note', body TEXT NOT NULL, resolved INTEGER DEFAULT 0, created_at TEXT);
+CREATE INDEX IF NOT EXISTS idx_notes_article ON article_notes(article_id, created_at DESC);
+CREATE TABLE IF NOT EXISTS article_locks (article_id TEXT PRIMARY KEY, user_id TEXT NOT NULL, updated_at TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS autosaves (article_id TEXT PRIMARY KEY, user_id TEXT NOT NULL, data TEXT NOT NULL, updated_at TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS polls (id TEXT PRIMARY KEY, article_id TEXT DEFAULT '', question TEXT NOT NULL, options TEXT NOT NULL DEFAULT '[]', votes TEXT NOT NULL DEFAULT '[]', created_at TEXT);
+CREATE TABLE IF NOT EXISTS push_subscriptions (id TEXT PRIMARY KEY, endpoint TEXT UNIQUE NOT NULL, keys TEXT NOT NULL, topics TEXT DEFAULT '[]', created_at TEXT, failures INTEGER DEFAULT 0);
+CREATE TABLE IF NOT EXISTS hits (day TEXT NOT NULL, hour INTEGER NOT NULL, path TEXT NOT NULL, article_id TEXT DEFAULT '', source TEXT NOT NULL DEFAULT 'diretto', count INTEGER DEFAULT 0, read_ms BIGINT DEFAULT 0, PRIMARY KEY (day, hour, path, source));
+CREATE INDEX IF NOT EXISTS idx_hits_day ON hits(day, hour);
+CREATE INDEX IF NOT EXISTS idx_hits_article ON hits(article_id, day);
+CREATE TABLE IF NOT EXISTS readers (id TEXT PRIMARY KEY, email TEXT UNIQUE NOT NULL, name TEXT DEFAULT '', password_hash TEXT, verified INTEGER DEFAULT 0, premium INTEGER DEFAULT 0, premium_until TEXT, stripe_customer TEXT DEFAULT '', banned INTEGER DEFAULT 0, created_at TEXT, last_login TEXT);
+CREATE TABLE IF NOT EXISTS comment_flags (comment_id TEXT NOT NULL, voter TEXT NOT NULL, created_at TEXT, PRIMARY KEY (comment_id, voter));
+CREATE TABLE IF NOT EXISTS redirects (id TEXT PRIMARY KEY, from_path TEXT UNIQUE NOT NULL, to_path TEXT NOT NULL, code INTEGER DEFAULT 301, hits INTEGER DEFAULT 0, created_at TEXT);
+CREATE TABLE IF NOT EXISTS not_found_log (path TEXT PRIMARY KEY, hits INTEGER DEFAULT 1, referer TEXT DEFAULT '', first_seen TEXT, last_seen TEXT);
+CREATE INDEX IF NOT EXISTS idx_notfound_hits ON not_found_log(hits DESC);
+CREATE TABLE IF NOT EXISTS editions (id TEXT PRIMARY KEY, slug TEXT UNIQUE NOT NULL, name TEXT NOT NULL, domain TEXT UNIQUE, tagline TEXT DEFAULT '', zone_id TEXT DEFAULT '', category_ids TEXT DEFAULT '[]', theme TEXT DEFAULT '{}', logo TEXT DEFAULT '', active INTEGER DEFAULT 1, created_at TEXT);
+CREATE TABLE IF NOT EXISTS error_log (id TEXT PRIMARY KEY, digest TEXT, message TEXT, stack TEXT DEFAULT '', path TEXT DEFAULT '', count INTEGER DEFAULT 1, first_seen TEXT, last_seen TEXT);
+CREATE INDEX IF NOT EXISTS idx_errors_last ON error_log(last_seen DESC);
+CREATE TABLE IF NOT EXISTS newsletter_sends (id TEXT PRIMARY KEY, subject TEXT, kind TEXT DEFAULT 'digest', recipients INTEGER DEFAULT 0, sent_at TEXT, status TEXT DEFAULT 'sent', message TEXT DEFAULT '');
+CREATE TABLE IF NOT EXISTS backups (id TEXT PRIMARY KEY, created_at TEXT, size INTEGER DEFAULT 0, url TEXT DEFAULT '', note TEXT DEFAULT '');
 CREATE TABLE IF NOT EXISTS import_jobs (id TEXT PRIMARY KEY, source TEXT NOT NULL, status TEXT NOT NULL, options TEXT DEFAULT '{}', file TEXT, total INTEGER DEFAULT 0, processed INTEGER DEFAULT 0, imported INTEGER DEFAULT 0, skipped INTEGER DEFAULT 0, errors TEXT DEFAULT '[]', message TEXT DEFAULT '', cursor_pos TEXT DEFAULT '', created_at TEXT, updated_at TEXT);
+`;
+
+/** Colonne aggiunte dopo la prima versione: idempotenti, eseguite a ogni avvio. */
+export const MIGRATIONS = `
+ALTER TABLE users ADD COLUMN IF NOT EXISTS password_hash TEXT;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS totp_secret TEXT;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS totp_enabled INTEGER DEFAULT 0;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS must_change_password INTEGER DEFAULT 0;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS last_login TEXT;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS socials TEXT DEFAULT '{}';
+ALTER TABLE users ADD COLUMN IF NOT EXISTS title TEXT DEFAULT '';
+ALTER TABLE users ADD COLUMN IF NOT EXISTS long_bio TEXT DEFAULT '';
+ALTER TABLE articles ADD COLUMN IF NOT EXISTS assigned_to TEXT DEFAULT '';
+ALTER TABLE articles ADD COLUMN IF NOT EXISTS deadline TEXT;
+ALTER TABLE articles ADD COLUMN IF NOT EXISTS premium INTEGER DEFAULT 0;
+ALTER TABLE articles ADD COLUMN IF NOT EXISTS edition_id TEXT DEFAULT '';
+ALTER TABLE articles ADD COLUMN IF NOT EXISTS faq TEXT DEFAULT '[]';
+ALTER TABLE activity ADD COLUMN IF NOT EXISTS ip TEXT DEFAULT '';
+ALTER TABLE activity ADD COLUMN IF NOT EXISTS details TEXT DEFAULT '';
+ALTER TABLE activity ADD COLUMN IF NOT EXISTS article_id TEXT DEFAULT '';
+CREATE INDEX IF NOT EXISTS idx_activity_article ON activity(article_id, created_at DESC);
+ALTER TABLE media ADD COLUMN IF NOT EXISTS provider TEXT DEFAULT '';
+ALTER TABLE media ADD COLUMN IF NOT EXISTS path TEXT DEFAULT '';
+ALTER TABLE media ADD COLUMN IF NOT EXISTS width INTEGER DEFAULT 0;
+ALTER TABLE media ADD COLUMN IF NOT EXISTS height INTEGER DEFAULT 0;
+ALTER TABLE media ADD COLUMN IF NOT EXISTS variants TEXT DEFAULT '{}';
+ALTER TABLE media ADD COLUMN IF NOT EXISTS focal_x REAL DEFAULT 0.5;
+ALTER TABLE media ADD COLUMN IF NOT EXISTS focal_y REAL DEFAULT 0.5;
+ALTER TABLE subscribers ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'confirmed';
+ALTER TABLE subscribers ADD COLUMN IF NOT EXISTS token TEXT DEFAULT '';
+ALTER TABLE subscribers ADD COLUMN IF NOT EXISTS confirmed_at TEXT;
+ALTER TABLE subscribers ADD COLUMN IF NOT EXISTS source TEXT DEFAULT 'sito';
+ALTER TABLE comments ADD COLUMN IF NOT EXISTS reader_id TEXT DEFAULT '';
+ALTER TABLE comments ADD COLUMN IF NOT EXISTS parent_id TEXT DEFAULT '';
+ALTER TABLE comments ADD COLUMN IF NOT EXISTS flags INTEGER DEFAULT 0;
+ALTER TABLE tags ADD COLUMN IF NOT EXISTS description TEXT DEFAULT '';
 `;
 
 /** Vero solo dentro una funzione serverless (Vercel/Lambda), non quando VERCEL=1 arriva da un .env.local scaricato con `vercel env pull`. */
@@ -166,16 +227,10 @@ export async function ready(): Promise<Driver> {
     g.__asterReady = (async () => {
       // Più istanze serverless possono partire insieme: CREATE ... IF NOT EXISTS concorrenti possono collidere, si riprova una volta.
       try { await d.exec(SCHEMA); } catch (e) { if (!isDuplicate(e)) throw e; await new Promise((r) => setTimeout(r, 500)); await d.exec(SCHEMA); }
-      const r = await d.all("SELECT value FROM meta WHERE key = 'seeded'", []);
-      if (!r.length) {
-        const { seedStatements } = await import('./repo');
-        // Eseguito direttamente sul driver (ready() non è ancora risolto), in UNA transazione con INSERT multi-riga: pochi round-trip anche verso un database remoto.
-        // Il primo statement è un INSERT semplice su meta: se un'altra istanza sta già inserendo i dati demo, questa aspetta il suo commit e poi fallisce con 23505 → niente da fare.
-        const stmts = mergeInserts(seedStatements(buildSeed()));
-        try {
-          await d.tx([{ sql: "INSERT INTO meta (key, value) VALUES ('seeded', ?)", args: [new Date().toISOString()] }, ...stmts]);
-        } catch (e) { if (!isDuplicate(e)) throw e; }
-      }
+      try { await d.exec(MIGRATIONS); } catch (e) { if (!isDuplicate(e)) throw e; }
+      const su = await d.all("SELECT value FROM meta WHERE key = 'site_url'", []);
+      if (su.length) (await import('./site-url')).setSiteUrlOverride(String(su[0].value));
+      // I dati (demo o minimi) vengono inseriti dall'installazione guidata (/setup), non più automaticamente.
     })().catch((e) => { g.__asterReady = undefined; throw e; });
   }
   await g.__asterReady;
@@ -193,4 +248,15 @@ export async function resetDb(): Promise<void> {
   await exec('TRUNCATE articles, article_tags, categories, tags, users, zones, comments, media, subscribers, settings, activity, events, reports, import_jobs;');
   const { insertSeed } = await import('./repo');
   await insertSeed(buildSeed());
+  await run("INSERT INTO meta (key, value) VALUES ('seeded', ?) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value", [new Date().toISOString()]);
 }
+/** Inserisce i dati demo se il database è vuoto (usato dall'installazione guidata): un'unica transazione multi-riga. */
+export async function seedDemo(): Promise<boolean> {
+  const d = await ready();
+  const { seedStatements } = await import('./repo');
+  const stmts = mergeInserts(seedStatements(buildSeed()));
+  try { await d.tx([{ sql: "INSERT INTO meta (key, value) VALUES ('seeded', ?)", args: [new Date().toISOString()] }, ...stmts]); return true; }
+  catch (e) { if (!isDuplicate(e)) throw e; return false; }
+}
+export async function metaGet(key: string): Promise<string | null> { const r = await get<{ value: string }>('SELECT value FROM meta WHERE key = ?', [key]); return r?.value ?? null; }
+export async function metaSet(key: string, value: string): Promise<void> { await run('INSERT INTO meta (key, value) VALUES (?, ?) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value', [key, value]); }

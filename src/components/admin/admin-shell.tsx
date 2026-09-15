@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { ReactNode, useState } from 'react';
-import { logoutAction } from '@/lib/actions';
+import { logoutAction } from '@/lib/actions-auth';
 import { ROLE_LABELS, User } from '@/lib/models';
 import { Permission } from '@/lib/permissions';
 
@@ -50,8 +50,11 @@ export function AdminShell({ user, permissions, reviewCount, pendingComments, pe
               {can('user.manage') && <A href="/admin/utenti"><span className="ico">👥</span> Utenti e ruoli</A>}
               {can('settings.manage') && <A href="/admin/impostazioni"><span className="ico">⚙</span> Impostazioni</A>}
               {can('settings.manage') && <A href="/admin/importa"><span className="ico">⬇</span> Importa da WordPress</A>}
+              {can('audit.view') && <A href="/admin/attivita"><span className="ico">🗒</span> Registro attività</A>}
             </>
           )}
+          <div className="nav-group">Account</div>
+          <A href="/admin/profilo"><span className="ico">👤</span> Il mio profilo</A>
           <div className="nav-group">Sito</div>
           <Link href="/"><span className="ico">↗</span> Vai al sito</Link>
         </nav>

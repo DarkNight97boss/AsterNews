@@ -21,6 +21,7 @@ export interface Tag {
   id: string;
   slug: string;
   name: string;
+  description?: string;
 }
 
 export interface User {
@@ -32,6 +33,13 @@ export interface User {
   bio: string;
   active: boolean;
   createdAt: string;
+  title?: string;
+  longBio?: string;
+  socials?: Record<string, string>;
+  totpEnabled?: boolean;
+  hasPassword?: boolean;
+  mustChangePassword?: boolean;
+  lastLogin?: string | null;
 }
 
 export interface LiveUpdate {
@@ -79,6 +87,11 @@ export interface Article {
   seoScore?: number;
   seoReport?: string[];
   legacyUrl?: string;
+  assignedTo?: string;
+  deadline?: string | null;
+  premium?: boolean;
+  editionId?: string;
+  faq?: { q: string; a: string }[];
   publishedAt: string | null;
   scheduledAt: string | null;
   createdAt: string;
@@ -93,6 +106,9 @@ export interface Comment {
   body: string;
   status: CommentStatus;
   createdAt: string;
+  readerId?: string;
+  parentId?: string;
+  flags?: number;
 }
 
 export interface MediaItem {
@@ -104,13 +120,48 @@ export interface MediaItem {
   size: number;
   uploadedBy: string;
   createdAt: string;
+  provider?: string;
+  path?: string;
+  width?: number;
+  height?: number;
+  variants?: Record<string, string>;
+  focalX?: number;
+  focalY?: number;
 }
 
 export interface Subscriber {
   id: string;
   email: string;
   createdAt: string;
+  status?: 'pending' | 'confirmed' | 'unsubscribed';
+  token?: string;
+  confirmedAt?: string | null;
+  source?: string;
 }
+
+export interface Session { id: string; userId: string; kind: 'staff' | 'reader'; createdAt: string; lastSeen: string; expiresAt: string; userAgent: string; ip: string; revoked: boolean }
+export interface Revision { id: string; articleId: string; userId: string; note: string; data: Article; createdAt: string }
+export interface ArticleNote { id: string; articleId: string; userId: string; kind: 'note' | 'changes' | 'system'; body: string; resolved: boolean; createdAt: string }
+export interface Reader { id: string; email: string; name: string; verified: boolean; premium: boolean; premiumUntil: string | null; stripeCustomer: string; banned: boolean; createdAt: string; lastLogin: string | null }
+export interface Redirect { id: string; fromPath: string; toPath: string; code: number; hits: number; createdAt: string }
+export interface NotFoundEntry { path: string; hits: number; referer: string; firstSeen: string; lastSeen: string }
+export interface Edition { id: string; slug: string; name: string; domain: string; tagline: string; zoneId: string; categoryIds: string[]; theme: Partial<import('./themes').ThemeSettings>; logo: string; active: boolean; createdAt: string }
+export interface ErrorEntry { id: string; digest: string; message: string; stack: string; path: string; count: number; firstSeen: string; lastSeen: string }
+export interface Poll { id: string; articleId: string; question: string; options: string[]; votes: number[]; createdAt: string }
+export interface NewsletterSend { id: string; subject: string; kind: string; recipients: number; sentAt: string; status: string; message: string }
+export interface BackupEntry { id: string; createdAt: string; size: number; url: string; note: string }
+export interface HitRow { day: string; hour: number; path: string; articleId: string; source: string; count: number; readMs: number }
+
+export interface NewsletterSettings { provider: 'none' | 'resend' | 'brevo'; apiKey: string; fromEmail: string; fromName: string; digestEnabled: boolean; digestHour: number; doubleOptIn: boolean }
+export interface StorageSettings { provider: 'auto' | 'supabase' | 'vercel-blob' | 'local' | 'db'; bucket: string; maxWidth: number }
+export interface PaywallSettings { enabled: boolean; freeArticles: number; monthlyPrice: number; stripeSecretKey: string; stripePriceId: string; stripeWebhookSecret: string }
+export interface CommunitySettings { commentsRequireAccount: boolean; blockedWords: string; flagsToHide: number }
+export interface MonitoringSettings { alertEmail: string; webhookUrl: string; slowQueryMs: number; sentryDsn: string }
+export interface AnalyticsSettings { enabled: boolean; vercelAnalytics: boolean }
+export interface PushSettings { enabled: boolean; autoBreaking: boolean }
+export interface CacheSettings { enabled: boolean; seconds: number }
+export interface SearchSettings { synonyms: string }
+export interface BackupSettings { enabled: boolean; keep: number }
 
 import type { ThemeSettings } from './themes';
 import type { SeoSettings } from './seo-engine';
@@ -133,7 +184,29 @@ export interface SiteSettings {
   socials: { facebook: string; instagram: string; x: string; youtube: string; telegram: string };
   footerText: string;
   commentsModeration: boolean;
+  newsletter?: NewsletterSettings;
+  storage?: StorageSettings;
+  paywall?: PaywallSettings;
+  community?: CommunitySettings;
+  monitoring?: MonitoringSettings;
+  analytics?: AnalyticsSettings;
+  push?: PushSettings;
+  cache?: CacheSettings;
+  search?: SearchSettings;
+  backup?: BackupSettings;
+  language?: string;
 }
+
+export const DEFAULT_NEWSLETTER: NewsletterSettings = { provider: 'none', apiKey: '', fromEmail: '', fromName: '', digestEnabled: false, digestHour: 7, doubleOptIn: true };
+export const DEFAULT_STORAGE: StorageSettings = { provider: 'auto', bucket: 'media', maxWidth: 2000 };
+export const DEFAULT_PAYWALL: PaywallSettings = { enabled: false, freeArticles: 5, monthlyPrice: 4.99, stripeSecretKey: '', stripePriceId: '', stripeWebhookSecret: '' };
+export const DEFAULT_COMMUNITY: CommunitySettings = { commentsRequireAccount: false, blockedWords: '', flagsToHide: 3 };
+export const DEFAULT_MONITORING: MonitoringSettings = { alertEmail: '', webhookUrl: '', slowQueryMs: 2000, sentryDsn: '' };
+export const DEFAULT_ANALYTICS: AnalyticsSettings = { enabled: true, vercelAnalytics: false };
+export const DEFAULT_PUSH: PushSettings = { enabled: true, autoBreaking: true };
+export const DEFAULT_CACHE: CacheSettings = { enabled: true, seconds: 60 };
+export const DEFAULT_SEARCH: SearchSettings = { synonyms: 'comune=municipio\nauto=automobile,macchina\nlavoro=occupazione\nscuola=istruzione\ncalcio=football' };
+export const DEFAULT_BACKUP: BackupSettings = { enabled: false, keep: 7 };
 
 export interface ActivityEntry {
   id: string;
@@ -141,6 +214,9 @@ export interface ActivityEntry {
   action: string;
   target: string;
   createdAt: string;
+  ip?: string;
+  details?: string;
+  articleId?: string;
 }
 
 export type ZoneKind = 'comune' | 'zona';

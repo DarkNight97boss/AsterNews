@@ -8,8 +8,10 @@ import { articleUrlWith, getCategories, getLiveArticles, getSettings, getUsers, 
 import { getWeather, weatherIcon, weatherLabel } from '@/lib/weather';
 import { getActiveTheme } from '@/lib/theme-server';
 import { PreviewBar } from '@/components/site/preview-bar';
+import { ensureInstalled } from '@/lib/install';
 
 export default async function SiteLayout({ children }: LayoutProps<'/'>) {
+  await ensureInstalled();
   const s = await getSettings();
   const [me, weather, cookieStore, { theme, preview }, categories, users, zones, counts, live] = await Promise.all([getCurrentUser(), getWeather(s.weatherCity, s.weatherLat, s.weatherLon), cookies(), getActiveTheme(), getCategories(), getUsers(), getZones(), zoneCounts(), getLiveArticles()]);
   const opinionCat = categories.find((c) => c.kind === 'opinion');
