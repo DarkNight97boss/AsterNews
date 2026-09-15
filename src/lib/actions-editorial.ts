@@ -1,6 +1,6 @@
 'use server';
 
-import { revalidatePath } from 'next/cache';
+import { revalidatePath, revalidateTag } from 'next/cache';
 import { cookies } from 'next/headers';
 import { clientIp, getCurrentUser, requirePermission, requireUser } from './auth';
 import * as repo from './repo';
@@ -31,7 +31,7 @@ export async function restoreRevisionAction(revisionId: string): Promise<ActionR
   const restored: Article = { ...rev.data, id: current.id, status: current.status, views: current.views, publishedAt: current.publishedAt, updatedAt: new Date().toISOString() };
   await repo.upsertArticle(restored);
   await log(u.id, 'ha ripristinato una revisione di', current, new Date(rev.createdAt).toLocaleString('it-IT'));
-  revalidatePath('/', 'layout');
+  (revalidateTag('articles', 'max'), revalidatePath('/', 'layout'));
   return ok('Revisione ripristinata.');
 }
 
@@ -98,7 +98,7 @@ export async function moveScheduleAction(articleId: string, iso: string): Promis
   else if (a.status === 'scheduled' || (a.status === 'draft' && iso > nowIso && can(u, 'article.publish'))) { await x.setSchedule(a.id, iso, a.publishedAt); if (a.status !== 'scheduled') await repo.patchArticle(a.id, { status: 'scheduled' }); }
   else await repo.patchArticle(a.id, { deadline: iso });
   await log(u.id, 'ha spostato nel calendario', a, new Date(iso).toLocaleString('it-IT'));
-  revalidatePath('/', 'layout');
+  (revalidateTag('articles', 'max'), revalidatePath('/', 'layout'));
   return ok('Data aggiornata.');
 }
 

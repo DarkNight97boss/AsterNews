@@ -1,6 +1,7 @@
 'use server';
 
-import { revalidatePath } from 'next/cache';
+import { revalidatePath, revalidateTag } from 'next/cache';
+import { CACHE_TAGS } from './cache';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { clientIp, getCurrentUser, requirePermission, requireUser } from './auth';
@@ -19,7 +20,7 @@ import { siteUrl } from './site-url';
 export type ActionResult = { ok: boolean; message?: string; id?: string };
 const ok = (message?: string, id?: string): ActionResult => ({ ok: true, message, id });
 const fail = (message: string): ActionResult => ({ ok: false, message });
-function refresh(): void { revalidatePath('/', 'layout'); }
+function refresh(): void { for (const t of Object.values(CACHE_TAGS)) revalidateTag(t, 'max'); revalidatePath('/', 'layout'); }
 async function log(userId: string, action: string, target: string, articleId = '', details = ''): Promise<void> { await repo.insertActivity({ id: uid('ac'), userId, action, target, articleId, details, ip: await clientIp(), createdAt: new Date().toISOString() }); }
 
 

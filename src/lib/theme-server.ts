@@ -4,6 +4,7 @@ import { cache } from 'react';
 import { getCurrentUser } from './auth';
 import { can } from './permissions';
 import { getSettings } from './queries';
+import { currentEdition } from './edition';
 import { ResolvedTheme, ThemeSettings, resolveTheme } from './themes';
 
 export const PREVIEW_COOKIE = 'theme_preview';
@@ -21,5 +22,6 @@ export const getActiveTheme = cache(async (): Promise<{ theme: ResolvedTheme; pr
       } catch { /* cookie non valido */ }
     }
   }
-  return { theme: resolveTheme(settings.theme), preview: false };
+  const edition = await currentEdition();
+  return { theme: resolveTheme(edition && Object.keys(edition.theme).length ? { ...settings.theme, ...edition.theme } as ThemeSettings : settings.theme), preview: false };
 });

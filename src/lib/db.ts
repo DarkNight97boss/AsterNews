@@ -67,7 +67,8 @@ async function makeDriver(): Promise<Driver> {
   }
   const { PGlite } = await import('@electric-sql/pglite');
   const dir = process.env.PGLITE_DIR ?? writableDir(path.join(process.cwd(), 'data', 'pg'));
-  const db = dir ? new PGlite(dir) : new PGlite(); // senza cartella scrivibile (serverless) resta in memoria
+  const { pg_trgm } = await import('@electric-sql/pglite/contrib/pg_trgm');
+  const db = dir ? new PGlite(dir, { extensions: { pg_trgm } }) : new PGlite({ extensions: { pg_trgm } }); // senza cartella scrivibile (serverless) resta in memoria
   return {
     all: async (q, args) => (await db.query(toPg(q), args.map(norm))).rows as Record<string, unknown>[],
     exec: async (q) => { await db.exec(q); },
@@ -228,6 +229,7 @@ export async function ready(): Promise<Driver> {
       // Più istanze serverless possono partire insieme: CREATE ... IF NOT EXISTS concorrenti possono collidere, si riprova una volta.
       try { await d.exec(SCHEMA); } catch (e) { if (!isDuplicate(e)) throw e; await new Promise((r) => setTimeout(r, 500)); await d.exec(SCHEMA); }
       try { await d.exec(MIGRATIONS); } catch (e) { if (!isDuplicate(e)) throw e; }
+      try { await d.exec('CREATE EXTENSION IF NOT EXISTS pg_trgm'); } catch { /* estensione non disponibile: la ricerca "forse cercavi" usa il ripiego in JavaScript */ }
       const su = await d.all("SELECT value FROM meta WHERE key = 'site_url'", []);
       if (su.length) (await import('./site-url')).setSiteUrlOverride(String(su[0].value));
       // I dati (demo o minimi) vengono inseriti dall'installazione guidata (/setup), non più automaticamente.

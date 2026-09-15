@@ -8,7 +8,9 @@
     "start": "next start",
     "lint": "tsc --noEmit",
     "import:wp": "node --env-file-if-exists=.env.local --conditions=react-server --import tsx scripts/import-wordpress.mts",
-    "seed:bulk": "node --env-file-if-exists=.env.local --conditions=react-server --import tsx scripts/seed-bulk.mts"
+    "seed:bulk": "node --env-file-if-exists=.env.local --conditions=react-server --import tsx scripts/seed-bulk.mts",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@electric-sql/pglite": "^0.5.8",

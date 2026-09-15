@@ -1,0 +1,29 @@
+import Link from 'next/link';
+import { redirect } from 'next/navigation';
+import { requireUser } from '@/lib/auth';
+import { can } from '@/lib/permissions';
+import { listErrors } from '@/lib/repo-extra';
+import { getSettings } from '@/lib/queries';
+import { DEFAULT_MONITORING } from '@/lib/models';
+import { formatDate } from '@/lib/utils';
+import { ActionButton } from '@/components/ui/action-button';
+import { clearErrorsAction, runHealthCheckAction } from '@/lib/actions-backup';
+
+export default async function ErrorsPage() {
+  const me = await requireUser();
+  if (!can(me, 'settings.manage')) redirect('/admin');
+  const [errors, s] = await Promise.all([listErrors(100), getSettings()]);
+  const mon = { ...DEFAULT_MONITORING, ...(s.monitoring ?? {}) };
+  return (
+    <>
+      <div className="page-title"><div><h1>Errori e salute</h1><p>Errori del server registrati automaticamente. Avvisi: {mon.alertEmail ? `email a ${mon.alertEmail}` : 'nessuna email'}{mon.webhookUrl ? ' · webhook attivo' : ''} · soglia database lento {mon.slowQueryMs} ms{process.env.SENTRY_DSN ? ' · inoltro a Sentry attivo' : ''}.</p></div>
+        <div className="actions"><Link className="btn btn-outline" href="/api/db-status" target="_blank">Diagnostica database ↗</Link><ActionButton className="btn btn-outline" action={() => runHealthCheckAction()}>Esegui controllo salute</ActionButton><ActionButton className="btn btn-danger" confirm="Svuotare il registro errori?" action={() => clearErrorsAction()}>Svuota</ActionButton></div></div>
+      <div className="table-wrap"><table className="table audit-table">
+        <thead><tr><th>Ultimo</th><th>Errore</th><th>Percorso</th><th style={{ textAlign: 'right' }}>Volte</th></tr></thead>
+        <tbody>
+          {errors.map((e) => <tr key={e.id}><td style={{ whiteSpace: 'nowrap' }}>{formatDate(e.lastSeen)}<div className="help">dal {formatDate(e.firstSeen)}</div></td><td><b>{e.message}</b>{e.stack && <details><summary className="help" style={{ cursor: 'pointer' }}>stack</summary><pre style={{ fontSize: 11, whiteSpace: 'pre-wrap', maxHeight: 200, overflow: 'auto' }}>{e.stack}</pre></details>}{e.digest && <div className="help">digest {e.digest}</div>}</td><td><code>{e.path}</code></td><td style={{ textAlign: 'right', fontWeight: 700 }}>{e.count}</td></tr>)}
+          {errors.length === 0 && <tr><td colSpan={4} className="help">Nessun errore registrato. 🎉</td></tr>}
+        </tbody></table></div>
+    </>
+  );
+}

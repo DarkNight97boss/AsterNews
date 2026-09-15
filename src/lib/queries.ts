@@ -5,15 +5,27 @@ import { Article, ArticleStatus, Category, Comment, Report, Tag, User, Zone } fr
 import { resolveTheme } from './themes';
 import { DEFAULT_SEO_SETTINGS, LinkTarget, RawContext, SeoContext, SeoSettings, extractKeywords, phrasesForArticle } from './seo-engine';
 import { buildSeed } from './seed';
+import { CACHE_TAGS, cached, setCacheSeconds } from './cache';
+import { editionFilter } from './edition';
+import { DEFAULT_CACHE, DEFAULT_SEARCH } from './models';
 
 /** Tutte le letture passano di qui: query SQL indicizzate e limitate, mai liste complete in memoria. */
 const promote = cache(async () => { await repo.promoteScheduled(); return true; });
 
-export const getCategories = cache((): Promise<Category[]> => repo.listCategories());
-export const getTags = cache((): Promise<Tag[]> => repo.topTags(400));
-export const getUsers = cache((): Promise<User[]> => repo.listUsers());
-export const getZones = cache((): Promise<Zone[]> => repo.listZones());
-export const getSettings = cache(async () => (await repo.getSettingsRow()) ?? buildSeed().settings);
+const cCategories = cached('categories', () => repo.listCategories(), [CACHE_TAGS.taxonomy]);
+const cTags = cached('tags', () => repo.topTags(400), [CACHE_TAGS.taxonomy]);
+const cUsers = cached('users', () => repo.listUsers(), [CACHE_TAGS.taxonomy]);
+const cZones = cached('zones', () => repo.listZones(), [CACHE_TAGS.taxonomy]);
+const cSettings = cached('settings', async () => (await repo.getSettingsRow()) ?? buildSeed().settings, [CACHE_TAGS.settings]);
+const cList = cached('articles', (f: repo.ArticleFilter, sort: repo.ArticleSort, limit: number, offset: number) => repo.listArticles(f, sort, limit, offset), [CACHE_TAGS.articles]);
+const cZoneCounts = cached('zone-counts', () => repo.zoneCounts(), [CACHE_TAGS.articles]);
+const cTopTags = cached('top-tags', (categoryId: string, limit: number) => repo.topTagsForCategory(categoryId, limit), [CACHE_TAGS.articles]);
+export const getCategories = cache((): Promise<Category[]> => cCategories());
+export const getTags = cache((): Promise<Tag[]> => cTags());
+export const getUsers = cache((): Promise<User[]> => cUsers());
+export const getZones = cache((): Promise<Zone[]> => cZones());
+export const getSettings = cache(async () => { const s = await cSettings(); setCacheSeconds({ ...DEFAULT_CACHE, ...(s.cache ?? {}) }.enabled ? { ...DEFAULT_CACHE, ...(s.cache ?? {}) }.seconds : 0); return s; });
+const synonyms = async (): Promise<Record<string, string[]>> => { const raw = ({ ...DEFAULT_SEARCH, ...((await getSettings()).search ?? {}) }).synonyms; const out: Record<string, string[]> = {}; raw.split(/\r?\n/).forEach((l) => { const [k, v] = l.split('='); if (k && v) out[k.trim().toLowerCase()] = v.split(',').map((x) => x.trim().toLowerCase()).filter(Boolean); }); return out; };
 export const getSeoSettings = async (): Promise<SeoSettings> => ({ ...DEFAULT_SEO_SETTINGS, ...((await getSettings()).seo ?? {}) });
 export const getTheme = async () => resolveTheme((await getSettings()).theme);
 export const getActivity = (limit = 20) => repo.listActivity(limit);
@@ -22,7 +34,7 @@ export const getSubscribers = () => repo.listSubscribers();
 export const getComments = (status?: Comment['status']) => repo.listComments(status);
 
 // ---------- Articoli pubblicati ----------
-export const listPublished = async (f: repo.ArticleFilter, limit = 50, offset = 0, sort: repo.ArticleSort = 'published') => { await promote(); return repo.listArticles({ ...f, status: 'published' }, sort, limit, offset); };
+export const listPublished = async (f: repo.ArticleFilter, limit = 50, offset = 0, sort: repo.ArticleSort = 'published') => { await promote(); const ed = await editionFilter(); const filter: repo.ArticleFilter = { ...(ed.zoneId && !f.zoneId && !f.categoryId ? { zoneId: ed.zoneId } : {}), ...(ed.categoryIds && !f.categoryId ? { categoryIds: ed.categoryIds } : {}), ...f, status: 'published' }; return cList(filter, sort, limit, offset); };
 export const getPublished = (limit = 60, offset = 0) => listPublished({}, limit, offset);
 export const countPublished = async (f: repo.ArticleFilter = {}) => repo.countArticles({ ...f, status: 'published' });
 export const getBreaking = (limit = 5) => listPublished({ breaking: true }, limit);
@@ -49,12 +61,13 @@ export const articlesByAuthor = (userId: string, limit = 50, offset = 0) => list
 export const articlesByZone = (zoneId: string, limit = 50, offset = 0) => listPublished({ zoneId }, limit, offset);
 export const approvedComments = (articleId: string) => repo.commentsForArticle(articleId);
 export const related = (a: Article, n = 4) => repo.relatedArticles(a, n);
-export const search = (q: string, limit = 50, offset = 0) => repo.searchArticles(q, limit, offset);
+export const search = async (q: string, limit = 50, offset = 0, opts: { categoryId?: string; from?: string; to?: string } = {}) => repo.searchArticles(q, limit, offset, { ...opts, synonyms: await synonyms() });
+export const suggest = (q: string) => repo.suggestTerms(q);
 export const countByStatus = (f: { authorId?: string } = {}) => repo.countByStatus(f);
-export const zoneCounts = cache(() => repo.zoneCounts());
+export const zoneCounts = cache(() => cZoneCounts());
 export const categoryCounts = () => repo.categoryCounts();
 export const tagCounts = () => repo.tagCounts();
-export const topTagsForCategory = (categoryId: string, limit = 8) => repo.topTagsForCategory(categoryId, limit);
+export const topTagsForCategory = (categoryId: string, limit = 8) => cTopTags(categoryId, limit);
 export async function articleUrl(a: Article): Promise<string> { return `/${(await category(a.categoryId))?.slug ?? 'notizie'}/${a.slug}`; }
 /** Variante sincrona quando la mappa delle categorie è già disponibile. */
 export function articleUrlWith(a: Article, cats: Category[]): string { return `/${cats.find((c) => c.id === a.categoryId)?.slug ?? 'notizie'}/${a.slug}`; }

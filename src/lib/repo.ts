@@ -30,13 +30,18 @@ const rowToEvent = (r: Row): Event => ({ id: String(r.id), slug: String(r.slug),
 const rowToReport = (r: Row): Report => ({ id: String(r.id), name: String(r.name ?? ''), email: String(r.email ?? ''), zoneId: String(r.zone_id ?? ''), subject: String(r.subject ?? ''), body: String(r.body ?? ''), image: String(r.image ?? ''), status: r.status as Report['status'], reply: String(r.reply ?? ''), createdAt: String(r.created_at ?? '') });
 
 // ---------------- Articoli ----------------
-export interface ArticleFilter { status?: ArticleStatus | ArticleStatus[]; categoryId?: string; authorId?: string; zoneId?: string; tagId?: string; format?: Article['format']; featured?: boolean; breaking?: boolean; liveActive?: boolean; q?: string; excludeIds?: string[]; kinds?: string[]; notKinds?: string[] }
+export interface ArticleFilter { status?: ArticleStatus | ArticleStatus[]; categoryId?: string; categoryIds?: string[]; authorId?: string; zoneId?: string; editionId?: string; tagId?: string; format?: Article['format']; featured?: boolean; breaking?: boolean; liveActive?: boolean; q?: string; excludeIds?: string[]; kinds?: string[]; notKinds?: string[]; from?: string; to?: string; premium?: boolean }
 export type ArticleSort = 'published' | 'updated' | 'views' | 'title' | 'created';
 
 function where(f: ArticleFilter, params: unknown[]): string {
   const w: string[] = [];
   if (f.status) { const arr = Array.isArray(f.status) ? f.status : [f.status]; w.push(`a.status IN (${arr.map(() => '?').join(',')})`); params.push(...arr); }
   if (f.categoryId) { w.push('a.category_id = ?'); params.push(f.categoryId); }
+  if (f.categoryIds?.length) { w.push(`a.category_id IN (${f.categoryIds.map(() => '?').join(',')})`); params.push(...f.categoryIds); }
+  if (f.editionId) { w.push("(a.edition_id = ? OR a.edition_id = '')"); params.push(f.editionId); }
+  if (f.from) { w.push('a.published_at >= ?'); params.push(f.from); }
+  if (f.to) { w.push('a.published_at < ?'); params.push(f.to); }
+  if (f.premium !== undefined) { w.push('a.premium = ?'); params.push(b(f.premium)); }
   if (f.authorId) { w.push('a.author_id = ?'); params.push(f.authorId); }
   if (f.zoneId) { w.push('a.zone_id = ?'); params.push(f.zoneId); }
   if (f.format) { w.push('a.format = ?'); params.push(f.format); }
@@ -113,17 +118,55 @@ export async function countByStatus(f: { authorId?: string } = {}): Promise<Reco
   rows.forEach((x) => { r[x.status as ArticleStatus] = Number(x.c); });
   return r;
 }
-export async function searchArticles(q: string, limit = 50, offset = 0): Promise<{ items: Article[]; total: number }> {
+export interface SearchOptions { categoryId?: string; from?: string; to?: string; synonyms?: Record<string, string[]> }
+/** Espande la query con i sinonimi configurati (es. "comune" → "comune municipio") per la ricerca full-text. */
+export function expandQuery(q: string, synonyms: Record<string, string[]> = {}): string {
+  return q.split(/\s+/).filter(Boolean).map((w) => { const k = w.toLowerCase(); const grp = Object.entries(synonyms).find(([key, v]) => key === k || v.includes(k)); const syn = grp ? [grp[0], ...grp[1]].filter((x) => x !== k) : []; return syn.length ? `(${[w, ...syn].join(' | ')})` : w; }).join(' & ');
+}
+export async function searchArticles(q: string, limit = 50, offset = 0, opts: SearchOptions = {}): Promise<{ items: Article[]; total: number; suggestions: string[] }> {
   const t = q.trim();
-  if (!t) return { items: [], total: 0 };
-  const rows = await all<Row>("SELECT a.* FROM articles a WHERE a.status = 'published' AND a.search @@ plainto_tsquery('italian', ?) ORDER BY ts_rank(a.search, plainto_tsquery('italian', ?)) DESC, a.published_at DESC LIMIT ? OFFSET ?", [t, t, limit, offset]);
-  const total = Number(((await get<Row>("SELECT COUNT(*) c FROM articles a WHERE a.status = 'published' AND a.search @@ plainto_tsquery('italian', ?)", [t])) ?? { c: 0 }).c);
+  if (!t) return { items: [], total: 0, suggestions: [] };
+  const extra: string[] = []; const ep: unknown[] = [];
+  if (opts.categoryId) { extra.push('a.category_id = ?'); ep.push(opts.categoryId); }
+  if (opts.from) { extra.push('a.published_at >= ?'); ep.push(opts.from); }
+  if (opts.to) { extra.push('a.published_at < ?'); ep.push(opts.to); }
+  const where = extra.length ? ' AND ' + extra.join(' AND ') : '';
+  const tsq = expandQuery(t, opts.synonyms);
+  let rows: Row[] = []; let total = 0;
+  try {
+    rows = await all<Row>(`SELECT a.* FROM articles a WHERE a.status = 'published' AND a.search @@ to_tsquery('italian', ?)${where} ORDER BY ts_rank(a.search, to_tsquery('italian', ?)) DESC, a.published_at DESC LIMIT ? OFFSET ?`, [tsq, ...ep, tsq, limit, offset]);
+    total = Number(((await get<Row>(`SELECT COUNT(*) c FROM articles a WHERE a.status = 'published' AND a.search @@ to_tsquery('italian', ?)${where}`, [tsq, ...ep])) ?? { c: 0 }).c);
+  } catch { /* query con sinonimi non valida: si ripiega su plainto_tsquery */
+    rows = await all<Row>(`SELECT a.* FROM articles a WHERE a.status = 'published' AND a.search @@ plainto_tsquery('italian', ?)${where} ORDER BY a.published_at DESC LIMIT ? OFFSET ?`, [t, ...ep, limit, offset]);
+    total = rows.length;
+  }
   if (!rows.length && total === 0) {
     const like = `%${t}%`;
-    const alt = await all<Row>("SELECT * FROM articles WHERE status = 'published' AND (title ILIKE ? OR subtitle ILIKE ?) ORDER BY published_at DESC LIMIT ? OFFSET ?", [like, like, limit, offset]);
-    return { items: alt.map(rowToArticle), total: alt.length };
+    const alt = await all<Row>(`SELECT a.* FROM articles a WHERE a.status = 'published' AND (a.title ILIKE ? OR a.subtitle ILIKE ?)${where} ORDER BY a.published_at DESC LIMIT ? OFFSET ?`, [like, like, ...ep, limit, offset]);
+    if (alt.length) return { items: alt.map(rowToArticle), total: alt.length, suggestions: [] };
+    return { items: [], total: 0, suggestions: await similarTerms(t) };
   }
-  return { items: rows.map(rowToArticle), total };
+  return { items: rows.map(rowToArticle), total, suggestions: [] };
+}
+/** "Forse cercavi": parole simili (pg_trgm se disponibile, altrimenti distanza di Levenshtein sui tag e sui titoli recenti). */
+export async function similarTerms(q: string): Promise<string[]> {
+  const term = q.toLowerCase();
+  try {
+    const rows = await all<Row>("SELECT name FROM tags WHERE similarity(lower(name), ?) > 0.3 ORDER BY similarity(lower(name), ?) DESC LIMIT 4", [term, term]);
+    if (rows.length) return rows.map((r) => String(r.name));
+  } catch { /* estensione pg_trgm assente */ }
+  const words = new Set<string>();
+  (await all<Row>("SELECT title FROM articles WHERE status = 'published' ORDER BY published_at DESC LIMIT 400")).forEach((r) => String(r.title).toLowerCase().split(/[^a-zà-ú]+/).forEach((w) => { if (w.length > 4) words.add(w); }));
+  (await all<Row>('SELECT name FROM tags LIMIT 2000')).forEach((r) => words.add(String(r.name).toLowerCase()));
+  const lev = (a: string, b: string): number => { const m = a.length, n = b.length; if (Math.abs(m - n) > 3) return 99; const d = Array.from({ length: m + 1 }, (_, i) => [i, ...new Array(n).fill(0)]); for (let j = 1; j <= n; j++) d[0][j] = j; for (let i = 1; i <= m; i++) for (let j = 1; j <= n; j++) d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1)); return d[m][n]; };
+  return [...words].map((w) => ({ w, d: lev(term, w) })).filter((x) => x.d <= Math.max(1, Math.floor(term.length / 4))).sort((a, b) => a.d - b.d).slice(0, 4).map((x) => x.w);
+}
+/** Suggerimenti mentre si digita: titoli e tag che iniziano con il testo. */
+export async function suggestTerms(q: string, limit = 8): Promise<{ label: string; url: string }[]> {
+  const t = q.trim(); if (t.length < 2) return [];
+  const tags = (await all<Row>('SELECT name, slug FROM tags WHERE name ILIKE ? ORDER BY name LIMIT ?', [`${t}%`, 4])).map((r) => ({ label: String(r.name), url: `/tag/${r.slug}` }));
+  const arts = (await all<Row>("SELECT a.title, a.slug, c.slug cslug FROM articles a LEFT JOIN categories c ON c.id = a.category_id WHERE a.status = 'published' AND a.title ILIKE ? ORDER BY a.published_at DESC LIMIT ?", [`%${t}%`, limit - tags.length])).map((r) => ({ label: String(r.title), url: `/${r.cslug ?? 'notizie'}/${r.slug}` }));
+  return [...tags, ...arts];
 }
 export async function relatedArticles(a: Article, n = 4): Promise<Article[]> {
   const tagIn = a.tagIds.length ? a.tagIds.map(() => '?').join(',') : "''";

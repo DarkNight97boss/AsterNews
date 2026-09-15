@@ -54,6 +54,9 @@ export function AdminShell({ user, permissions, reviewCount, pendingComments, pe
               {can('settings.manage') && <A href="/admin/impostazioni"><span className="ico">⚙</span> Impostazioni</A>}
               {can('settings.manage') && <A href="/admin/importa"><span className="ico">⬇</span> Importa da WordPress</A>}
               {can('redirect.manage') && <A href="/admin/redirect"><span className="ico">↪</span> Redirect e 404</A>}
+              {can('settings.manage') && <A href="/admin/edizioni"><span className="ico">🏙</span> Edizioni</A>}
+              {can('settings.manage') && <A href="/admin/backup"><span className="ico">💾</span> Backup</A>}
+              {can('settings.manage') && <A href="/admin/errori"><span className="ico">🩺</span> Errori e salute</A>}
               {can('audit.view') && <A href="/admin/attivita"><span className="ico">🗒</span> Registro attività</A>}
             </>
           )}

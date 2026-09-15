@@ -2,7 +2,7 @@
 
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
-import { revalidatePath } from 'next/cache';
+import { revalidatePath, revalidateTag } from 'next/cache';
 import { endSession, getCurrentReader, signedToken, startSession, verifySignedToken } from './auth';
 import * as repo from './repo';
 import * as x from './repo-extra';
@@ -89,7 +89,7 @@ export async function addCommentAction(input: { articleId: string; authorName: s
   const status: Comment['status'] = hasBlocked || linkSpam ? 'spam' : s.commentsModeration && !reader?.premium ? 'pending' : 'approved';
   const c: Comment = { id: uid('cm'), articleId: a.id, authorName: authorName.slice(0, 60), email, body, status, createdAt: new Date().toISOString(), readerId: reader?.id ?? '', parentId: input.parentId ?? '', flags: 0 };
   await repo.insertComment(c);
-  revalidatePath('/', 'layout');
+  (revalidateTag('articles', 'max'), revalidatePath('/', 'layout'));
   if (status === 'spam') return ok('Il commento è stato inviato alla moderazione.');
   return ok(status === 'pending' ? 'Grazie! Il commento sarà pubblicato dopo la moderazione.' : 'Commento pubblicato.');
 }
@@ -99,7 +99,7 @@ export async function flagCommentAction(commentId: string): Promise<ActionResult
   const reader = await getCurrentReader();
   const flags = await x.flagComment(commentId, reader?.id ?? voter);
   const th = { ...DEFAULT_COMMUNITY, ...((await getSettings()).community ?? {}) }.flagsToHide;
-  if (flags >= th) { await repo.setCommentStatus(commentId, 'pending'); revalidatePath('/', 'layout'); }
+  if (flags >= th) { await repo.setCommentStatus(commentId, 'pending'); (revalidateTag('articles', 'max'), revalidatePath('/', 'layout')); }
   return ok('Grazie per la segnalazione: la redazione controllerà il commento.');
 }
 
