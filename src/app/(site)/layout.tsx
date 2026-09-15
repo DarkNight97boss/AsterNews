@@ -9,6 +9,9 @@ import { getWeather, weatherIcon, weatherLabel } from '@/lib/weather';
 import { getActiveTheme } from '@/lib/theme-server';
 import { PreviewBar } from '@/components/site/preview-bar';
 import { ensureInstalled } from '@/lib/install';
+import { Analytics } from '@/components/site/analytics';
+import { PushPrompt } from '@/components/site/push-prompt';
+import { DEFAULT_ANALYTICS, DEFAULT_PUSH } from '@/lib/models';
 
 export default async function SiteLayout({ children }: LayoutProps<'/'>) {
   await ensureInstalled();
@@ -30,6 +33,8 @@ export default async function SiteLayout({ children }: LayoutProps<'/'>) {
       <main className="page"><div className="container">{children}</div></main>
       <Footer />
       {!cookieStore.get('cookie_consent') && <CookieBanner />}
+      {{ ...DEFAULT_ANALYTICS, ...(s.analytics ?? {}) }.enabled && <Analytics vercel={!!s.analytics?.vercelAnalytics} />}
+      {{ ...DEFAULT_PUSH, ...(s.push ?? {}) }.enabled && <PushPrompt siteName={s.siteName} />}
     </div>
   );
 }

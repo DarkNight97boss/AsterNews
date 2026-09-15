@@ -27,6 +27,7 @@ export function AdminShell({ user, permissions, reviewCount, pendingComments, pe
           <A href="/admin/scrivi"><span className="ico">✨</span> Scrivi (semplice)</A>
           <A href="/admin/articoli/nuovo"><span className="ico">＋</span> Editor completo</A>
           <A href="/admin/calendario"><span className="ico">🗓</span> Calendario</A>
+          {can('stats.view') && <A href="/admin/statistiche"><span className="ico">📈</span> Statistiche</A>}
           {can('category.manage') && <A href="/admin/categorie"><span className="ico">☰</span> Categorie</A>}
           {can('tag.manage') && <A href="/admin/tag"><span className="ico">#</span> Tag</A>}
           <A href="/admin/media"><span className="ico">▣</span> Media</A>
@@ -43,6 +44,7 @@ export function AdminShell({ user, permissions, reviewCount, pendingComments, pe
               <A href="/admin/commenti"><span className="ico">💬</span> Commenti {pendingComments > 0 && <span className="pill">{pendingComments}</span>}</A>
               <A href="/admin/segnalazioni"><span className="ico">🚧</span> Segnalazioni {newReports > 0 && <span className="pill">{newReports}</span>}</A>
               <A href="/admin/newsletter"><span className="ico">✉</span> Newsletter</A>
+              <A href="/admin/lettori"><span className="ico">🙋</span> Lettori e abbonati</A>
             </>
           )}
           {(can('user.manage') || can('settings.manage')) && (

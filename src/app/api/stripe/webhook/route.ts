@@ -1,0 +1,42 @@
+import { NextResponse } from 'next/server';
+import { createHmac, timingSafeEqual } from 'node:crypto';
+import * as x from '@/lib/repo-extra';
+import { getSettings } from '@/lib/queries';
+
+export const dynamic = 'force-dynamic';
+
+/** Verifica la firma Stripe (Stripe-Signature: t=...,v1=...) senza SDK. */
+function verify(payload: string, header: string, secret: string): boolean {
+  const parts = Object.fromEntries(header.split(',').map((p) => p.split('=') as [string, string]));
+  if (!parts.t || !parts.v1) return false;
+  const expected = createHmac('sha256', secret).update(`${parts.t}.${payload}`).digest('hex');
+  const a = Buffer.from(expected); const b = Buffer.from(parts.v1);
+  return a.length === b.length && timingSafeEqual(a, b) && Math.abs(Date.now() / 1000 - Number(parts.t)) < 600;
+}
+
+/** Eventi Stripe: attiva/disattiva l'abbonamento del lettore. */
+export async function POST(req: Request) {
+  const s = await getSettings();
+  const secret = s.paywall?.stripeWebhookSecret || process.env.STRIPE_WEBHOOK_SECRET || '';
+  const payload = await req.text();
+  if (secret && !verify(payload, req.headers.get('stripe-signature') ?? '', secret)) return NextResponse.json({ error: 'Firma non valida' }, { status: 400 });
+  const ev = JSON.parse(payload) as { type: string; data: { object: Record<string, unknown> } };
+  const o = ev.data.object;
+  try {
+    if (ev.type === 'checkout.session.completed') {
+      const readerId = String((o.metadata as { reader_id?: string })?.reader_id ?? o.client_reference_id ?? '');
+      if (readerId) await x.updateReader(readerId, { premium: true, premiumUntil: null, stripeCustomer: String(o.customer ?? '') });
+    } else if (ev.type === 'customer.subscription.updated' || ev.type === 'customer.subscription.deleted') {
+      const r = await x.findReaderByStripeCustomer(String(o.customer ?? ''));
+      if (r) {
+        const status = String(o.status ?? ''); const end = o.current_period_end ? new Date(Number(o.current_period_end) * 1000).toISOString() : null;
+        const active = ['active', 'trialing', 'past_due'].includes(status) && ev.type !== 'customer.subscription.deleted';
+        await x.updateReader(r.id, { premium: active, premiumUntil: active ? end : new Date().toISOString() });
+      }
+    } else if (ev.type === 'invoice.payment_failed') {
+      const r = await x.findReaderByStripeCustomer(String(o.customer ?? ''));
+      if (r) await x.updateReader(r.id, { premiumUntil: new Date(Date.now() + 7 * 86400000).toISOString() });
+    }
+    return NextResponse.json({ received: true });
+  } catch (e) { console.error('[stripe]', e); return NextResponse.json({ error: 'Errore' }, { status: 500 }); }
+}

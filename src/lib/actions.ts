@@ -58,6 +58,10 @@ export async function saveArticleAction(input: Article, status: ArticleStatus): 
   await repo.upsertArticle(a);
   await x.deleteAutosave(a.id); await x.releaseLock(a.id, u.id);
   await log(u.id, a.status === 'published' ? 'ha pubblicato' : 'ha salvato', a.title, a.id);
+  if (a.status === 'published' && a.breaking && existing?.status !== 'published') { // ultim'ora: notifica push automatica (se attiva)
+    const { sendPush, pushEnabled } = await import('./push'); const s = await getSettings();
+    if ((await pushEnabled()) && (s.push?.autoBreaking ?? true)) { const cats = await getCategories(); sendPush({ title: `Ultim'ora · ${s.siteName}`, body: a.title, url: `/${cats.find((c) => c.id === a.categoryId)?.slug ?? 'notizie'}/${a.slug}`, image: a.coverImage || undefined, tag: a.id }).catch(() => {}); }
+  }
   refresh();
   const msg = a.status === 'published' ? 'Articolo pubblicato!' : a.status === 'scheduled' ? 'Articolo programmato.' : a.status === 'review' ? 'Inviato in revisione.' : 'Bozza salvata.';
   return ok(msg, a.id);
@@ -175,15 +179,6 @@ export async function deleteMediaAction(id: string): Promise<ActionResult> { awa
 // ---------------- Commenti ----------------
 export async function setCommentStatusAction(id: string, status: CommentStatus): Promise<ActionResult> { await requirePermission('comment.moderate'); await repo.setCommentStatus(id, status); refresh(); return ok('Commento aggiornato.'); }
 export async function deleteCommentAction(id: string): Promise<ActionResult> { await requirePermission('comment.moderate'); await repo.deleteCommentRow(id); refresh(); return ok('Commento eliminato.'); }
-export async function addCommentAction(input: { articleId: string; authorName: string; email: string; body: string }): Promise<ActionResult> {
-  const a = await repo.findArticle(input.articleId);
-  if (!a || !a.allowComments) return fail('Commenti non disponibili.');
-  if (!input.authorName.trim() || !input.body.trim() || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(input.email.trim())) return fail('Compila tutti i campi correttamente.');
-  const moderated = (await getSettings()).commentsModeration;
-  const c: Comment = { id: uid('cm'), articleId: a.id, authorName: input.authorName.trim().slice(0, 60), email: input.email.trim(), body: input.body.trim().slice(0, 2000), status: moderated ? 'pending' : 'approved', createdAt: new Date().toISOString() };
-  await repo.insertComment(c); refresh();
-  return ok(moderated ? 'Grazie! Il commento sarà pubblicato dopo la moderazione.' : 'Commento pubblicato.');
-}
 
 // ---------------- Utenti ----------------
 export async function saveUserAction(u: User): Promise<ActionResult> {
@@ -217,12 +212,7 @@ export async function exportJsonAction(): Promise<string> {
   const [categories, tags, users, zones, settings, articles] = await Promise.all([repo.listCategories(), repo.listTags(100000), repo.listUsers(), repo.listZones(), getSettings(), repo.listArticles({}, 'updated', 1000)]);
   return JSON.stringify({ exportedAt: new Date().toISOString(), note: 'Esportazione parziale: ultimi 1000 articoli. Per l\'intero archivio copia il file SQLite.', categories, tags, users, zones, settings, articles }, null, 1);
 }
-export async function subscribeAction(email: string): Promise<ActionResult> {
-  const e = email.trim().toLowerCase();
-  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e)) return fail('Inserisci un indirizzo email valido.');
-  await repo.insertSubscriber({ id: uid('s'), email: e, createdAt: new Date().toISOString() });
-  return ok('Iscrizione completata. Benvenuto!');
-}
+export async function subscribeAction(email: string): Promise<ActionResult> { const { subscribe } = await import('./newsletter'); const r = await subscribe(email, 'sito'); return r.ok ? ok(r.message) : fail(r.message); }
 export async function removeSubscriberAction(id: string): Promise<ActionResult> { await requirePermission('comment.moderate'); await repo.deleteSubscriberRow(id); refresh(); return ok('Iscritto rimosso.'); }
 
 // ---------------- Eventi ----------------

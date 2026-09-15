@@ -12,6 +12,11 @@ import { getActiveTheme } from '@/lib/theme-server';
 import { ArticleFanpage } from '@/components/site/fanpage/article-fanpage';
 import { siteUrl } from '@/lib/site-url';
 import { ArticleBody } from '@/components/site/article-body';
+import { Paywall } from '@/components/site/paywall';
+import { Analytics } from '@/components/site/analytics';
+import { getCurrentReader } from '@/lib/auth';
+import { DEFAULT_COMMUNITY, DEFAULT_PAYWALL } from '@/lib/models';
+import { FlagButton } from '@/components/site/article-extras';
 
 function shortTime(iso: string): string {
   const d = new Date(iso);
@@ -62,6 +67,10 @@ export default async function ArticlePage({ params }: PageProps<'/[categorySlug]
     ...(cat ? [{ '@type': 'ListItem', position: 2, name: cat.name, item: `${base}/${cat.slug}` }] : []),
     { '@type': 'ListItem', position: cat ? 3 : 2, name: a.title, item: `${base}${articleUrl(a)}` },
   ] };
+  const reader = await getCurrentReader();
+  const paywall = { ...DEFAULT_PAYWALL, ...(settings.paywall ?? {}) };
+  const community = { ...DEFAULT_COMMUNITY, ...(settings.community ?? {}) };
+  const gated = paywall.enabled && !reader?.premium;
   const { theme } = await getActiveTheme();
   if (theme.skin === 'fanpage') {
     return (
@@ -80,6 +89,7 @@ export default async function ArticlePage({ params }: PageProps<'/[categorySlug]
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumb) }} />
       <ReadingProgress />
       <ViewCounter id={a.id} />
+      <Analytics articleId={a.id} />
       <div className="article-grid">
         <aside className="article-aside">
           {author && (
@@ -121,7 +131,7 @@ export default async function ArticlePage({ params }: PageProps<'/[categorySlug]
             </section>
           )}
           {a.format === 'gallery' && a.gallery.length > 0 && <Gallery images={a.gallery} />}
-          <ArticleBody html={a.content} faq={a.faq} />
+          {gated ? <Paywall articleId={a.id} premiumOnly={!!a.premium} price={paywall.monthlyPrice} free={paywall.freeArticles}><ArticleBody html={a.content} faq={a.faq} /></Paywall> : <ArticleBody html={a.content} faq={a.faq} />}
           {settings.googleNewsUrl && <p className="gnews" style={{ fontFamily: 'var(--font-serif)', textAlign: 'center', marginTop: 24 }}>Scegli <a href={settings.googleNewsUrl} target="_blank" rel="noopener" style={{ color: 'var(--red)', textDecoration: 'underline' }}>{settings.siteName}</a> come fonte preferita su Google News</p>}
           <div className="article-foot"><span className="copy">© Riproduzione riservata</span><ShareBar title={a.title} withMail /></div>
           {tags.length > 0 && <div className="article-tags">{tags.map((t) => <Link key={t.id} href={`/tag/${t.slug}`}>#{t.name}</Link>)}</div>}
@@ -142,8 +152,8 @@ export default async function ArticlePage({ params }: PageProps<'/[categorySlug]
             <section className="comments">
               <h3>Commenti ({comments.length})</h3>
               {comments.length === 0 && <p style={{ color: 'var(--muted)' }}>Nessun commento. Sii il primo a commentare.</p>}
-              {comments.map((c) => <div key={c.id} className="comment"><div className="c-head"><b>{c.authorName}</b><span>{relativeDate(c.createdAt)}</span></div><p>{c.body}</p></div>)}
-              <CommentForm articleId={a.id} moderated={settings.commentsModeration} />
+              {comments.map((c) => <div key={c.id} className="comment"><div className="c-head"><b>{c.authorName}{c.readerId && <span className="badge-reader" title="Lettore registrato"> ✓</span>}</b><span>{relativeDate(c.createdAt)} <FlagButton commentId={c.id} /></span></div><p>{c.body}</p></div>)}
+              <CommentForm articleId={a.id} moderated={settings.commentsModeration} readerName={reader?.name || reader?.email || ''} requireAccount={community.commentsRequireAccount} />
             </section>
           )}
         </div>

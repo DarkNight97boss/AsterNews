@@ -1,25 +1,17 @@
 import { redirect } from 'next/navigation';
-import { ActionButton } from '@/components/ui/action-button';
-import { removeSubscriberAction } from '@/lib/actions';
+import { NewsletterAdmin } from '@/components/admin/newsletter-admin';
 import { requireUser } from '@/lib/auth';
 import { can } from '@/lib/permissions';
-import { getSubscribers } from '@/lib/queries';
-import { formatDate } from '@/lib/utils';
+import { getSettings } from '@/lib/queries';
+import { listSubscribers } from '@/lib/repo';
+import { countPushSubscriptions, listNewsletterSends } from '@/lib/repo-extra';
+import { mailConfigured } from '@/lib/mailer';
+import { DEFAULT_NEWSLETTER } from '@/lib/models';
 
 export default async function NewsletterPage() {
   const me = await requireUser();
   if (!can(me, 'comment.moderate')) redirect('/admin');
-  const subs = await getSubscribers();
-  const csv = 'data:text/csv;charset=utf-8,' + encodeURIComponent('email,data\n' + subs.map((s) => `${s.email},${s.createdAt}`).join('\n'));
-  return (
-    <>
-      <div className="page-title"><div><h1>Newsletter</h1><p>{subs.length} iscritti</p></div><div className="actions"><a className="btn btn-outline" href={csv} download="iscritti.csv">Esporta CSV</a></div></div>
-      <div className="table-wrap"><table className="table">
-        <thead><tr><th>Email</th><th>Iscritto il</th><th></th></tr></thead>
-        <tbody>
-          {subs.map((s) => <tr key={s.id}><td><b>{s.email}</b></td><td>{formatDate(s.createdAt)}</td><td><div className="t-actions"><ActionButton className="icon-btn danger" action={removeSubscriberAction.bind(null, s.id)}>🗑</ActionButton></div></td></tr>)}
-          {subs.length === 0 && <tr><td colSpan={3}><div className="empty"><h3>Nessun iscritto</h3></div></td></tr>}
-        </tbody></table></div>
-    </>
-  );
+  const [subs, sends, push, mailOk, s] = await Promise.all([listSubscribers(undefined, 5000), listNewsletterSends(20), countPushSubscriptions(), mailConfigured(), getSettings()]);
+  const nl = { ...DEFAULT_NEWSLETTER, ...(s.newsletter ?? {}) };
+  return <NewsletterAdmin subscribers={subs} sends={sends} pushCount={push} mailConfigured={mailOk} digest={{ enabled: nl.digestEnabled, hour: nl.digestHour, provider: nl.provider }} canSend={can(me, 'newsletter.send')} myEmail={me.email} />;
 }

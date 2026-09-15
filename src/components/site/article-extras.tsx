@@ -1,7 +1,9 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { addCommentAction, incrementViewsAction } from '@/lib/actions';
+import { incrementViewsAction } from '@/lib/actions';
+import { addCommentAction, flagCommentAction } from '@/lib/actions-readers';
+import Link from 'next/link';
 import { toast } from '@/components/ui/toaster';
 
 export function ReadingProgress() {
@@ -48,15 +50,21 @@ export function Gallery({ images }: { images: string[] }) {
   );
 }
 
-export function CommentForm({ articleId, moderated }: { articleId: string; moderated: boolean }) {
+export function FlagButton({ commentId }: { commentId: string }) {
+  const [done, setDone] = useState(false);
+  return <button type="button" className="flag-btn" disabled={done} onClick={async () => { const r = await flagCommentAction(commentId); setDone(true); toast.info(r.message ?? ''); }} title="Segnala alla redazione">{done ? 'Segnalato' : '⚑ Segnala'}</button>;
+}
+
+export function CommentForm({ articleId, moderated, readerName = '', requireAccount = false }: { articleId: string; moderated: boolean; readerName?: string; requireAccount?: boolean }) {
   const [f, setF] = useState({ authorName: '', email: '', body: '' });
   const [pending, setPending] = useState(false);
+  if (requireAccount && !readerName) return <p className="help" style={{ fontSize: 14 }}>Per commentare <Link href={`/account?redirect=${encodeURIComponent(typeof window !== 'undefined' ? window.location.pathname : '/')}`} style={{ color: 'var(--red)', fontWeight: 700 }}>accedi o crea un account lettore</Link>: è gratis e serve a tenere la discussione civile.</p>;
   return (
     <form onSubmit={async (e) => { e.preventDefault(); setPending(true); const r = await addCommentAction({ articleId, ...f }); setPending(false); (r.ok ? toast.success : toast.error)(r.message ?? ''); if (r.ok) setF({ ...f, body: '' }); }}>
-      <div className="form-row">
+      {readerName ? <p className="help">Commenti come <b>{readerName}</b>.</p> : <div className="form-row">
         <div className="field"><label htmlFor="c-name">Nome</label><input id="c-name" className="input" value={f.authorName} onChange={(e) => setF({ ...f, authorName: e.target.value })} required /></div>
         <div className="field"><label htmlFor="c-email">Email (non pubblicata)</label><input id="c-email" className="input" type="email" value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} required /></div>
-      </div>
+      </div>}
       <div className="field"><label htmlFor="c-body">Commento</label><textarea id="c-body" className="textarea" value={f.body} onChange={(e) => setF({ ...f, body: e.target.value })} required /></div>
       <button className="btn btn-dark" type="submit" disabled={pending}>Invia commento</button>
       {moderated && <span className="help" style={{ marginLeft: 12 }}>I commenti sono moderati prima della pubblicazione.</span>}
