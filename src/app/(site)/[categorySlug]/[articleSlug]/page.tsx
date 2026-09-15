@@ -11,6 +11,7 @@ import { formatDate, readingTime, relativeDate, timeAgo } from '@/lib/utils';
 import { getActiveTheme } from '@/lib/theme-server';
 import { ArticleFanpage } from '@/components/site/fanpage/article-fanpage';
 import { siteUrl } from '@/lib/site-url';
+import { ArticleBody } from '@/components/site/article-body';
 
 function shortTime(iso: string): string {
   const d = new Date(iso);
@@ -120,7 +121,7 @@ export default async function ArticlePage({ params }: PageProps<'/[categorySlug]
             </section>
           )}
           {a.format === 'gallery' && a.gallery.length > 0 && <Gallery images={a.gallery} />}
-          <div className="article-body" dangerouslySetInnerHTML={{ __html: a.content }} />
+          <ArticleBody html={a.content} faq={a.faq} />
           {settings.googleNewsUrl && <p className="gnews" style={{ fontFamily: 'var(--font-serif)', textAlign: 'center', marginTop: 24 }}>Scegli <a href={settings.googleNewsUrl} target="_blank" rel="noopener" style={{ color: 'var(--red)', textDecoration: 'underline' }}>{settings.siteName}</a> come fonte preferita su Google News</p>}
           <div className="article-foot"><span className="copy">© Riproduzione riservata</span><ShareBar title={a.title} withMail /></div>
           {tags.length > 0 && <div className="article-tags">{tags.map((t) => <Link key={t.id} href={`/tag/${t.slug}`}>#{t.name}</Link>)}</div>}

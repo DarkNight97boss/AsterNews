@@ -12,9 +12,10 @@ import { statusBadgeClass } from './badges';
 import { MediaPicker } from './media-picker';
 import { RichEditor } from './rich-editor';
 import { SeoAssistant } from './seo-assistant';
+import { EditorExtras } from './editor-extras';
 import type { SeoContext } from '@/lib/seo-engine';
 
-interface Props { initial: Article; isNew: boolean; isPublic: boolean; categories: Category[]; zones: Zone[]; tags: Tag[]; users: User[]; media: MediaItem[]; permissions: Permission[]; seoCtx: SeoContext; siteUrl: string; maxLinks: number }
+interface Props { initial: Article; isNew: boolean; isPublic: boolean; categories: Category[]; zones: Zone[]; tags: Tag[]; users: User[]; media: MediaItem[]; permissions: Permission[]; seoCtx: SeoContext; siteUrl: string; maxLinks: number; meId: string }
 const FORMATS: ArticleFormat[] = ['standard', 'video', 'gallery', 'live'];
 
 function shortTime(iso: string): string {
@@ -22,12 +23,13 @@ function shortTime(iso: string): string {
   return d.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
 }
 
-export function ArticleEditor({ initial, isNew, isPublic, categories, zones, tags: allTags, users, media, permissions, seoCtx, siteUrl, maxLinks }: Props) {
+export function ArticleEditor({ initial, isNew, isPublic, categories, zones, tags: allTags, users, media, permissions, seoCtx, siteUrl, maxLinks, meId }: Props) {
   const router = useRouter();
   const [a, setA] = useState<Article>(initial);
   const [tags, setTags] = useState<Tag[]>(allTags);
   const [dirty, setDirty] = useState(false);
-  const [picker, setPicker] = useState<'cover' | 'gallery' | null>(null);
+  const [picker, setPicker] = useState<'cover' | 'gallery' | 'inline' | null>(null);
+  const inlineCb = useState<{ cb: ((url: string, alt: string) => void) | null }>({ cb: null })[0];
   const [tagInput, setTagInput] = useState(''); const [luTitle, setLuTitle] = useState(''); const [luBody, setLuBody] = useState('');
   const [scheduledAt, setScheduledAt] = useState(toLocalInput(initial.scheduledAt));
   const [slugTouched, setSlugTouched] = useState(!isNew);
@@ -52,7 +54,7 @@ export function ArticleEditor({ initial, isNew, isPublic, categories, zones, tag
   });
   const addTag = async (name: string) => { const t = await ensureTagAction(name); if (!t) return; if (!tags.some((x) => x.id === t.id)) setTags((l) => [...l, t]); if (!a.tagIds.includes(t.id)) set('tagIds', [...a.tagIds, t.id]); setTagInput(''); };
   const setVideo = (url: string) => { const m = url.match(/(?:v=|youtu\.be\/|embed\/)([\w-]{11})/); set('videoUrl', m ? `https://www.youtube.com/embed/${m[1]}` : url); };
-  const onPicked = (m: MediaItem) => { if (picker === 'cover') set('coverImage', m.url); else set('gallery', [...a.gallery, m.url]); setPicker(null); router.refresh(); };
+  const onPicked = (m: MediaItem) => { if (picker === 'cover') set('coverImage', m.url); else if (picker === 'inline') inlineCb.cb?.(m.url, m.alt); else set('gallery', [...a.gallery, m.url]); setPicker(null); router.refresh(); };
   const seoTitle = a.seo.title || a.title; const seoDesc = a.seo.description || a.excerpt || a.subtitle;
 
   return (
@@ -78,7 +80,7 @@ export function ArticleEditor({ initial, isNew, isPublic, categories, zones, tag
             <input className="input" style={{ textTransform: 'uppercase', fontWeight: 800, fontSize: 13, letterSpacing: '.08em', color: 'var(--red)', border: 0, paddingLeft: 0 }} placeholder="OCCHIELLO (es. MALTEMPO)" value={a.kicker} onChange={(e) => set('kicker', e.target.value)} />
             <textarea className="title-input" rows={2} style={{ resize: 'none', lineHeight: 1.2 }} placeholder="Titolo dell'articolo" value={a.title} onChange={(e) => { set('title', e.target.value); if (!slugTouched) set('slug', slugify(e.target.value)); }} />
             <textarea className="subtitle-input" rows={2} placeholder="Sommario / sottotitolo" value={a.subtitle} onChange={(e) => set('subtitle', e.target.value)} />
-            <div style={{ marginTop: 14 }}><RichEditor value={a.content} onChange={(v) => set('content', v)} /></div>
+            <div style={{ marginTop: 14 }}><RichEditor value={a.content} articleId={a.id} onChange={(v) => set('content', v)} onPickImage={(cb) => { inlineCb.cb = cb; setPicker('inline'); }} /></div>
           </div>
 
           <div className="panel">
@@ -86,6 +88,13 @@ export function ArticleEditor({ initial, isNew, isPublic, categories, zones, tag
             <div className="field"><label>Estratto (mostrato nelle card e nei social)</label>
               <textarea className="textarea" value={a.excerpt} onChange={(e) => set('excerpt', e.target.value)} placeholder="Lascia vuoto per generarlo dal sottotitolo" />
               <div className={`char-count ${a.excerpt.length > 200 ? 'over' : ''}`}>{a.excerpt.length}/200</div></div>
+          </div>
+
+          <EditorExtras article={a} isNew={isNew} users={users} canAssign={can('article.assign')} canPublish={can('article.publish')} meId={meId} dirty={dirty} onRestoreDraft={(d) => { setA({ ...d, id: a.id }); setDirty(true); }} onPatch={(p) => setA((x) => ({ ...x, ...p }))} />
+
+          <div className="panel"><div className="panel-title">Domande e risposte (FAQ) <button className="btn btn-outline btn-sm" onClick={() => set('faq', [...(a.faq ?? []), { q: '', a: '' }])}>+ Aggiungi</button></div>
+            <p className="help">Compaiono in fondo all&apos;articolo e come dati strutturati FAQ per Google.</p>
+            <div className="faq-list">{(a.faq ?? []).map((f, i) => <div key={i} className="faq-item"><input className="input" placeholder="Domanda" value={f.q} onChange={(e) => set('faq', (a.faq ?? []).map((x, j) => (j === i ? { ...x, q: e.target.value } : x)))} /><textarea className="textarea" style={{ minHeight: 50, marginTop: 6 }} placeholder="Risposta" value={f.a} onChange={(e) => set('faq', (a.faq ?? []).map((x, j) => (j === i ? { ...x, a: e.target.value } : x)))} /><button className="icon-btn danger" onClick={() => set('faq', (a.faq ?? []).filter((_, j) => j !== i))}>Rimuovi</button></div>)}</div>
           </div>
 
           {a.format === 'video' && (
@@ -153,6 +162,7 @@ export function ArticleEditor({ initial, isNew, isPublic, categories, zones, tag
               <label className="switch"><input type="checkbox" checked={a.breaking} onChange={(e) => set('breaking', e.target.checked)} /> Ultim&apos;ora (ticker)</label>
               <label className="switch"><input type="checkbox" checked={a.sponsored} onChange={(e) => set('sponsored', e.target.checked)} /> Contenuto sponsorizzato</label>
               <label className="switch"><input type="checkbox" checked={a.allowComments} onChange={(e) => set('allowComments', e.target.checked)} /> Consenti commenti</label>
+              <label className="switch"><input type="checkbox" checked={!!a.premium} onChange={(e) => set('premium', e.target.checked)} /> Riservato agli abbonati (premium)</label>
             </div>
           </div>
           <div className="panel"><div className="panel-title">Categoria</div>

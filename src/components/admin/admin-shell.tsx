@@ -26,6 +26,7 @@ export function AdminShell({ user, permissions, reviewCount, pendingComments, pe
           <A href="/admin/articoli"><span className="ico">✎</span> Articoli {reviewCount > 0 && <span className="pill">{reviewCount}</span>}</A>
           <A href="/admin/scrivi"><span className="ico">✨</span> Scrivi (semplice)</A>
           <A href="/admin/articoli/nuovo"><span className="ico">＋</span> Editor completo</A>
+          <A href="/admin/calendario"><span className="ico">🗓</span> Calendario</A>
           {can('category.manage') && <A href="/admin/categorie"><span className="ico">☰</span> Categorie</A>}
           {can('tag.manage') && <A href="/admin/tag"><span className="ico">#</span> Tag</A>}
           <A href="/admin/media"><span className="ico">▣</span> Media</A>

@@ -7,6 +7,7 @@ import { Article, Category, Comment, ROLE_LABELS, Tag, User, Zone } from '@/lib/
 import { articleUrlWith, getCategories, getMostRead, listPublished } from '@/lib/queries';
 import { formatDate, relativeDate } from '@/lib/utils';
 import { FpPhotoCard } from './home-fanpage';
+import { ArticleBody } from '@/components/site/article-body';
 
 interface Props { a: Article; cat?: Category; author?: User; tags: Tag[]; rel: Article[]; comments: Comment[]; zone?: Zone; moderated: boolean; googleNewsUrl: string; siteName: string }
 const shortTime = (iso: string) => new Date(iso).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
@@ -26,7 +27,7 @@ export async function ArticleFanpage({ a, cat, author, tags, rel, comments, zone
         <p className="fp-lead">{a.subtitle}</p>
         {a.format === 'live' && liveUpdates.length > 0 && <section className="live-feed"><div className="live-head"><span className="badge badge-live">Live</span> Aggiornamenti in tempo reale</div>{liveUpdates.map((u) => <div key={u.id} className="live-item"><time>{shortTime(u.time)}</time><div><h4>{u.title}</h4><p>{u.body}</p></div></div>)}</section>}
         {a.format === 'gallery' && a.gallery.length > 0 && <Gallery images={a.gallery} />}
-        <div className="article-body" dangerouslySetInnerHTML={{ __html: a.content }} />
+        <ArticleBody className="article-body" html={a.content} faq={a.faq} />
         {rel[0] && <div className="fp-leggi"><span>Leggi anche</span><Link href={articleUrlWith(rel[0], cats)} className="fp-highlight">{rel[0].title}</Link></div>}
         {tags.length > 0 && <div className="article-tags">{tags.map((t) => <Link key={t.id} href={`/tag/${t.slug}`}>#{t.name}</Link>)}</div>}
         {googleNewsUrl && <p className="fp-gnews">Scegli <a href={googleNewsUrl} target="_blank" rel="noopener">{siteName}</a> come fonte preferita su Google News</p>}

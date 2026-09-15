@@ -12,5 +12,5 @@ export default async function EditArticlePage({ params }: PageProps<'/admin/arti
   if (!a) notFound();
   if (!canEdit(me, a)) redirect('/admin/articoli');
   const [categories, zones, tags, users, media, seo, ctx] = await Promise.all([getCategories(), getZones(), getTags(), getUsers(), getMedia(300), getSeoSettings(), seoContext(a.id, a)]);
-  return <ArticleEditor key={a.updatedAt} initial={a} isNew={false} isPublic={a.status === 'published'} categories={categories} zones={zones} tags={tags} users={users} media={media} permissions={permissionsOf(me)} seoCtx={ctx} siteUrl={siteUrl()} maxLinks={seo.maxInternalLinks} />;
+  return <ArticleEditor key={a.updatedAt} initial={a} isNew={false} isPublic={a.status === 'published'} categories={categories} zones={zones} tags={tags} users={users} media={media} permissions={permissionsOf(me)} seoCtx={ctx} siteUrl={siteUrl()} meId={me.id} maxLinks={seo.maxInternalLinks} />;
 }

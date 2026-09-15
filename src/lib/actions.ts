@@ -6,6 +6,7 @@ import { redirect } from 'next/navigation';
 import { clientIp, getCurrentUser, requirePermission, requireUser } from './auth';
 import { resetDb } from './db';
 import * as repo from './repo';
+import * as x from './repo-extra';
 import { Article, ArticleStatus, Category, Comment, CommentStatus, Event, MediaItem, Report, SiteSettings, Tag, User, Zone } from './models';
 import { can, canEdit } from './permissions';
 import { getCategories, getSeoSettings, getSettings, invalidateProfiles, rawContext, seoContext } from './queries';
@@ -53,8 +54,10 @@ export async function saveArticleAction(input: Article, status: ArticleStatus): 
   if (!a.seo.description) a.seo.description = a.excerpt || a.subtitle;
   if (!existing) a.createdAt = now;
   a.seoScore = analyze(a, ctx).score;
+  if (existing) await x.insertRevision({ id: uid('rv'), articleId: a.id, userId: u.id, note: `${existing.status} → ${a.status}`, data: existing, createdAt: now });
   await repo.upsertArticle(a);
-  await log(u.id, a.status === 'published' ? 'ha pubblicato' : 'ha salvato', a.title);
+  await x.deleteAutosave(a.id); await x.releaseLock(a.id, u.id);
+  await log(u.id, a.status === 'published' ? 'ha pubblicato' : 'ha salvato', a.title, a.id);
   refresh();
   const msg = a.status === 'published' ? 'Articolo pubblicato!' : a.status === 'scheduled' ? 'Articolo programmato.' : a.status === 'review' ? 'Inviato in revisione.' : 'Bozza salvata.';
   return ok(msg, a.id);
@@ -67,7 +70,7 @@ export async function setArticleStatusAction(id: string, status: ArticleStatus):
   if (status !== 'draft' && status !== 'review' && !can(u, 'article.publish')) return fail('Non hai il permesso di pubblicare.');
   const now = new Date().toISOString();
   await repo.patchArticle(id, { status, updated_at: now, published_at: status === 'published' && !a.publishedAt ? now : a.publishedAt });
-  await log(u.id, `ha impostato lo stato "${status}" per`, a.title);
+  await log(u.id, `ha impostato lo stato "${status}" per`, a.title, a.id);
   refresh();
   return ok('Stato aggiornato.');
 }
@@ -77,8 +80,9 @@ export async function deleteArticleAction(id: string): Promise<ActionResult> {
   const a = await repo.findArticle(id);
   if (!a) return fail('Articolo non trovato.');
   if (!(can(u, 'article.delete') || (a.authorId === u.id && a.status === 'draft'))) return fail('Non puoi eliminare questo articolo.');
+  await x.insertRevision({ id: uid('rv'), articleId: id, userId: u.id, note: 'eliminato (recuperabile dalle revisioni per 50 salvataggi)', data: a, createdAt: new Date().toISOString() });
   await repo.deleteArticleRow(id);
-  await log(u.id, 'ha eliminato', a.title);
+  await log(u.id, 'ha eliminato', a.title, a.id);
   refresh();
   return ok('Articolo eliminato.');
 }
