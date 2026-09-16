@@ -25,7 +25,7 @@ export async function editMediaAction(id: string, ops: import('./media-tools').E
 }
 export async function watermarkMediaAction(id: string): Promise<ActionResult & { item?: MediaItem }> {
   const me = await requirePermission('media.manage'); const m = await repo.findMedia(id); if (!m) return { ok: false, message: 'File non trovato.' };
-  try { const { watermark } = await import('./media-tools'); const s = await getSettings(); const r = await fetch(m.url); const buf = await watermark(Buffer.from(await r.arrayBuffer()), `© ${s.siteName}`); const item = await derive(m, buf, 'wm', me.id, { exclusive: true }); revalidatePath('/admin/media'); return { ok: true, message: 'Versione con filigrana creata.', item }; } catch (e) { return { ok: false, message: (e as Error).message }; }
+  try { const { watermark, fetchBuffer } = await import('./media-tools'); const s = await getSettings(); const buf = await watermark((await fetchBuffer(m.url)).buf, `© ${s.siteName}`); const item = await derive(m, buf, 'wm', me.id, { exclusive: true }); revalidatePath('/admin/media'); return { ok: true, message: 'Versione con filigrana creata.', item }; } catch (e) { return { ok: false, message: (e as Error).message }; }
 }
 /** Metadati estesi: cartella, tag, credit, licenza, scadenza diritti, esclusiva. */
 export async function updateMediaMetaAction(m: MediaItem): Promise<ActionResult> { await requirePermission('media.manage'); await repo.updateMediaRow(m); revalidatePath('/admin/media'); return { ok: true, message: 'Salvato.' }; }
@@ -35,8 +35,8 @@ export async function findDuplicatesAction(): Promise<{ hash: string; items: Med
 /** Ricalcola l'impronta e comprime i file pesanti (>400 KB) non ancora WebP: elimina i doppioni in eccesso su richiesta. */
 export async function compressOldMediaAction(limit = 20): Promise<ActionResult> {
   const me = await requirePermission('media.manage'); const heavy = (await repo.listMedia(2000)).filter((m) => m.type === 'image' && m.size > 400 * 1024 && !/\.webp(\?|$)/i.test(m.url)).slice(0, limit);
-  let done = 0, saved = 0; const { storeDerived } = await import('./media-tools');
-  for (const m of heavy) { try { const r = await fetch(m.url, { signal: AbortSignal.timeout(20_000) }); if (!r.ok) continue; const buf = Buffer.from(await r.arrayBuffer()); const f = await storeDerived(buf, m.name, 'ott'); if (f.size < m.size) { await repo.updateMediaFile(m.id, { url: f.url, path: f.path, provider: f.provider, size: f.size, width: f.width, height: f.height, variants: f.variants }); saved += m.size - f.size; done++; } } catch { /* prossimo */ } }
+  let done = 0, saved = 0; const { storeDerived, fetchBuffer } = await import('./media-tools');
+  for (const m of heavy) { try { const { buf } = await fetchBuffer(m.url); const f = await storeDerived(buf, m.name, 'ott'); if (f.size < m.size) { await repo.updateMediaFile(m.id, { url: f.url, path: f.path, provider: f.provider, size: f.size, width: f.width, height: f.height, variants: f.variants }); saved += m.size - f.size; done++; } } catch { /* prossimo */ } }
   revalidatePath('/admin/media'); return { ok: true, message: done ? `${done} file compressi, risparmiati ${(saved / 1048576).toFixed(1)} MB.` : 'Nessun file pesante da comprimere.' };
 }
 // ---------------- Banca immagini ----------------

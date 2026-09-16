@@ -8,7 +8,13 @@ import { uploadImage, storageSettings } from './storage';
 export const RATIOS: Record<string, { w: number; h: number; label: string }> = { '16:9': { w: 16, h: 9, label: 'Orizzontale 16:9 (Facebook, YouTube)' }, '1:1': { w: 1, h: 1, label: 'Quadrato 1:1 (Instagram)' }, '9:16': { w: 9, h: 16, label: 'Verticale 9:16 (Stories, Reels)' }, '3:2': { w: 3, h: 2, label: 'Classico 3:2 (card del sito)' }, '4:5': { w: 4, h: 5, label: 'Ritratto 4:5 (feed Instagram)' } };
 export const fileHash = (buf: Buffer): string => createHash('sha1').update(buf).digest('hex');
 
-async function fetchBuffer(url: string): Promise<{ buf: Buffer; mime: string }> {
+/** Legge il file di un media: dal disco se è un upload locale (/uploads/…), altrimenti via HTTP. */
+export async function fetchBuffer(url: string): Promise<{ buf: Buffer; mime: string }> {
+  if (url.startsWith('/')) {
+    const { readFile } = await import('node:fs/promises'); const { join } = await import('node:path');
+    try { const buf = await readFile(join(process.cwd(), 'public', url.split('?')[0])); return { buf, mime: url.endsWith('.png') ? 'image/png' : url.endsWith('.webp') ? 'image/webp' : 'image/jpeg' }; } catch { /* prova via HTTP */ }
+    const { siteUrl } = await import('./site-url'); url = siteUrl() + url;
+  }
   const r = await fetch(url, { signal: AbortSignal.timeout(30_000) }); if (!r.ok) throw new Error(`Immagine non scaricabile (${r.status})`);
   return { buf: Buffer.from(await r.arrayBuffer()), mime: r.headers.get('content-type')?.split(';')[0] || 'image/jpeg' };
 }
