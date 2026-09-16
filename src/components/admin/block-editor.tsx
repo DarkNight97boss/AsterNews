@@ -12,10 +12,10 @@ import { toast } from '@/components/ui/toaster';
  * di primo livello riordinabili con trascinamento, ognuno modificabile nel suo tipo. Il classico contentEditable
  * è disponibile come alternativa ("Classico") nello stesso editor.
  */
-type BlockType = 'paragraph' | 'heading2' | 'heading3' | 'quote' | 'list' | 'image' | 'embed' | 'table' | 'box' | 'poll' | 'readalso' | 'divider' | 'html' | 'timeline' | 'beforeafter' | 'chart' | 'snippet';
+type BlockType = 'paragraph' | 'heading2' | 'heading3' | 'quote' | 'list' | 'image' | 'embed' | 'table' | 'box' | 'poll' | 'readalso' | 'divider' | 'html' | 'timeline' | 'beforeafter' | 'chart' | 'snippet' | 'quiz';
 interface Block { id: string; type: BlockType; html: string }
 const uid = () => 'b' + Math.random().toString(36).slice(2, 9);
-const LABEL: Record<BlockType, string> = { timeline: 'Timeline', beforeafter: 'Prima / dopo', chart: 'Grafico', snippet: 'Blocco riutilizzabile', paragraph: 'Paragrafo', heading2: 'Titolo H2', heading3: 'Titolo H3', quote: 'Citazione', list: 'Elenco', image: 'Immagine', embed: 'Embed / video', table: 'Tabella', box: 'Riquadro', poll: 'Sondaggio', readalso: 'Leggi anche', divider: 'Separatore', html: 'HTML' };
+const LABEL: Record<BlockType, string> = { quiz: 'Quiz', timeline: 'Timeline', beforeafter: 'Prima / dopo', chart: 'Grafico', snippet: 'Blocco riutilizzabile', paragraph: 'Paragrafo', heading2: 'Titolo H2', heading3: 'Titolo H3', quote: 'Citazione', list: 'Elenco', image: 'Immagine', embed: 'Embed / video', table: 'Tabella', box: 'Riquadro', poll: 'Sondaggio', readalso: 'Leggi anche', divider: 'Separatore', html: 'HTML' };
 const escapeHtml = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c] as string));
 
 function typeOf(el: Element): BlockType {
@@ -24,7 +24,7 @@ function typeOf(el: Element): BlockType {
   if (t === 'blockquote') return el.classList.contains('twitter-tweet') || el.classList.contains('instagram-media') || el.classList.contains('tiktok-embed') ? 'embed' : 'quote';
   if (t === 'ul' || t === 'ol') return 'list'; if (t === 'figure' || t === 'img') return 'image'; if (t === 'table') return 'table'; if (t === 'hr') return 'divider';
   if (t === 'iframe' || el.classList.contains('embed-video') || el.classList.contains('embed-map') || el.classList.contains('inline-gallery')) return 'embed';
-  if (el.classList.contains('timeline')) return 'timeline'; if (el.classList.contains('before-after')) return 'beforeafter'; if (el.classList.contains('chart-block')) return 'chart'; if (el.hasAttribute('data-snippet')) return 'snippet'; if (el.classList.contains('know-box')) return 'box'; if (el.classList.contains('embed-pdf') || el.classList.contains('audio-embed')) return 'embed';
+  if (el.classList.contains('timeline')) return 'timeline'; if (el.classList.contains('before-after')) return 'beforeafter'; if (el.classList.contains('chart-block')) return 'chart'; if (el.hasAttribute('data-snippet')) return 'snippet'; if (el.hasAttribute('data-quiz')) return 'quiz'; if (el.classList.contains('know-box')) return 'box'; if (el.classList.contains('embed-pdf') || el.classList.contains('audio-embed')) return 'embed';
   if (el.hasAttribute('data-poll')) return 'poll'; if (el.classList.contains('read-also')) return 'readalso'; if (el.classList.contains('box') || el.classList.contains('pull-quote')) return 'box';
   return 'html';
 }
@@ -87,6 +87,7 @@ export function BlockEditor({ value, onChange, articleId = '', onPickImage }: { 
     { t: 'embed' as BlockType, label: '📄 PDF', make: () => { const u = prompt('URL del PDF'); return u ? `<div class="embed-pdf"><iframe src="${u}#toolbar=0" loading="lazy" title="Documento PDF"></iframe><a href="${u}" target="_blank" rel="noopener">Apri o scarica il PDF</a></div>` : null; } },
     { t: 'embed' as BlockType, label: '🎧 Audio / podcast', make: () => { const u = prompt('URL del file audio (mp3) oppure link Spotify / Apple Podcasts'); if (!u) return null; if (/spotify\.com/.test(u)) return `<div class="embed-podcast"><iframe src="${u.replace('open.spotify.com/', 'open.spotify.com/embed/')}" loading="lazy" allow="encrypted-media" title="Podcast"></iframe></div>`; if (/podcasts\.apple\.com/.test(u)) return `<div class="embed-podcast"><iframe src="${u.replace('podcasts.apple.com', 'embed.podcasts.apple.com')}" loading="lazy" title="Podcast"></iframe></div>`; return `<figure class="audio-embed"><audio controls preload="none" src="${u}"></audio><figcaption>${escapeHtml(prompt('Didascalia') || '')}</figcaption></figure>`; } },
     { t: 'snippet' as BlockType, label: '♻️ Blocco riutilizzabile', make: () => null },
+    { t: 'quiz' as BlockType, label: '🧠 Quiz con classifica', make: () => { const title = prompt('Titolo del quiz'); if (!title) return null; const qs: { q: string; options: string[]; answer: number }[] = []; for (let i = 1; i <= 10; i++) { const q = prompt(`Domanda ${i} (vuoto per finire)`); if (!q) break; const opts = (prompt('Risposte separate da ; (la prima è quella giusta)') || '').split(';').map((x) => x.trim()).filter(Boolean); if (opts.length < 2) break; const answer = Math.floor(Math.random() * opts.length); const first = opts[0]; opts.splice(0, 1); opts.splice(answer, 0, first); qs.push({ q, options: opts, answer }); } if (!qs.length) return null; const def = { id: 'qz' + Math.random().toString(36).slice(2, 8), title, questions: qs }; return `<div data-quiz="${escapeHtml(JSON.stringify(def))}" class="quiz-placeholder">🧠 Quiz: ${escapeHtml(title)} (${qs.length} domande)</div>`; } },
     { t: 'poll' as BlockType, label: '📊 Sondaggio', make: () => null }, { t: 'divider' as BlockType, label: '— Separatore', make: () => '<hr />' }, { t: 'html' as BlockType, label: '</> HTML libero', make: () => '<div></div>' },
   ], []);
   const add = async (index: number, item: (typeof menu)[number]) => {

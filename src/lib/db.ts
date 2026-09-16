@@ -188,6 +188,8 @@ CREATE TABLE IF NOT EXISTS donations (id TEXT PRIMARY KEY, amount REAL NOT NULL,
 CREATE TABLE IF NOT EXISTS api_keys (id TEXT PRIMARY KEY, name TEXT NOT NULL, prefix TEXT NOT NULL, key_hash TEXT NOT NULL, scopes TEXT DEFAULT '["read"]', active INTEGER DEFAULT 1, calls INTEGER DEFAULT 0, last_used TEXT, created_by TEXT DEFAULT '', created_at TEXT);
 CREATE TABLE IF NOT EXISTS broken_links (id TEXT PRIMARY KEY, article_id TEXT NOT NULL, url TEXT NOT NULL, status INTEGER DEFAULT 0, error TEXT DEFAULT '', checked_at TEXT, fixed INTEGER DEFAULT 0);
 CREATE INDEX IF NOT EXISTS idx_broken_article ON broken_links(article_id);
+CREATE TABLE IF NOT EXISTS gift_codes (id TEXT PRIMARY KEY, code TEXT UNIQUE NOT NULL, email TEXT NOT NULL, months INTEGER DEFAULT 1, message TEXT DEFAULT '', from_reader TEXT DEFAULT '', redeemed_by TEXT DEFAULT '', created_at TEXT, redeemed_at TEXT);
+CREATE TABLE IF NOT EXISTS quiz_results (id TEXT PRIMARY KEY, quiz_id TEXT NOT NULL, article_id TEXT DEFAULT '', who TEXT NOT NULL, name TEXT DEFAULT '', score INTEGER DEFAULT 0, total INTEGER DEFAULT 0, created_at TEXT, UNIQUE (quiz_id, who));
 CREATE TABLE IF NOT EXISTS contacts (id TEXT PRIMARY KEY, name TEXT NOT NULL, role TEXT DEFAULT '', org TEXT DEFAULT '', phone TEXT DEFAULT '', email TEXT DEFAULT '', notes TEXT DEFAULT '', tags TEXT DEFAULT '', created_by TEXT, updated_at TEXT);
 CREATE TABLE IF NOT EXISTS snippets (id TEXT PRIMARY KEY, name TEXT NOT NULL, html TEXT DEFAULT '', updated_at TEXT);
 CREATE TABLE IF NOT EXISTS pagespeed_runs (id TEXT PRIMARY KEY, url TEXT NOT NULL, strategy TEXT DEFAULT 'mobile', performance INTEGER DEFAULT 0, accessibility INTEGER DEFAULT 0, best_practices INTEGER DEFAULT 0, seo INTEGER DEFAULT 0, lcp REAL DEFAULT 0, cls REAL DEFAULT 0, tbt REAL DEFAULT 0, fcp REAL DEFAULT 0, si REAL DEFAULT 0, opportunities TEXT DEFAULT '[]', created_at TEXT);
@@ -254,6 +256,8 @@ ALTER TABLE articles ADD COLUMN IF NOT EXISTS extra TEXT DEFAULT '{}';
 CREATE INDEX IF NOT EXISTS idx_articles_deleted ON articles(deleted_at);
 ALTER TABLE comments ADD COLUMN IF NOT EXISTS votes INTEGER DEFAULT 0;
 ALTER TABLE comments ADD COLUMN IF NOT EXISTS staff INTEGER DEFAULT 0;
+ALTER TABLE comments ADD COLUMN IF NOT EXISTS priority REAL DEFAULT 0;
+ALTER TABLE comments ADD COLUMN IF NOT EXISTS ai_note TEXT DEFAULT '';
 ALTER TABLE readers ADD COLUMN IF NOT EXISTS prefs TEXT DEFAULT '{}';
 `;
 

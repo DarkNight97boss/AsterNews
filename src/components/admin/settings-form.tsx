@@ -103,7 +103,7 @@ export function SettingsForm({ initial, categories, env }: { initial: SiteSettin
         </div>
       </div>}
 
-      {tab === 'lettori' && <div className="admin-grid-2">
+      {tab === 'lettori' && <div className="admin-grid-2"><div className="panel"><div className="panel-title">Muro di registrazione</div><div className="field"><label>Chiedi la registrazione gratuita dopo N articoli al mese (0 = mai; agisce prima del paywall)</label><input className="input" type="number" min={0} value={s.community?.registrationWallAfter ?? 0} onChange={(e) => up('community', { registrationWallAfter: Number(e.target.value) })} /></div><p className="help">Chi non è registrato vede un invito a creare l&apos;account (email o social) per continuare a leggere: aumenta iscritti e newsletter senza chiedere soldi.</p></div>
         <div>
           <div className="panel"><div className="panel-title">Commenti</div>
             <Switch on={s.commentsModeration} set={(v) => setS({ ...s, commentsModeration: v })} label="Modera i commenti prima della pubblicazione" /><br />
@@ -152,7 +152,10 @@ export function SettingsForm({ initial, categories, env }: { initial: SiteSettin
         </div>
       </div>}
 
-      {tab === 'monetizzazione' && <div className="admin-grid-2">
+      {tab === 'monetizzazione' && <div className="admin-grid-2"><div className="panel"><div className="panel-title">Piani di abbonamento e metodi di pagamento</div>
+            <div className="field"><label>Piani (uno per riga: id | nome | prezzo | month/year/once | price_id Stripe | descrizione | evidenzia)</label><textarea className="textarea" style={{ minHeight: 80, fontFamily: 'monospace', fontSize: 12 }} value={(s.paywall?.plans ?? []).map((p) => `${p.id} | ${p.name} | ${p.price} | ${p.interval} | ${p.stripePriceId} | ${p.description}${p.highlight ? ' | *' : ''}`).join('\n')} onChange={(e) => up('paywall', { plans: e.target.value.split('\n').map((l) => l.split('|').map((x) => x.trim())).filter((p) => p[0] && p[1]).map((p) => ({ id: p[0], name: p[1], price: Number(String(p[2]).replace(',', '.')) || 0, interval: (['month', 'year', 'once'].includes(p[3]) ? p[3] : 'month') as 'month' | 'year' | 'once', stripePriceId: p[4] ?? '', description: p[5] ?? '', highlight: p[6] === '*' })) })} placeholder={'base | Base | 4.99 | month | price_xxx | Tutti gli articoli\nannuale | Annuale | 49 | year | price_yyy | Due mesi gratis | *\nsostenitore | Sostenitore | 9.99 | month | price_zzz | Tutto più la newsletter riservata'} /></div>
+            <div className="field"><label>Metodi di pagamento Stripe (attivali anche nella dashboard Stripe)</label><div className="chips">{['card', 'paypal', 'sepa_debit', 'link', 'klarna', 'satispay'].map((m) => <label key={m} className="chip"><input type="checkbox" checked={(s.paywall?.paymentMethods ?? ['card']).includes(m)} onChange={(e) => { const cur = s.paywall?.paymentMethods ?? ['card']; up('paywall', { paymentMethods: e.target.checked ? [...new Set([...cur, m])] : cur.filter((x) => x !== m) }); }} /> {m === 'card' ? 'Carta (+ Apple/Google Pay)' : m === 'sepa_debit' ? 'SEPA' : m}</label>)}</div></div>
+          </div>
         <div>
           <div className="panel"><div className="panel-title">Pubblicità</div>
             <Switch on={ad.enabled} set={(v) => up('ads', { enabled: v })} label="Spazi pubblicitari attivi sul sito" />

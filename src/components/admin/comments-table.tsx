@@ -28,7 +28,7 @@ export function CommentsTable({ comments, titles }: { comments: Comment[]; title
           {list.map((c) => (
             <tr key={c.id}>
               <td><b>{c.authorName}</b><div style={{ fontSize: 12, color: 'var(--gray-500)' }} suppressHydrationWarning>{c.email}<br />{timeAgo(c.createdAt)}</div></td>
-              <td style={{ maxWidth: 380 }}>{c.body}</td>
+              <td style={{ maxWidth: 380 }}>{c.body}{(c.priority ?? 0) > 0 && <div className="help" style={{ marginTop: 4 }}><span className={`badge ${c.priority! >= 0.6 ? 'badge-red' : c.priority! >= 0.3 ? 'badge-amber' : 'badge-gray'}`}>AI {Math.round(c.priority! * 100)}%</span> {c.aiNote}</div>}</td>
               <td className="t-title"><Link href={`/admin/articoli/${c.articleId}`}>{titles[c.articleId]}</Link></td>
               <td><span className={`badge ${CLS[c.status]}`}>{COMMENT_STATUS_LABELS[c.status]}</span></td>
               <td><div className="t-actions">

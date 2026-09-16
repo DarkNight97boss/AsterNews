@@ -87,8 +87,10 @@ export async function addCommentAction(input: { articleId: string; authorName: s
   const blocked = community.blockedWords.split(/[\n,]/).map((w) => w.trim().toLowerCase()).filter(Boolean);
   const hasBlocked = blocked.some((w) => body.toLowerCase().includes(w));
   const linkSpam = (body.match(/https?:\/\//g) ?? []).length > 2;
-  const status: Comment['status'] = staffUser ? 'approved' : hasBlocked || linkSpam ? 'spam' : s.commentsModeration && !reader?.premium ? 'pending' : 'approved';
-  const c: Comment = { id: uid('cm'), articleId: a.id, authorName: authorName.slice(0, 60), email, body, status, createdAt: new Date().toISOString(), readerId: reader?.id ?? '', parentId: input.parentId ?? '', flags: 0, votes: 0, staff: !!staffUser };
+  let status: Comment['status'] = staffUser ? 'approved' : hasBlocked || linkSpam ? 'spam' : s.commentsModeration && !reader?.premium ? 'pending' : 'approved';
+  let priority = 0; let aiNote = '';
+  if (!staffUser && status !== 'spam') { const { moderateComment } = await import('./moderation'); const m = await moderateComment(body, a.title + '. ' + a.excerpt); if (m) { priority = m.score; aiNote = m.note; if (m.verdict === 'spam') status = 'spam'; else if (m.verdict === 'review' && status === 'approved') status = 'pending'; } }
+  const c: Comment = { id: uid('cm'), articleId: a.id, authorName: authorName.slice(0, 60), email, body, status, createdAt: new Date().toISOString(), readerId: reader?.id ?? '', parentId: input.parentId ?? '', flags: 0, votes: 0, staff: !!staffUser, priority, aiNote };
   await repo.insertComment(c);
   (revalidateTag('articles', 'max'), revalidatePath('/', 'layout'));
   if (status === 'spam') return ok('Il commento è stato inviato alla moderazione.');
@@ -117,7 +119,8 @@ export async function startCheckoutAction(): Promise<ActionResult & { url?: stri
   const key = pw.stripeSecretKey || process.env.STRIPE_SECRET_KEY || ''; const price = pw.stripePriceId || process.env.STRIPE_PRICE_ID || '';
   if (!pw.enabled || !key || !price) return fail('Gli abbonamenti non sono ancora attivi.');
   try {
-    const session = await stripe('checkout/sessions', { mode: 'subscription', 'line_items[0][price]': price, 'line_items[0][quantity]': '1', customer_email: reader.stripeCustomer ? '' : reader.email, ...(reader.stripeCustomer ? { customer: reader.stripeCustomer } : {}), client_reference_id: reader.id, success_url: `${siteUrl()}/account?abbonamento=ok`, cancel_url: `${siteUrl()}/account?abbonamento=annullato`, 'metadata[reader_id]': reader.id, locale: 'it' }, key);
+    const pm = Object.fromEntries((pw.paymentMethods?.length ? pw.paymentMethods : ['card']).map((m, i) => [`payment_method_types[${i}]`, m]));
+    const session = await stripe('checkout/sessions', { ...pm, mode: 'subscription', 'line_items[0][price]': price, 'line_items[0][quantity]': '1', customer_email: reader.stripeCustomer ? '' : reader.email, ...(reader.stripeCustomer ? { customer: reader.stripeCustomer } : {}), client_reference_id: reader.id, success_url: `${siteUrl()}/account?abbonamento=ok`, cancel_url: `${siteUrl()}/account?abbonamento=annullato`, 'metadata[reader_id]': reader.id, locale: 'it' }, key);
     return { ok: true, url: String(session.url) };
   } catch (e) { return fail((e as Error).message); }
 }
@@ -127,7 +130,7 @@ export async function customerPortalAction(): Promise<ActionResult & { url?: str
   try { const p = await stripe('billing_portal/sessions', { customer: reader.stripeCustomer, return_url: `${siteUrl()}/account` }, key); return { ok: true, url: String(p.url) }; } catch (e) { return fail((e as Error).message); }
 }
 /** Contatore articoli gratuiti (paywall soft): cookie firmato con mese e conteggio. */
-export async function meterAction(articleId: string): Promise<{ allowed: boolean; left: number; premiumRequired: boolean }> {
+export async function meterAction(articleId: string): Promise<{ allowed: boolean; left: number; premiumRequired: boolean; registrationRequired?: boolean }> {
   const s = await getSettings(); const pw = { ...DEFAULT_PAYWALL, ...(s.paywall ?? {}) };
   if (!pw.enabled) return { allowed: true, left: 999, premiumRequired: false };
   const reader = await getCurrentReader();
@@ -137,7 +140,8 @@ export async function meterAction(articleId: string): Promise<{ allowed: boolean
   const store = await cookies(); const month = new Date().toISOString().slice(0, 7);
   const raw = store.get('aster_meter')?.value; const id = await verifySignedToken(raw);
   let [m, n, seen] = (id ?? '').split('|'); let count = m === month ? Number(n) || 0 : 0; const ids = m === month && seen ? seen.split(',') : [];
-  if (!ids.includes(articleId)) { if (count >= pw.freeArticles) return { allowed: false, left: 0, premiumRequired: false }; count++; ids.push(articleId); }
+  const wallAfter = Number((s.community as { registrationWallAfter?: number } | undefined)?.registrationWallAfter ?? 0);
+  if (!ids.includes(articleId)) { if (wallAfter > 0 && !reader && count >= wallAfter) return { allowed: false, left: 0, premiumRequired: false, registrationRequired: true }; if (count >= pw.freeArticles) return { allowed: false, left: 0, premiumRequired: false }; count++; ids.push(articleId); }
   m = month;
   store.set('aster_meter', await signedToken(`${m}|${count}|${ids.slice(-50).join(',')}`), { path: '/', maxAge: 60 * 60 * 24 * 40, sameSite: 'lax', httpOnly: true });
   return { allowed: true, left: Math.max(0, pw.freeArticles - count), premiumRequired: false };

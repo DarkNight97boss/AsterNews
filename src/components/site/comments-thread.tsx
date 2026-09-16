@@ -14,7 +14,7 @@ export function CommentsThread({ articleId, comments, votedIds, canReply, reader
   const vote = async (id: string) => { const r = await voteCommentAction(id); if (r.ok && r.votes !== undefined) setVotes({ ...votes, [id]: { n: r.votes, v: !!r.voted } }); };
   const Item = ({ c, depth }: { c: Comment; depth: number }) => (
     <div className={`comment ${c.staff ? 'staff' : ''} ${depth ? 'reply' : ''}`}>
-      <div className="c-head"><b>{c.authorName}{c.staff && <span className="badge-staff">Redazione</span>}{!c.staff && c.readerId && <span className="badge-reader" title="Lettore registrato"> ✓</span>}</b><span>{relativeDate(c.createdAt)}</span></div>
+      <div className="c-head"><b>{!c.staff && c.readerId ? <a href={`/lettori/${c.readerId}`} className="c-author">{c.authorName}</a> : c.authorName}{c.staff && <span className="badge-staff">Redazione</span>}{!c.staff && c.readerId && <span className="badge-reader" title="Lettore registrato"> ✓</span>}</b><span>{relativeDate(c.createdAt)}</span></div>
       <p>{c.body}</p>
       <div className="c-actions">
         <button type="button" className={`vote-btn ${votes[c.id]?.v ? 'on' : ''}`} onClick={() => vote(c.id)}>👍 {votes[c.id]?.n ?? 0}</button>

@@ -125,6 +125,8 @@ export interface Comment {
   flags?: number;
   votes?: number;
   staff?: boolean;
+  priority?: number;
+  aiNote?: string;
 }
 
 export interface MediaItem {
@@ -160,7 +162,7 @@ export interface Session { id: string; userId: string; kind: 'staff' | 'reader';
 export interface Revision { id: string; articleId: string; userId: string; note: string; data: Article; createdAt: string }
 export interface ArticleNote { id: string; articleId: string; userId: string; kind: 'note' | 'changes' | 'system'; body: string; resolved: boolean; createdAt: string }
 export interface Reader { id: string; email: string; name: string; verified: boolean; premium: boolean; premiumUntil: string | null; stripeCustomer: string; banned: boolean; createdAt: string; lastLogin: string | null; provider?: string; avatar?: string; prefs?: ReaderPrefs }
-export interface ReaderPrefs { zones?: string[]; tags?: string[]; categories?: string[] }
+export interface ReaderPrefs { zones?: string[]; tags?: string[]; categories?: string[]; public?: boolean }
 export interface Redirect { id: string; fromPath: string; toPath: string; code: number; hits: number; createdAt: string }
 export interface NotFoundEntry { path: string; hits: number; referer: string; firstSeen: string; lastSeen: string }
 export interface Edition { id: string; slug: string; name: string; domain: string; tagline: string; zoneId: string; categoryIds: string[]; theme: Partial<import('./themes').ThemeSettings>; logo: string; active: boolean; createdAt: string }
@@ -201,8 +203,11 @@ export interface NewsletterSettings { provider: 'none' | 'resend' | 'brevo'; api
 export interface StorageSettings { provider: 'auto' | 'supabase' | 'vercel-blob' | 'local' | 'db'; bucket: string; maxWidth: number; unsplashKey?: string; pexelsKey?: string }
 export interface VideoSettings { provider: 'none' | 'cloudflare' | 'mux'; cfAccountId: string; cfApiToken: string; cfCustomerCode: string; muxTokenId: string; muxTokenSecret: string }
 export const DEFAULT_VIDEO: VideoSettings = { provider: 'none', cfAccountId: '', cfApiToken: '', cfCustomerCode: '', muxTokenId: '', muxTokenSecret: '' };
-export interface PaywallSettings { enabled: boolean; freeArticles: number; monthlyPrice: number; stripeSecretKey: string; stripePriceId: string; stripeWebhookSecret: string }
-export interface CommunitySettings { commentsRequireAccount: boolean; blockedWords: string; flagsToHide: number }
+export interface PaywallPlan { id: string; name: string; price: number; interval: 'month' | 'year' | 'once'; stripePriceId: string; description: string; highlight?: boolean }
+export interface PaywallSettings { enabled: boolean; freeArticles: number; monthlyPrice: number; stripeSecretKey: string; stripePriceId: string; stripeWebhookSecret: string; plans?: PaywallPlan[]; paymentMethods?: string[] }
+export interface GiftCode { id: string; code: string; email: string; months: number; message: string; fromReader: string; redeemedBy: string; createdAt: string; redeemedAt: string | null }
+export interface QuizResult { id: string; quizId: string; articleId: string; who: string; name: string; score: number; total: number; createdAt: string }
+export interface CommunitySettings { commentsRequireAccount: boolean; blockedWords: string; flagsToHide: number; registrationWallAfter?: number }
 export interface MonitoringSettings { alertEmail: string; webhookUrl: string; slowQueryMs: number; sentryDsn: string }
 export interface AnalyticsSettings { enabled: boolean; vercelAnalytics: boolean }
 export interface PushSettings { enabled: boolean; autoBreaking: boolean }
