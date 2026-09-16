@@ -23,6 +23,8 @@ export async function POST(req: Request) {
     const a = { ...DEFAULT_ANALYTICS, ...((await getSettings()).analytics ?? {}) };
     if (!a.enabled) return NextResponse.json({ ok: false });
     const b = await req.json().catch(() => ({})) as { path?: string; articleId?: string; ref?: string; readMs?: number; internal?: boolean };
+    const variant = /[?&]t=(a|b)\b/.exec(b.path ?? '')?.[1] as 'a' | 'b' | undefined;
+    if (variant && b.articleId) { const { recordAb } = await import('@/lib/ab-titles'); recordAb(b.articleId, variant, 'click').catch(() => {}); }
     const path = (b.path ?? '/').split('?')[0].slice(0, 300);
     if (path.startsWith('/admin') || path.startsWith('/api')) return NextResponse.json({ ok: false });
     const ref = b.ref ?? req.headers.get('referer') ?? '';

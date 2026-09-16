@@ -17,6 +17,7 @@ import { BlockEditor } from './block-editor';
 import { AiAssistant } from './ai-assistant';
 import { TemplatePicker } from './template-picker';
 import { TranscribePanel } from './transcribe-panel';
+import { SeoIntel } from './seo-intel';
 import { customFieldsAction } from '@/lib/actions-pages';
 import { advanceStageAction } from '@/lib/actions-workflow';
 import { workflowInfoAction } from '@/lib/actions-workflow';
@@ -127,6 +128,7 @@ export function ArticleEditor({ initial, isNew, isPublic, categories, zones, tag
             <p className="help">Vuoto = subito. L&apos;articolo resta pubblicato: cambia solo quando compare in evidenza in home e quando parte sui canali.</p>
             {!isNew && <div style={{ display: 'flex', gap: 6, marginTop: 8 }}><a className="btn btn-outline btn-sm" href={`/api/export/article/${a.id}?format=print`} target="_blank" rel="noreferrer">🖨 Stampa / PDF</a><a className="btn btn-outline btn-sm" href={`/api/export/article/${a.id}?format=doc`}>📝 Word</a></div>}
           </div>
+          <SeoIntel article={a} isNew={isNew} onInsertLink={(url, label) => set('content', a.content + `\n<aside class="read-also"><span>Leggi anche</span><a href="${url}">${label.replace(/</g, '&lt;')}</a></aside>`)} onTitleB={(t) => setExtra({ titleB: t || undefined })} />
           <div className="panel"><div className="panel-title">Correzioni e cronologia</div>
             <label className="switch" style={{ marginBottom: 8 }}><input type="checkbox" checked={!!extra.showHistory} onChange={(e) => setExtra({ showHistory: e.target.checked })} /> Mostra ai lettori la cronologia degli aggiornamenti</label>
             {(extra.corrections ?? []).map((c, i) => <div key={i} className="corr-item"><span className="help">{formatDate(c.date)}</span> {c.text} <button type="button" className="icon-btn danger" onClick={() => setExtra({ corrections: (extra.corrections ?? []).filter((_, j) => j !== i) })}>✕</button></div>)}

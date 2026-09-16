@@ -67,7 +67,12 @@ export function SettingsForm({ initial, categories, env }: { initial: SiteSettin
 
       {tab === 'tema' && <div className="panel"><div className="panel-title">Tema del sito</div><p className="help" style={{ marginBottom: 14 }}>Il motore è lo stesso: cambiano colori, font, testata, layout della home e stile delle card. Per siti gemelli con dominio proprio usa le <Link href="/admin/edizioni">Edizioni</Link>.</p><ThemePicker value={s.theme} onChange={(theme) => setS({ ...s, theme })} /></div>}
 
-      {tab === 'seo' && <div className="admin-grid-2">
+      {tab === 'seo' && <div className="admin-grid-2"><div className="panel"><div className="panel-title">Search Console, lingue e distribuzione</div>
+            <div className="field"><label>Proprietà Search Console (es. https://www.miosito.it/ oppure sc-domain:miosito.it)</label><input className="input" value={s.seo?.gscSiteUrl ?? ''} onChange={(e) => up('seo', { gscSiteUrl: e.target.value })} /></div>
+            <div className="field"><label>Account di servizio Google (JSON) con accesso in lettura alla proprietà</label><textarea className="textarea" style={{ minHeight: 70, fontFamily: 'monospace', fontSize: 11 }} value={s.seo?.gscServiceAccount ?? ''} onChange={(e) => up('seo', { gscServiceAccount: e.target.value })} placeholder='{"type":"service_account","client_email":"…","private_key":"…"}' /></div>
+            <div className="field"><label>Lingue aggiuntive per le traduzioni (codici separati da virgola)</label><input className="input" value={s.seo?.languages ?? ''} onChange={(e) => up('seo', { languages: e.target.value })} placeholder="en, fr, de" /></div>
+            <p className="help">Feed pronti: <code>/feed/google-news.xml</code> (Publisher Center), <code>/feed/flipboard.xml</code>, <code>/feed/apple-news.xml</code>, <code>/feed/podcast.xml</code>. Web Stories: <code>/storie</code>. Versione leggera: <code>/lite/categoria/articolo</code>.</p>
+          </div>
         <div className="panel"><div className="panel-title">SEO automatica</div>
           <p className="help" style={{ marginBottom: 12 }}>Al salvataggio di ogni articolo il motore compila i campi mancanti, corregge immagini e link esterni e inserisce link interni.</p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>

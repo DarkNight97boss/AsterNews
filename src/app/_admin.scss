@@ -191,3 +191,6 @@
 .dupe-row { display: flex; gap: 10px; flex-wrap: wrap; padding: 8px 0; border-bottom: 1px solid var(--gray-100); .media-item { width: 150px; } }
 .edit-tools { margin-top: 10px; font-size: 13px; summary { cursor: pointer; font-weight: 700; } label { display: inline-flex; gap: 6px; align-items: center; } }
 .mobile-upload { max-width: 520px; margin: 0 auto; display: flex; flex-direction: column; gap: 12px; h1 { font-size: 26px; } .btn.big { padding: 18px; font-size: 18px; text-align: center; cursor: pointer; } }
+.intel-row { display: flex; gap: 6px; margin-top: 8px; .input { flex: 1; } }
+.intel-box { margin-top: 8px; font-size: 13px; .ok-text { color: #0b7a4b; font-weight: 700; margin-bottom: 6px; } }
+.intel-list { list-style: none; margin: 8px 0 0; padding: 0; font-size: 13px; li { padding: 4px 0; border-bottom: 1px solid var(--gray-100); } .link-btn { background: none; border: 0; padding: 0; color: var(--blue); font-weight: 700; cursor: pointer; font-family: inherit; } }

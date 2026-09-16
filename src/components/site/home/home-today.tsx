@@ -7,6 +7,11 @@ import type { HomeData } from './home-data';
 import { CommonSections } from './shared-sections';
 
 export async function HomeToday({ d }: { d: HomeData }) {
+  const { cookies } = await import('next/headers'); const bucket = ((await cookies()).get('ab')?.value === 'b' ? 'b' : 'a') as 'a' | 'b';
+  const { pickVariant, recordAb, hasAb } = await import('@/lib/ab-titles');
+  const ab = d.lead ? pickVariant(d.lead, bucket) : { title: '', variant: null };
+  if (d.lead && hasAb(d.lead) && ab.variant) recordAb(d.lead.id, ab.variant, 'impression').catch(() => {});
+  const abLink = (url: string) => (ab.variant === 'b' ? `${url}?t=b` : url);
   const [cats, users] = await Promise.all([getCategories(), getUsers()]);
   const { lead, pair, dossierLead, dossierCat, dossierRest } = d;
   const cat = (id: string) => cats.find((c) => c.id === id);
@@ -16,7 +21,7 @@ export async function HomeToday({ d }: { d: HomeData }) {
         <div className="home-main">
           {lead && (
             <section className="hero-lead">
-              <div className="card card-hero"><div className="card-body"><KickerView article={lead} cat={cat(lead.categoryId)} /><h2 className="card-title"><Link href={articleUrlWith(lead, cats)}>{lead.title}</Link></h2><p className="card-excerpt">{lead.excerpt}</p></div></div>
+              <div className="card card-hero"><div className="card-body"><KickerView article={lead} cat={cat(lead.categoryId)} /><h2 className="card-title"><Link href={abLink(articleUrlWith(lead, cats))}>{ab.title || lead.title}</Link></h2><p className="card-excerpt">{lead.excerpt}</p></div></div>
               <Link className="card-img" href={articleUrlWith(lead, cats)} style={{ position: 'relative', display: 'block', aspectRatio: '3 / 2', overflow: 'hidden' }}><SmartImage src={lead.coverImage} alt={lead.title} priority slot="hero" /></Link>
             </section>
           )}

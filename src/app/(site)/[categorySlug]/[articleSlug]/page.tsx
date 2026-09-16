@@ -44,7 +44,7 @@ export async function generateMetadata({ params }: PageProps<'/[categorySlug]/[a
     description: a.seo.description || a.excerpt,
     keywords: [a.seo.focusKeyword, ...tags.map((t) => t.name)].filter((k): k is string => !!k),
     robots: a.seo.noIndex ? { index: false, follow: false } : undefined,
-    alternates: { canonical: a.seo.canonical || articleUrl(a) },
+    alternates: { canonical: a.seo.canonical || articleUrl(a), ...(await (await import('@/lib/hreflang')).hreflangFor(a)) },
     openGraph: { type: 'article', title: a.title, description: a.excerpt, images: a.coverImage ? [{ url: a.coverImage }, { url: `/api/og/${a.id}.png`, width: 1200, height: 630 }] : [{ url: `/api/og/${a.id}.png`, width: 1200, height: 630 }], publishedTime: a.publishedAt ?? undefined, modifiedTime: a.updatedAt, authors: author ? [author.name] : undefined, section: cats.find((c) => c.id === a.categoryId)?.name },
     twitter: { card: 'summary_large_image', title: a.title, description: a.excerpt },
   };
@@ -62,6 +62,8 @@ export default async function ArticlePage({ params }: PageProps<'/[categorySlug]
   const liveUpdates = [...a.liveUpdates].sort((x, y) => y.time.localeCompare(x.time));
   const fieldDefs = (settings.customFields?.[a.categoryId] ?? []).filter((f) => a.extra?.fields?.[f.key]);
   const toc = wordCount(a.content) >= 900 ? buildToc(a.content) : [];
+  const langLinks = await (await import('@/lib/hreflang')).languageLinks(a);
+  const storyOk = [a.coverImage, ...a.gallery].filter(Boolean).length >= 2;
   const history = a.extra?.showHistory ? (await listRevisions(a.id, 20)).filter((r) => r.data?.status === 'published') : [];
   const video = videos[0];
   const featured = featuredAll.filter((f) => f.id !== a.id).slice(0, 4);
@@ -138,6 +140,7 @@ export default async function ArticlePage({ params }: PageProps<'/[categorySlug]
             {(z || a.address) && <span className="article-place">{z && <Link href={`/zone/${z.slug}`}>{z.name}</Link>}{z && a.address && ' / '}{a.address}</span>}
             <h1>{a.title}</h1>
             <p className="subtitle">{a.subtitle}</p>
+            {langLinks.length > 0 && <p className="lang-switch">Leggi in: {langLinks.map((l) => <Link key={l.lang} href={l.url} hrefLang={l.lang}>{l.label}</Link>)}</p>}
             {a.sponsored && <p className="sponsored-label">Contenuto sponsorizzato</p>}
           </header>
           {a.format === 'video' && a.videoUrl ? (
@@ -154,7 +157,7 @@ export default async function ArticlePage({ params }: PageProps<'/[categorySlug]
           {history.length > 0 && <details className="update-history"><summary>Cronologia degli aggiornamenti ({history.length})</summary><ul>{history.map((h) => <li key={h.id}><time dateTime={h.createdAt}>{new Date(h.createdAt).toLocaleString('it-IT', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</time>{h.note ? ` · ${h.note}` : ''}</li>)}</ul></details>}
           <AdSlot slot="article_bottom" size="728×90" className="ad-inline" />
           {settings.googleNewsUrl && <p className="gnews" style={{ fontFamily: 'var(--font-serif)', textAlign: 'center', marginTop: 24 }}>Scegli <a href={settings.googleNewsUrl} target="_blank" rel="noopener" style={{ color: 'var(--red)', textDecoration: 'underline' }}>{settings.siteName}</a> come fonte preferita su Google News</p>}
-          <div className="article-foot"><span className="copy">© Riproduzione riservata</span><ShareBar title={a.title} withMail /></div>
+          <div className="article-foot"><span className="copy">© Riproduzione riservata{storyOk && <> · <a href={`/storie/${a.slug}`} className="story-link">📱 Guarda la Web Story</a></>}</span><ShareBar title={a.title} withMail /></div>
           {tags.length > 0 && <div className="article-tags">{tags.map((t) => <Link key={t.id} href={`/tag/${t.slug}`}>#{t.name}</Link>)}</div>}
           {author && (
             <div className="author-box"><img src={author.avatar} alt={author.name} /><div><div className="role">{ROLE_LABELS[author.role]}</div><h3><Link href={`/autore/${author.id}`}>{author.name}</Link></h3><p>{author.bio}</p></div></div>

@@ -1,0 +1,15 @@
+import { articleBySlug, getSettings } from '@/lib/queries';
+import { enhanceContent } from '@/lib/content-render';
+import { siteUrl } from '@/lib/site-url';
+
+export const dynamic = 'force-dynamic';
+const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c] as string));
+
+/** Versione ultraleggera dell'articolo: solo HTML e CSS inline (≈10 KB), niente JavaScript. Canonical sull'articolo completo. */
+export async function GET(_req: Request, { params }: { params: Promise<{ categorySlug: string; articleSlug: string }> }) {
+  const { categorySlug, articleSlug } = await params; const a = await articleBySlug(articleSlug); if (!a) return new Response('Not found', { status: 404 });
+  const s = await getSettings(); const base = siteUrl(); const full = `${base}/${categorySlug}/${articleSlug}`;
+  const body = (await enhanceContent(a.content)).replace(/<iframe[\s\S]*?<\/iframe>/g, '').replace(/<script[\s\S]*?<\/script>/g, '').replace(/<img([^>]*)>/g, '<img loading="lazy" decoding="async"$1>');
+  const html = `<!doctype html><html lang="it"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${esc(a.title)} · ${esc(s.siteName)}</title><link rel="canonical" href="${full}"><meta name="robots" content="noindex, follow"><meta name="description" content="${esc(a.excerpt)}"><style>body{font-family:Georgia,serif;margin:0;color:#111;background:#fff}header{background:#22418f;color:#fff;padding:12px 16px;font:900 22px/1 Arial,sans-serif;letter-spacing:-.02em}header a{color:#fff;text-decoration:none}main{max-width:680px;margin:0 auto;padding:16px;line-height:1.6}.k{color:#d7262d;font:700 12px Arial,sans-serif;text-transform:uppercase;letter-spacing:.1em}h1{font-size:28px;line-height:1.15;margin:8px 0}.sub{color:#444;font-size:17px;margin:0 0 8px}.meta{font:12px Arial,sans-serif;color:#666;margin-bottom:14px}img{max-width:100%;height:auto}figcaption{font:12px Arial,sans-serif;color:#666}h2{font-size:20px}blockquote{border-left:3px solid #d7262d;margin:12px 0;padding-left:12px}.full{display:block;margin:24px 0;padding:12px;background:#f4f4f4;text-align:center;font:700 14px Arial,sans-serif}footer{font:11px Arial,sans-serif;color:#777;text-align:center;padding:16px}</style></head><body><header><a href="${base}/">${esc(s.siteName)}</a></header><main><div class="k">${esc(a.kicker)}</div><h1>${esc(a.title)}</h1><p class="sub">${esc(a.subtitle)}</p><div class="meta">${new Date(a.publishedAt ?? a.updatedAt).toLocaleDateString('it-IT', { day: 'numeric', month: 'long', year: 'numeric' })}</div>${a.coverImage ? `<figure><img src="${a.coverImage}" alt="${esc(a.title)}" width="680" height="453">${a.coverCaption ? `<figcaption>${esc(a.coverCaption)}</figcaption>` : ''}</figure>` : ''}${body}<a class="full" href="${full}">Leggi la versione completa con commenti, foto e video →</a></main><footer>© ${esc(s.siteName)} · versione leggera</footer></body></html>`;
+  return new Response(html, { headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'public, max-age=300' } });
+}

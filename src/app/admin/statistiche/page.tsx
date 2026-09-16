@@ -1,4 +1,6 @@
 import Link from 'next/link';
+import { SearchConsolePanel } from '@/components/admin/search-console-panel';
+import { gscConfig } from '@/lib/search-console';
 import { redirect } from 'next/navigation';
 import { requireUser } from '@/lib/auth';
 import { can } from '@/lib/permissions';
@@ -66,6 +68,7 @@ export default async function StatsPage({ searchParams }: PageProps<'/admin/stat
           <div className="panel"><div className="panel-title">Come funziona</div><p className="help">Ogni pagina invia una segnalazione anonima al caricamento e il tempo di lettura all&apos;uscita. Non vengono salvati indirizzi IP, cookie o identificativi: i dati sono aggregati per giorno, ora, pagina e sorgente. Puoi affiancare Vercel Analytics dalle Impostazioni.</p></div>
         </div>
       </div>
+      <SearchConsolePanel configured={!!(await gscConfig()).sa} />
     </>
   );
 }
