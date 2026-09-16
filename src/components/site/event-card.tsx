@@ -14,7 +14,7 @@ export async function EventCard({ event: e }: { event: Event }) {
   return (
     <article className="event-card">
       <Link href={`/eventi/${e.slug}`} className="ev-img">
-        {e.image ? <SmartImage src={e.image} alt={e.title} sizes="(max-width: 520px) 100vw, (max-width: 768px) 50vw, 400px" /> : <div className="ev-placeholder">📅</div>}
+        {e.image ? <SmartImage src={e.image} alt={e.title} sizes="(max-width: 520px) calc(100vw - 40px), (max-width: 768px) 50vw, 400px" /> : <div className="ev-placeholder">📅</div>}
         <span className="badge badge-type">{EVENT_TYPE_LABELS[e.type]}</span>
       </Link>
       <div className="ev-body">
