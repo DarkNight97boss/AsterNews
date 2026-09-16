@@ -53,6 +53,13 @@ Su Vercel: collega l'integrazione Supabase (crea `POSTGRES_URL`), fai il deploy 
 - **Protezione anti-abuso** (limiti per IP su commenti, login, donazioni, API) e **audit di accessibilità** nell'editor (alt mancanti, gerarchia titoli, link generici, contrasto).
 - **Guida ai primi passi** in dashboard, pannello **«Il mio lavoro»**, **notifiche in-app** (campanella) per assegnazioni, richieste di modifica e articoli in revisione, **ruoli personalizzabili** con matrice permessi.
 
+### Prestazioni automatiche (PageSpeed)
+- **Slot immagine** (`src/lib/image-slots.ts`): ogni posizione del sito dichiara la sua larghezza reale ai breakpoint; `SmartImage slot="card"` genera da solo `sizes`, e per le immagini lazy antepone `auto` (il browser misura l'elemento e scarica solo la variante necessaria). L'apertura usa `slot="hero"`/`"cover"` con `fetchpriority=high` e preload.
+- **Foto nel testo**: `optimizeBodyImages` aggiunge lazy loading, `sizes`, e per le foto della Libreria media anche `srcset` con le varianti WebP (360–1600 px) e width/height (niente scatti di layout). Il contenuto salvato non viene modificato.
+- **Upload**: WebP in 5 misure allineate a `deviceSizes`; in uscita anche AVIF tramite l'ottimizzatore di Next.
+- **Monitor PageSpeed** (`/admin/prestazioni`): misura home, ultimo articolo e prima categoria (o le pagine indicate) su smartphone e computer, salva lo storico, spiega in italiano cosa fare nel CMS per ogni segnalazione e avvisa (notifica, email, webhook) se il punteggio scende sotto la soglia o perde 10 punti. Serve una chiave API gratuita di PageSpeed Insights (impostazioni del pannello o `PAGESPEED_API_KEY`). Frequenza: ogni lunedì, ogni giorno o a mano.
+- **Da terminale / CI**: `npm run pagespeed -- --url https://tuosito.it --pages /,/cronaca --min 90 [--desktop]`; il workflow `.github/workflows/pagespeed.yml` lo esegue ogni lunedì e su richiesta (segreto `PAGESPEED_API_KEY`).
+
 ## Dati e infrastruttura
 
 - Postgres via `POSTGRES_URL` / `DATABASE_URL` (driver `pg`, pooler Supabase in transaction mode); senza variabili, PGlite in `data/pg`. Schema e migrazioni idempotenti in `src/lib/db.ts`.

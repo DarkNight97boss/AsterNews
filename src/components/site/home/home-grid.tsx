@@ -17,7 +17,7 @@ export async function HomeGrid({ d }: { d: HomeData }) {
         <div className="grid grid-4">
           {d.latest.map((a) => (
             <article key={a.id} className="card card-sm">
-              <Link className="card-img" href={articleUrlWith(a, cats)}><SmartImage src={a.coverImage} alt={a.title} sizes="(max-width: 768px) 50vw, 300px" /></Link>
+              <Link className="card-img" href={articleUrlWith(a, cats)}><SmartImage src={a.coverImage} alt={a.title} slot="card-sm" /></Link>
               <div className="card-body"><div className="meta"><span className="time-badge">{shortTime(a)}</span> <b>{cats.find((c) => c.id === a.categoryId)?.name}</b></div><h3 className="card-title"><Link href={articleUrlWith(a, cats)}>{a.title}</Link></h3></div>
             </article>
           ))}

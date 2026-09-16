@@ -17,7 +17,7 @@ export async function HomeToday({ d }: { d: HomeData }) {
           {lead && (
             <section className="hero-lead">
               <div className="card card-hero"><div className="card-body"><KickerView article={lead} cat={cat(lead.categoryId)} /><h2 className="card-title"><Link href={articleUrlWith(lead, cats)}>{lead.title}</Link></h2><p className="card-excerpt">{lead.excerpt}</p></div></div>
-              <Link className="card-img" href={articleUrlWith(lead, cats)} style={{ position: 'relative', display: 'block', aspectRatio: '3 / 2', overflow: 'hidden' }}><SmartImage src={lead.coverImage} alt={lead.title} priority sizes="(max-width: 768px) calc(100vw - 40px), 480px" /></Link>
+              <Link className="card-img" href={articleUrlWith(lead, cats)} style={{ position: 'relative', display: 'block', aspectRatio: '3 / 2', overflow: 'hidden' }}><SmartImage src={lead.coverImage} alt={lead.title} priority slot="hero" /></Link>
             </section>
           )}
           <div className="hero-pair">{pair.map((a) => <ArticleCard key={a.id} article={a} variant="horizontal" />)}</div>
@@ -27,7 +27,7 @@ export async function HomeToday({ d }: { d: HomeData }) {
       {dossierLead && (
         <section className="band"><div className="container"><div className="band-inner">
           <div><KickerView article={dossierLead} cat={cat(dossierLead.categoryId)} /><h2 className="band-title" style={{ marginTop: 10 }}><Link href={articleUrlWith(dossierLead, cats)}>{dossierLead.title}</Link></h2><div className="band-by">di {users.find((u) => u.id === dossierLead.authorId)?.name}</div><p className="band-excerpt">{dossierLead.excerpt}</p></div>
-          <Link href={articleUrlWith(dossierLead, cats)} className="band-img"><SmartImage src={dossierLead.coverImage} alt={dossierLead.title} sizes="(max-width: 768px) calc(100vw - 40px), 480px" /></Link>
+          <Link href={articleUrlWith(dossierLead, cats)} className="band-img"><SmartImage src={dossierLead.coverImage} alt={dossierLead.title} slot="band" /></Link>
         </div></div></section>
       )}
       {dossierCat && dossierRest.length > 0 && (

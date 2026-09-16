@@ -8,7 +8,8 @@ import { isServerless } from './db';
 
 export type Provider = 'supabase' | 'vercel-blob' | 'local' | 'db';
 export interface StoredFile { url: string; path: string; provider: Provider; width: number; height: number; variants: Record<string, string>; size: number; mime: string }
-const VARIANT_WIDTHS = [480, 960, 1600];
+/** Larghezze delle varianti WebP generate in upload: allineate a deviceSizes di next.config e agli slot immagine. */
+const VARIANT_WIDTHS = [360, 640, 768, 1024, 1600];
 
 export async function storageSettings(): Promise<StorageSettings> { return { ...DEFAULT_STORAGE, ...((await getSettings()).storage ?? {}) }; }
 const supabaseKey = () => process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SECRET_KEY || '';

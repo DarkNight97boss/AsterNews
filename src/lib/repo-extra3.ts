@@ -98,3 +98,10 @@ export const myWork = async (userId: string): Promise<{ drafts: Article[]; assig
   ]);
   return { drafts, assigned, review, changes };
 };
+
+// ---------------- PageSpeed ----------------
+const rowToPs = (r: Row): import('./models').PageSpeedRun => { let opportunities = []; try { opportunities = typeof r.opportunities === 'string' ? JSON.parse(r.opportunities) : (r.opportunities as never) ?? []; } catch { /* ignora */ } return { id: String(r.id), url: String(r.url), strategy: (r.strategy as 'mobile' | 'desktop') ?? 'mobile', performance: Number(r.performance ?? 0), accessibility: Number(r.accessibility ?? 0), bestPractices: Number(r.best_practices ?? 0), seo: Number(r.seo ?? 0), lcp: Number(r.lcp ?? 0), cls: Number(r.cls ?? 0), tbt: Number(r.tbt ?? 0), fcp: Number(r.fcp ?? 0), si: Number(r.si ?? 0), opportunities, createdAt: String(r.created_at ?? '') }; };
+export async function insertPageSpeedRun(p: import('./models').PageSpeedRun): Promise<void> { await run('INSERT INTO pagespeed_runs (id, url, strategy, performance, accessibility, best_practices, seo, lcp, cls, tbt, fcp, si, opportunities, created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)', [p.id, p.url, p.strategy, p.performance, p.accessibility, p.bestPractices, p.seo, p.lcp, p.cls, p.tbt, p.fcp, p.si, JSON.stringify(p.opportunities), p.createdAt]); }
+export const listPageSpeedRuns = async (limit = 60): Promise<import('./models').PageSpeedRun[]> => (await all('SELECT * FROM pagespeed_runs ORDER BY created_at DESC LIMIT ?', [limit]) as Row[]).map(rowToPs);
+export const latestPageSpeedRun = async (url: string, strategy: string): Promise<import('./models').PageSpeedRun | null> => { const r = (await get('SELECT * FROM pagespeed_runs WHERE url = ? AND strategy = ? ORDER BY created_at DESC LIMIT 1', [url, strategy])) as Row | undefined; return r ? rowToPs(r) : null; };
+export async function prunePageSpeedRuns(keep = 400): Promise<void> { await run('DELETE FROM pagespeed_runs WHERE id NOT IN (SELECT id FROM pagespeed_runs ORDER BY created_at DESC LIMIT ?)', [keep]); }

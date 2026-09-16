@@ -10,7 +10,8 @@
     "import:wp": "node --env-file-if-exists=.env.local --conditions=react-server --import tsx scripts/import-wordpress.mts",
     "seed:bulk": "node --env-file-if-exists=.env.local --conditions=react-server --import tsx scripts/seed-bulk.mts",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "pagespeed": "node --env-file-if-exists=.env.local --import tsx scripts/pagespeed.mts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.126.0",

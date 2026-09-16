@@ -137,7 +137,7 @@ export default async function ArticlePage({ params }: PageProps<'/[categorySlug]
           {a.format === 'video' && a.videoUrl ? (
             <iframe className="video-embed" src={a.videoUrl} allowFullScreen loading="lazy" title="Video" />
           ) : a.coverImage ? (
-            <figure className="article-cover"><div className="cover-frame"><SmartImage src={a.coverImage} alt={a.title} priority sizes="(max-width: 768px) 100vw, 800px" /></div>{a.coverCaption && <figcaption>{a.coverCaption}</figcaption>}</figure>
+            <figure className="article-cover"><div className="cover-frame"><SmartImage src={a.coverImage} alt={a.title} priority slot="cover" /></div>{a.coverCaption && <figcaption>{a.coverCaption}</figcaption>}</figure>
           ) : null}
           {a.format === 'live' && liveUpdates.length > 0 && (
             <section className="live-feed">

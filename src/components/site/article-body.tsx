@@ -1,12 +1,14 @@
 import { Fragment, ReactNode } from 'react';
 import { PollWidget } from './poll-widget';
 import { Embeds } from './embeds';
+import { optimizeBodyImages } from '@/lib/body-images';
 
 /**
  * Corpo dell'articolo: HTML dell'editor più i blocchi interattivi (sondaggi) e gli script degli embed (Instagram, X) solo se servono.
  * Un sondaggio è un segnaposto <div data-poll="ID"></div> inserito dall'editor.
  */
-export function ArticleBody({ html, faq, className = 'article-body', inlineAd }: { html: string; faq?: { q: string; a: string }[]; className?: string; inlineAd?: ReactNode }) {
+export async function ArticleBody({ html: rawHtml, faq, className = 'article-body', inlineAd }: { html: string; faq?: { q: string; a: string }[]; className?: string; inlineAd?: ReactNode }) {
+  const html = await optimizeBodyImages(rawHtml);
   // Spazio pubblicitario dopo il terzo paragrafo (se l'articolo è abbastanza lungo)
   let withAd = html; const paragraphs = [...html.matchAll(/<\/p>/g)];
   if (inlineAd && paragraphs.length >= 5) { const at = paragraphs[2].index! + 4; withAd = html.slice(0, at) + '<div data-inline-ad="1"></div>' + html.slice(at); }

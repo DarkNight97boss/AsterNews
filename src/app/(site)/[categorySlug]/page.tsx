@@ -27,7 +27,7 @@ export default async function CategoryPage({ params, searchParams }: PageProps<'
     if (pg) return (
       <article className={`static-page tpl-${pg.template}`}>
         {pg.template !== 'landing' && <header className="page-head"><h1>{pg.title}</h1>{pg.excerpt && <p className="lead">{pg.excerpt}</p>}</header>}
-        {pg.coverImage && <figure className="article-cover"><div className="cover-frame"><SmartImage src={pg.coverImage} alt={pg.title} priority sizes="(max-width: 768px) 100vw, 1100px" /></div></figure>}
+        {pg.coverImage && <figure className="article-cover"><div className="cover-frame"><SmartImage src={pg.coverImage} alt={pg.title} priority slot="cover" /></div></figure>}
         {pg.template === 'landing' && <h1 className="landing-title">{pg.title}</h1>}
         <ArticleBody html={pg.content} className={pg.template === 'wide' || pg.template === 'landing' ? 'article-body page-wide' : 'article-body page-narrow'} />
       </article>

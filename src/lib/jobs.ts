@@ -35,6 +35,7 @@ export async function runDailyJobs(): Promise<JobReport> {
   try { const { checkBrokenLinks } = await import('./broken-links'); steps.link = await checkBrokenLinks(); } catch (e) { steps.link = 'errore: ' + (e as Error).message; }
   try { const { expireListings } = await import('./repo-extra2'); await expireListings(); steps.annunci = 'scadenze aggiornate'; } catch { /* ignore */ }
   try { const { runDailyExtensions } = await import('./extensions'); Object.assign(steps, await runDailyExtensions()); } catch { /* ignore */ }
+  try { const { scheduledAudit } = await import('./pagespeed'); steps.pagespeed = await scheduledAudit(); } catch (e) { steps.pagespeed = 'errore: ' + (e as Error).message; }
   steps.salute = await healthCheck();
   return { job: 'daily', steps };
 }

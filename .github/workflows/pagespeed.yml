@@ -1,0 +1,28 @@
+name: PageSpeed
+
+on:
+  schedule:
+    - cron: '30 5 * * 1'   # ogni lunedì alle 5:30 UTC
+  workflow_dispatch:
+    inputs:
+      url:
+        description: 'Sito da misurare'
+        default: 'https://asternewscms.vercel.app'
+      min:
+        description: 'Soglia minima prestazioni (mobile)'
+        default: '90'
+
+jobs:
+  pagespeed:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Misura con PageSpeed Insights
+        env:
+          PAGESPEED_API_KEY: ${{ secrets.PAGESPEED_API_KEY }}
+        run: npm run pagespeed -- --url "${{ github.event.inputs.url || 'https://asternewscms.vercel.app' }}" --pages "/,/notizie" --min "${{ github.event.inputs.min || '90' }}"

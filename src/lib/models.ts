@@ -170,6 +170,10 @@ export interface DonationsSettings { enabled: boolean; title: string; text: stri
 export interface ApiSettings { enabled: boolean; requireKey: boolean; rateLimitPerMinute: number }
 export interface RolesSettings { overrides: Partial<Record<Role, string[]>> }
 export interface OnboardingSettings { dismissed: boolean }
+export interface PerformanceSettings { psiApiKey: string; frequency: 'off' | 'daily' | 'weekly'; desktop: boolean; threshold: number; pages: string; alerts: boolean }
+export interface PageSpeedOpportunity { id: string; title: string; displayValue: string; savingsKb: number; savingsMs: number; items: string[] }
+export interface PageSpeedRun { id: string; url: string; strategy: 'mobile' | 'desktop'; performance: number; accessibility: number; bestPractices: number; seo: number; lcp: number; cls: number; tbt: number; fcp: number; si: number; opportunities: PageSpeedOpportunity[]; createdAt: string }
+export const DEFAULT_PERFORMANCE: PerformanceSettings = { psiApiKey: '', frequency: 'weekly', desktop: true, threshold: 90, pages: '', alerts: true };
 export interface Donation { id: string; amount: number; name: string; email: string; message: string; status: 'pending' | 'paid' | 'failed'; readerId: string; createdAt: string; paidAt: string | null }
 export interface ApiKey { id: string; name: string; prefix: string; scopes: string[]; active: boolean; calls: number; lastUsed: string | null; createdBy: string; createdAt: string }
 export interface BrokenLink { id: string; articleId: string; url: string; status: number; error: string; checkedAt: string; fixed: boolean }
@@ -244,6 +248,7 @@ export interface SiteSettings {
   api?: ApiSettings;
   roles?: RolesSettings;
   onboarding?: OnboardingSettings;
+  performance?: PerformanceSettings;
 }
 
 export const DEFAULT_NEWSLETTER: NewsletterSettings = { provider: 'none', apiKey: '', fromEmail: '', fromName: '', digestEnabled: false, digestHour: 7, doubleOptIn: true };

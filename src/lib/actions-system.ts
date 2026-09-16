@@ -83,3 +83,21 @@ export async function saveApiSettingsAction(a: import('./models').ApiSettings): 
   revalidateTag('settings', 'max'); revalidatePath('/admin/api');
   return { ok: true, message: 'Impostazioni API salvate.' };
 }
+
+// ---------------- Prestazioni (PageSpeed) ----------------
+export async function runPageSpeedAction(): Promise<ActionResult> {
+  const me = await requirePermission('settings.manage');
+  const { auditSite, apiKey } = await import('./pagespeed');
+  if (!(await apiKey())) return { ok: false, message: 'Serve una chiave API PageSpeed Insights (gratuita): inseriscila qui sotto o nella variabile PAGESPEED_API_KEY.' };
+  const r = await auditSite('manuale');
+  await repo.insertActivity({ id: uid('ac'), userId: me.id, action: 'ha misurato le prestazioni di', target: `${r.runs.length} pagine`, createdAt: new Date().toISOString() });
+  revalidatePath('/admin/prestazioni');
+  if (!r.runs.length) return { ok: false, message: r.errors[0] ?? 'Nessuna misurazione.' };
+  return { ok: true, message: `${r.runs.length} misurazioni completate${r.alerts.length ? ` · ${r.alerts.length} avvisi` : ''}${r.errors.length ? ` · ${r.errors.length} errori: ${r.errors[0]}` : ''}` };
+}
+export async function savePerformanceSettingsAction(p: import('./models').PerformanceSettings): Promise<ActionResult> {
+  await requirePermission('settings.manage'); const s = await getSettings();
+  await repo.saveSettingsRow({ ...s, performance: { psiApiKey: p.psiApiKey === '__keep__' ? (s.performance?.psiApiKey ?? '') : p.psiApiKey.trim(), frequency: (['off', 'daily', 'weekly'] as const).includes(p.frequency) ? p.frequency : 'weekly', desktop: !!p.desktop, threshold: Math.min(100, Math.max(0, Math.round(Number(p.threshold) || 90))), pages: p.pages.trim().slice(0, 2000), alerts: !!p.alerts } });
+  revalidateTag('settings', 'max'); revalidatePath('/admin/prestazioni');
+  return { ok: true, message: 'Impostazioni prestazioni salvate.' };
+}
