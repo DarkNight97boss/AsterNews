@@ -8,6 +8,7 @@ const g = globalThis as G;
 
 /** Vero quando l'installazione guidata è stata completata (chiave meta.installed). Cache di 60 s per istanza. */
 export const isInstalled = cache(async (): Promise<boolean> => {
+  if (process.env.SETUP_DISABLED === '1') return true; // installazione guidata disattivata dall'ambiente
   if (g.__asterInstalled && g.__asterInstalled.value && Date.now() - g.__asterInstalled.at < 60_000) return true;
   const v = !!(await metaGet('installed'));
   g.__asterInstalled = { at: Date.now(), value: v };
