@@ -14,6 +14,8 @@ export interface JobReport { job: string; steps: Record<string, string> }
 export async function runMinuteJobs(): Promise<JobReport> {
   const steps: Record<string, string> = {};
   await repo.promoteScheduled(); steps.programmati = 'ok';
+  try { const { processQueue } = await import('./social'); const n = await processQueue(20); if (n) steps.social = `${n} post inviati`; } catch (e) { steps.social = 'errore: ' + (e as Error).message; }
+  try { const { dueLists, sendList } = await import('./newsletters'); for (const l of await dueLists()) { const r = await sendList(l, 'digest'); steps[`lista ${l.slug}`] = r.message; } } catch (e) { steps.liste = 'errore: ' + (e as Error).message; }
   const s = await getSettings(); const nl = { ...DEFAULT_NEWSLETTER, ...(s.newsletter ?? {}) };
   const hour = Number(new Date().toLocaleString('it-IT', { hour: 'numeric', hour12: false, timeZone: 'Europe/Rome' }));
   const today = new Date().toISOString().slice(0, 10);
@@ -29,6 +31,8 @@ export async function runDailyJobs(): Promise<JobReport> {
   const s = await getSettings();
   const bk = { ...DEFAULT_BACKUP, ...(s.backup ?? {}) };
   if (bk.enabled) { try { const { createBackup, pruneBackups } = await import('./backup'); const r = await createBackup('automatico'); await pruneBackups(bk.keep); steps.backup = r.url ? `salvato (${Math.round(r.size / 1024)} KB)` : 'salvato nel database'; } catch (e) { steps.backup = 'errore: ' + (e as Error).message; } }
+  try { const { expireListings } = await import('./repo-extra2'); await expireListings(); steps.annunci = 'scadenze aggiornate'; } catch { /* ignore */ }
+  try { const { runDailyExtensions } = await import('./extensions'); Object.assign(steps, await runDailyExtensions()); } catch { /* ignore */ }
   steps.salute = await healthCheck();
   return { job: 'daily', steps };
 }

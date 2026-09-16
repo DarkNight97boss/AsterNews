@@ -63,6 +63,6 @@ next-env.d.ts
 *.tsbuildinfo
 .vercel
 .env*
-/data/pg
+/data/pg*
 /data/imports
 /data/*.db*

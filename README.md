@@ -30,6 +30,16 @@ Su Vercel: collega l'integrazione Supabase (crea `POSTGRES_URL`), fai il deploy 
 - **Importazione WordPress** (WXR in streaming o REST API) in background con ripresa, mappatura categorie, autori con email, immagini trasferite nello storage, redirect automatici.
 - Statistiche integrate senza cookie (pagine viste, sorgenti, tempo di lettura, più letti/commentati), lettori e abbonati, newsletter e push, redirect e 404, edizioni, backup ed esportazione con ripristino, errori e controllo salute (email/webhook, Sentry opzionale), impostazioni a schede.
 
+### Novità della seconda tornata (verso WordPress)
+- **Editor a blocchi** (paragrafi, titoli, citazioni, elenchi, immagini, embed, tabelle, riquadri, sondaggi, «Leggi anche») con trascinamento e inserimento tra i blocchi; l'editor classico resta disponibile. Il contenuto rimane HTML.
+- **Assistente AI (Claude)**: titoli alternativi, sommario ed estratto, meta description, tag e occhiello, alt text delle foto, riscrittura di comunicati nello stile della testata, traduzione, punti da verificare, testi per i social. Chiave in Impostazioni → Assistente AI (o `ANTHROPIC_API_KEY`).
+- **Social automatici**: Facebook (pagina), Telegram (canale), X (OAuth 1.0a) e webhook (Buffer/Zapier/WhatsApp); pubblicazione automatica alla messa online, coda, programmazione, ora migliore dalle statistiche, campo «Testo per i social» nell'articolo.
+- **Login lettori**: Google, Facebook e magic link via email, oltre a email e password.
+- **Newsletter multiple**: liste con blocchi trascinabili (intestazione, articoli con filtri, testo, immagine, pulsante, eventi, meteo), pianificazione per ora e giorni, iscrizioni per lista, tracciamento aperture e clic per invio.
+- **Pubblicità**: annunci propri per posizione (home, colonna, dentro l'articolo, fine articolo, newsletter) con periodo, peso, impressioni e clic; AdSense negli spazi liberi.
+- **Annunci e necrologi** dei lettori con pagamento Stripe (pagamento singolo), moderazione, scadenza, pagine pubbliche `/annunci` e `/necrologi`.
+- **Aggiornamenti con un clic** (controllo su GitHub, canale stabile/beta, Deploy Hook Vercel) ed **estensioni** con hook (`beforeArticleSave`, `filterContent`, `afterArticlePublish`, `dailyJob`) e quattro estensioni incluse (firma automatica, parole vietate, webhook alla pubblicazione, avviso articoli datati).
+
 ## Dati e infrastruttura
 
 - Postgres via `POSTGRES_URL` / `DATABASE_URL` (driver `pg`, pooler Supabase in transaction mode); senza variabili, PGlite in `data/pg`. Schema e migrazioni idempotenti in `src/lib/db.ts`.
@@ -44,7 +54,7 @@ npm run seed:bulk -- --n 100000              # articoli di prova per misurare le
 npm test                                     # test unitari (motore SEO, sicurezza, importazione, database)
 ```
 
-- Variabili d'ambiente opzionali: `RESEND_API_KEY` o `BREVO_API_KEY` + `MAIL_FROM`, `BLOB_READ_WRITE_TOKEN`, `SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY` (storage), `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY`, `STRIPE_SECRET_KEY` / `STRIPE_PRICE_ID` / `STRIPE_WEBHOOK_SECRET`, `SENTRY_DSN`, `DEMO_MODE=1` (mostra gli account demo con password `aster2026` per gli utenti senza password).
+- Variabili d'ambiente opzionali: `ANTHROPIC_API_KEY`, `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET`, `FACEBOOK_APP_ID`/`FACEBOOK_APP_SECRET`, `RESEND_API_KEY` o `BREVO_API_KEY` + `MAIL_FROM`, `BLOB_READ_WRITE_TOKEN`, `SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY` (storage), `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY`, `STRIPE_SECRET_KEY` / `STRIPE_PRICE_ID` / `STRIPE_WEBHOOK_SECRET`, `SENTRY_DSN`, `DEMO_MODE=1` (mostra gli account demo con password `aster2026` per gli utenti senza password).
 - CI: `.github/workflows/ci.yml` esegue controllo tipi, test e build a ogni push.
 
 ## Struttura

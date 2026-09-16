@@ -1,0 +1,128 @@
+'use client';
+
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { createPollAction } from '@/lib/actions-editorial';
+import { toast } from '@/components/ui/toaster';
+
+/**
+ * Editor a blocchi: il contenuto resta HTML (compatibile con SEO, importazione e sito), ma viene diviso in blocchi
+ * di primo livello riordinabili con trascinamento, ognuno modificabile nel suo tipo. Il classico contentEditable
+ * è disponibile come alternativa ("Classico") nello stesso editor.
+ */
+type BlockType = 'paragraph' | 'heading2' | 'heading3' | 'quote' | 'list' | 'image' | 'embed' | 'table' | 'box' | 'poll' | 'readalso' | 'divider' | 'html';
+interface Block { id: string; type: BlockType; html: string }
+const uid = () => 'b' + Math.random().toString(36).slice(2, 9);
+const LABEL: Record<BlockType, string> = { paragraph: 'Paragrafo', heading2: 'Titolo H2', heading3: 'Titolo H3', quote: 'Citazione', list: 'Elenco', image: 'Immagine', embed: 'Embed / video', table: 'Tabella', box: 'Riquadro', poll: 'Sondaggio', readalso: 'Leggi anche', divider: 'Separatore', html: 'HTML' };
+const escapeHtml = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c] as string));
+
+function typeOf(el: Element): BlockType {
+  const t = el.tagName.toLowerCase();
+  if (t === 'p') return 'paragraph'; if (t === 'h2' || t === 'h1') return 'heading2'; if (t === 'h3' || t === 'h4') return 'heading3';
+  if (t === 'blockquote') return el.classList.contains('twitter-tweet') || el.classList.contains('instagram-media') || el.classList.contains('tiktok-embed') ? 'embed' : 'quote';
+  if (t === 'ul' || t === 'ol') return 'list'; if (t === 'figure' || t === 'img') return 'image'; if (t === 'table') return 'table'; if (t === 'hr') return 'divider';
+  if (t === 'iframe' || el.classList.contains('embed-video') || el.classList.contains('embed-map') || el.classList.contains('inline-gallery')) return 'embed';
+  if (el.hasAttribute('data-poll')) return 'poll'; if (el.classList.contains('read-also')) return 'readalso'; if (el.classList.contains('box') || el.classList.contains('pull-quote')) return 'box';
+  return 'html';
+}
+export function parseBlocks(html: string): Block[] {
+  if (typeof window === 'undefined') return [];
+  const doc = new DOMParser().parseFromString(`<div id="root">${html}</div>`, 'text/html');
+  const root = doc.getElementById('root')!; const out: Block[] = [];
+  for (const node of Array.from(root.childNodes)) {
+    if (node.nodeType === Node.TEXT_NODE) { const t = node.textContent?.trim(); if (t) out.push({ id: uid(), type: 'paragraph', html: `<p>${escapeHtml(t)}</p>` }); continue; }
+    if (node.nodeType !== Node.ELEMENT_NODE) continue;
+    const el = node as Element; if (el.tagName.toLowerCase() === 'br') continue;
+    out.push({ id: uid(), type: typeOf(el), html: el.outerHTML });
+  }
+  return out.length ? out : [{ id: uid(), type: 'paragraph', html: '<p></p>' }];
+}
+export const serializeBlocks = (blocks: Block[]): string => blocks.map((b) => b.html).join('\n');
+
+/** Blocco di testo con formattazione inline (grassetto, corsivo, link) su un piccolo contentEditable. */
+function TextBlock({ block, onChange, placeholder }: { block: Block; onChange: (html: string) => void; placeholder: string }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const tag = block.type === 'heading2' ? 'h2' : block.type === 'heading3' ? 'h3' : block.type === 'quote' ? 'blockquote' : block.type === 'list' ? 'div' : 'p';
+  useEffect(() => { const el = ref.current; if (!el) return; const inner = block.html.replace(/^<[^>]+>/, '').replace(/<\/[^>]+>$/, ''); if (el.innerHTML !== inner && document.activeElement !== el) el.innerHTML = block.type === 'list' ? block.html : inner; }, [block.html, block.type]);
+  const emit = () => { const el = ref.current; if (!el) return; onChange(block.type === 'list' ? el.innerHTML : `<${tag}>${el.innerHTML}</${tag}>`); };
+  const cmd = (c: string, arg?: string) => { document.execCommand(c, false, arg); emit(); };
+  return (
+    <div className="blk-text-wrap">
+      <div className="blk-inline-tools"><button type="button" onMouseDown={(e) => { e.preventDefault(); cmd('bold'); }}><b>B</b></button><button type="button" onMouseDown={(e) => { e.preventDefault(); cmd('italic'); }}><i>I</i></button><button type="button" onMouseDown={(e) => { e.preventDefault(); const u = prompt('Link (https://...)'); if (u) cmd('createLink', u); }}>🔗</button><button type="button" onMouseDown={(e) => { e.preventDefault(); cmd('removeFormat'); }}>Tx</button></div>
+      <div ref={ref} className={`blk-edit blk-${block.type}`} contentEditable suppressContentEditableWarning data-placeholder={placeholder} onInput={emit} onBlur={emit} onPaste={(e) => { e.preventDefault(); document.execCommand('insertText', false, e.clipboardData.getData('text/plain')); }} onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey && block.type !== 'list' && block.type !== 'quote') { e.preventDefault(); (e.currentTarget.closest('.blk') as HTMLElement | null)?.dispatchEvent(new CustomEvent('newblock', { bubbles: true })); } }} />
+    </div>
+  );
+}
+
+export function BlockEditor({ value, onChange, articleId = '', onPickImage }: { value: string; onChange: (html: string) => void; articleId?: string; onPickImage?: (cb: (url: string, alt: string) => void) => void }) {
+  const [blocks, setBlocks] = useState<Block[]>(() => parseBlocks(value));
+  const lastEmitted = useRef(value);
+  const [drag, setDrag] = useState<string | null>(null);
+  const [inserter, setInserter] = useState<number | null>(null);
+  useEffect(() => { if (value !== lastEmitted.current) { setBlocks(parseBlocks(value)); lastEmitted.current = value; } }, [value]);
+  const commit = useCallback((next: Block[]) => { setBlocks(next); const html = serializeBlocks(next); lastEmitted.current = html; onChange(html); }, [onChange]);
+  const update = (id: string, html: string) => commit(blocks.map((b) => (b.id === id ? { ...b, html, type: b.type } : b)));
+  const remove = (id: string) => commit(blocks.filter((b) => b.id !== id));
+  const move = (id: string, dir: -1 | 1) => { const i = blocks.findIndex((b) => b.id === id); const j = i + dir; if (i < 0 || j < 0 || j >= blocks.length) return; const n = [...blocks]; [n[i], n[j]] = [n[j], n[i]]; commit(n); };
+  const insertAt = (index: number, b: Block) => { const n = [...blocks]; n.splice(index, 0, b); commit(n); setInserter(null); };
+  const drop = (targetId: string) => { if (!drag || drag === targetId) return; const from = blocks.findIndex((b) => b.id === drag); const to = blocks.findIndex((b) => b.id === targetId); const n = [...blocks]; const [m] = n.splice(from, 1); n.splice(to, 0, m); commit(n); setDrag(null); };
+  const changeType = (id: string, t: BlockType) => { const b = blocks.find((x) => x.id === id); if (!b) return; const inner = b.html.replace(/^<[^>]+>/, '').replace(/<\/[^>]+>$/, ''); const tag = t === 'heading2' ? 'h2' : t === 'heading3' ? 'h3' : t === 'quote' ? 'blockquote' : 'p'; commit(blocks.map((x) => (x.id === id ? { ...x, type: t, html: t === 'list' ? `<ul><li>${inner}</li></ul>` : `<${tag}>${inner}</${tag}>` } : x))); };
+  const menu = useMemo(() => [
+    { t: 'paragraph' as BlockType, label: '¶ Paragrafo', make: () => '<p></p>' }, { t: 'heading2' as BlockType, label: 'H2 Titolo', make: () => '<h2></h2>' }, { t: 'heading3' as BlockType, label: 'H3 Sottotitolo', make: () => '<h3></h3>' }, { t: 'quote' as BlockType, label: '❝ Citazione', make: () => '<blockquote></blockquote>' }, { t: 'list' as BlockType, label: '• Elenco', make: () => '<ul><li></li></ul>' },
+    { t: 'image' as BlockType, label: '🖼 Immagine', make: () => null }, { t: 'embed' as BlockType, label: '▶ Video YouTube', make: () => { const u = prompt('URL YouTube'); if (!u) return null; const m = u.match(/(?:v=|youtu\.be\/|embed\/|shorts\/)([\w-]{11})/); return `<div class="embed-video"><iframe src="https://www.youtube.com/embed/${m ? m[1] : u}" allowfullscreen loading="lazy" title="Video"></iframe></div>`; } },
+    { t: 'embed' as BlockType, label: '📷 Instagram', make: () => { const u = prompt('Link del post Instagram'); if (!u) return null; const c = u.split('?')[0].replace(/\/?$/, '/'); return `<blockquote class="instagram-media" data-instgrm-permalink="${c}" data-instgrm-version="14"><a href="${c}">Vedi il post su Instagram</a></blockquote>`; } },
+    { t: 'embed' as BlockType, label: '𝕏 Post su X', make: () => { const u = prompt('Link del post su X'); return u ? `<blockquote class="twitter-tweet"><a href="${u.replace('x.com', 'twitter.com')}">Vedi il post su X</a></blockquote>` : null; } },
+    { t: 'embed' as BlockType, label: '🗺 Mappa', make: () => { const q = prompt('Indirizzo o luogo'); return q ? `<div class="embed-map"><iframe src="https://www.google.com/maps?q=${encodeURIComponent(q)}&output=embed" loading="lazy" title="Mappa"></iframe></div>` : null; } },
+    { t: 'table' as BlockType, label: '▦ Tabella', make: () => { const r = Number(prompt('Righe', '3')) || 3; const c = Number(prompt('Colonne', '3')) || 3; return `<table><thead><tr>${Array.from({ length: c }, (_, i) => `<th>Colonna ${i + 1}</th>`).join('')}</tr></thead><tbody>${Array.from({ length: r - 1 }, () => `<tr>${Array.from({ length: c }, () => '<td>…</td>').join('')}</tr>`).join('')}</tbody></table>`; } },
+    { t: 'box' as BlockType, label: 'ℹ️ Riquadro «Da sapere»', make: () => '<div class="box box-info"><b>Da sapere</b><p>Testo del riquadro</p></div>' }, { t: 'box' as BlockType, label: '⚠️ Riquadro «Attenzione»', make: () => '<div class="box box-warning"><b>Attenzione</b><p>Testo del riquadro</p></div>' }, { t: 'box' as BlockType, label: '❝ Citazione in evidenza', make: () => '<blockquote class="pull-quote">Citazione in evidenza</blockquote>' },
+    { t: 'readalso' as BlockType, label: '📰 Leggi anche', make: () => { const u = prompt('URL dell\'articolo'); if (!u) return null; const t = prompt('Titolo') || u; return `<aside class="read-also"><span>Leggi anche</span><a href="${u}">${escapeHtml(t)}</a></aside>`; } },
+    { t: 'poll' as BlockType, label: '📊 Sondaggio', make: () => null }, { t: 'divider' as BlockType, label: '— Separatore', make: () => '<hr />' }, { t: 'html' as BlockType, label: '</> HTML libero', make: () => '<div></div>' },
+  ], []);
+  const add = async (index: number, item: (typeof menu)[number]) => {
+    if (item.t === 'image') { if (onPickImage) { onPickImage((url, alt) => insertAt(index, { id: uid(), type: 'image', html: `<figure><img src="${url}" alt="${escapeHtml(alt)}" /><figcaption>${escapeHtml(alt)}</figcaption></figure>` })); } else { const u = prompt('URL immagine'); if (u) insertAt(index, { id: uid(), type: 'image', html: `<figure><img src="${u}" alt="" /><figcaption></figcaption></figure>` }); } return; }
+    if (item.t === 'poll') { const q = prompt('Domanda del sondaggio'); if (!q) return; const o = prompt('Risposte separate da virgola'); if (!o) return; const r = await createPollAction(articleId, q, o.split(',')); if (!r.ok || !r.poll) { toast.error(r.message ?? 'Errore'); return; } insertAt(index, { id: uid(), type: 'poll', html: `<div data-poll="${r.poll.id}" class="poll-placeholder">📊 Sondaggio: ${escapeHtml(r.poll.question)}</div>` }); return; }
+    const html = item.make(); if (html) insertAt(index, { id: uid(), type: item.t, html });
+  };
+  const Inserter = ({ index }: { index: number }) => (
+    <div className={`blk-inserter ${inserter === index ? 'open' : ''}`}>
+      <button type="button" className="blk-plus" onClick={() => setInserter(inserter === index ? null : index)} title="Inserisci blocco">＋</button>
+      {inserter === index && <div className="blk-menu">{menu.map((m, i) => <button key={i} type="button" onClick={() => add(index, m)}>{m.label}</button>)}</div>}
+    </div>
+  );
+  return (
+    <div className="block-editor" onClick={(e) => { if (!(e.target as HTMLElement).closest('.blk-inserter')) setInserter(null); }}>
+      <Inserter index={0} />
+      {blocks.map((b, i) => (
+        <div key={b.id}>
+          <div className={`blk ${drag === b.id ? 'dragging' : ''}`} draggable onDragStart={() => setDrag(b.id)} onDragOver={(e) => e.preventDefault()} onDrop={() => drop(b.id)} onDragEnd={() => setDrag(null)}>
+            <NewBlockListener onNew={() => insertAt(i + 1, { id: uid(), type: 'paragraph', html: '<p></p>' })} />
+            <div className="blk-side">
+              <span className="blk-handle" title="Trascina per spostare">⋮⋮</span>
+              {['paragraph', 'heading2', 'heading3', 'quote', 'list'].includes(b.type) ? <select className="blk-type" value={b.type} onChange={(e) => changeType(b.id, e.target.value as BlockType)}><option value="paragraph">Paragrafo</option><option value="heading2">Titolo H2</option><option value="heading3">Titolo H3</option><option value="quote">Citazione</option><option value="list">Elenco</option></select> : <span className="blk-type-label">{LABEL[b.type]}</span>}
+              <span className="blk-actions"><button type="button" onClick={() => move(b.id, -1)} title="Sposta su">↑</button><button type="button" onClick={() => move(b.id, 1)} title="Sposta giù">↓</button><button type="button" onClick={() => remove(b.id)} title="Elimina" className="danger">✕</button></span>
+            </div>
+            {['paragraph', 'heading2', 'heading3', 'quote', 'list'].includes(b.type) ? <TextBlock block={b} onChange={(h) => update(b.id, h)} placeholder={b.type === 'heading2' ? 'Titolo di sezione' : b.type === 'heading3' ? 'Sottotitolo' : b.type === 'quote' ? 'Citazione' : 'Scrivi qui…'} />
+              : b.type === 'image' ? <ImageBlock html={b.html} onChange={(h) => update(b.id, h)} />
+              : <RawBlock html={b.html} type={b.type} onChange={(h) => update(b.id, h)} />}
+          </div>
+          <Inserter index={i + 1} />
+        </div>
+      ))}
+    </div>
+  );
+}
+/** Ascolta l'evento personalizzato "newblock" emesso da Invio in un paragrafo. */
+function NewBlockListener({ onNew }: { onNew: () => void }) {
+  const ref = useRef<HTMLSpanElement>(null);
+  useEffect(() => { const parent = ref.current?.parentElement; if (!parent) return; const h = () => onNew(); parent.addEventListener('newblock', h); return () => parent.removeEventListener('newblock', h); }, [onNew]);
+  return <span ref={ref} hidden />;
+}
+
+function ImageBlock({ html, onChange }: { html: string; onChange: (h: string) => void }) {
+  const m = html.match(/<img[^>]*src="([^"]*)"[^>]*(?:alt="([^"]*)")?/); const src = m?.[1] ?? ''; const alt = html.match(/alt="([^"]*)"/)?.[1] ?? ''; const cap = html.match(/<figcaption>([\s\S]*?)<\/figcaption>/)?.[1] ?? '';
+  const set = (a: string, c: string) => onChange(`<figure><img src="${src}" alt="${escapeHtml(a)}" /><figcaption>${escapeHtml(c)}</figcaption></figure>`);
+  return <div className="blk-image">{src && <img src={src} alt={alt} />}<input className="input" placeholder="Testo alternativo (accessibilità e Google)" value={alt} onChange={(e) => set(e.target.value, cap)} /><input className="input" placeholder="Didascalia / credit" value={cap} onChange={(e) => set(alt, e.target.value)} /></div>;
+}
+function RawBlock({ html, type, onChange }: { html: string; type: BlockType; onChange: (h: string) => void }) {
+  const [edit, setEdit] = useState(false);
+  return <div className="blk-raw">{edit ? <textarea className="textarea" style={{ fontFamily: 'monospace', fontSize: 12, minHeight: 90 }} value={html} onChange={(e) => onChange(e.target.value)} onBlur={() => setEdit(false)} autoFocus /> : <div className="blk-preview" onDoubleClick={() => setEdit(true)}><div className="article-body" dangerouslySetInnerHTML={{ __html: html }} /><button type="button" className="btn btn-ghost btn-sm" onClick={() => setEdit(true)}>Modifica {LABEL[type].toLowerCase()}</button></div>}</div>;
+}

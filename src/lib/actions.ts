@@ -54,11 +54,19 @@ export async function saveArticleAction(input: Article, status: ArticleStatus): 
   if (!a.seo.title) a.seo.title = a.title;
   if (!a.seo.description) a.seo.description = a.excerpt || a.subtitle;
   if (!existing) a.createdAt = now;
+  let a2: Article;
+  try { a2 = await (await import('./extensions')).runBeforeSave(a, { user: u, isNew: !existing, wasPublished: existing?.status === 'published' }); } catch (e) { return fail((e as Error).message); }
+  Object.assign(a, a2);
   a.seoScore = analyze(a, ctx).score;
   if (existing) await x.insertRevision({ id: uid('rv'), articleId: a.id, userId: u.id, note: `${existing.status} → ${a.status}`, data: existing, createdAt: now });
   await repo.upsertArticle(a);
   await x.deleteAutosave(a.id); await x.releaseLock(a.id, u.id);
   await log(u.id, a.status === 'published' ? 'ha pubblicato' : 'ha salvato', a.title, a.id);
+  if (a.status === 'published' && existing?.status !== 'published') {
+    (await import('./extensions')).runAfterPublish(a, { user: u, isNew: !existing, wasPublished: false }).catch(() => {});
+    const soc = await getSettings().then((s) => s.social?.autoNetworks ?? []);
+    if (soc.length) { const { enqueue, processQueue, configuredNetworks, socialSettings } = await import('./social'); const cfg = await socialSettings(); const nets = soc.filter((n) => configuredNetworks(cfg).includes(n)); if (nets.length) { await enqueue(a, nets, u.id); processQueue(nets.length).catch(() => {}); } }
+  }
   if (a.status === 'published' && a.breaking && existing?.status !== 'published') { // ultim'ora: notifica push automatica (se attiva)
     const { sendPush, pushEnabled } = await import('./push'); const s = await getSettings();
     if ((await pushEnabled()) && (s.push?.autoBreaking ?? true)) { const cats = await getCategories(); sendPush({ title: `Ultim'ora · ${s.siteName}`, body: a.title, url: `/${cats.find((c) => c.id === a.categoryId)?.slug ?? 'notizie'}/${a.slug}`, image: a.coverImage || undefined, tag: a.id }).catch(() => {}); }

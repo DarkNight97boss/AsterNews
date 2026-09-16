@@ -23,7 +23,9 @@ export async function POST(req: Request) {
   const ev = JSON.parse(payload) as { type: string; data: { object: Record<string, unknown> } };
   const o = ev.data.object;
   try {
-    if (ev.type === 'checkout.session.completed') {
+    if (ev.type === 'checkout.session.completed' && (o.metadata as { listing_id?: string })?.listing_id) {
+      const { markListingPaid } = await import('@/lib/actions-listings'); await markListingPaid(String((o.metadata as { listing_id: string }).listing_id));
+    } else if (ev.type === 'checkout.session.completed') {
       const readerId = String((o.metadata as { reader_id?: string })?.reader_id ?? o.client_reference_id ?? '');
       if (readerId) await x.updateReader(readerId, { premium: true, premiumUntil: null, stripeCustomer: String(o.customer ?? '') });
     } else if (ev.type === 'customer.subscription.updated' || ev.type === 'customer.subscription.deleted') {

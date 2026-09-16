@@ -7,6 +7,7 @@ import { getActiveTheme } from '@/lib/theme-server';
 import { themeCss } from '@/lib/themes';
 import './globals.scss';
 import { siteUrl } from '@/lib/site-url';
+import { DEFAULT_ADS } from '@/lib/models';
 
 const inter = Inter({ subsets: ['latin'], weight: ['400', '700'], variable: '--font-inter', display: 'swap' });
 const serif = Source_Serif_4({ subsets: ['latin'], weight: ['400', '700'], variable: '--font-serif-src', display: 'swap', preload: false });
@@ -29,12 +30,14 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function RootLayout({ children }: LayoutProps<'/'>) {
-  const [{ theme }, cookieStore] = await Promise.all([getActiveTheme(), cookies()]);
+  const [{ theme }, cookieStore, settings] = await Promise.all([getActiveTheme(), cookies(), getSettings()]);
+  const ads = { ...DEFAULT_ADS, ...(settings.ads ?? {}) };
   const mode = cookieStore.get('theme')?.value === 'dark' ? 'dark' : 'light';
   return (
     <html lang="it" data-theme={mode} data-site-theme={theme.presetId} data-card-style={theme.cardStyle} data-header={theme.headerStyle} data-skin={theme.skin} className={`${inter.variable} ${serif.variable} ${playfair.variable} ${oswald.variable} ${slab.variable}`}>
       <body>
         <style dangerouslySetInnerHTML={{ __html: themeCss(theme) }} />
+        {ads.enabled && ads.adsenseClient && <script async src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${ads.adsenseClient}`} crossOrigin="anonymous" />}
         {children}
         <Toaster />
       </body>

@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { getCategories, getMostRead, getTags, listPublished } from '@/lib/queries';
 import { ArticleCard } from './article-card';
 import { NewsletterForm } from './newsletter-form';
+import { AdSlot } from './ad-slot';
 
 export async function MostRead({ n = 5, exclude = '' }: { n?: number; exclude?: string }) {
   const list = (await getMostRead(n + 1)).filter((a) => a.id !== exclude).slice(0, n);
@@ -22,5 +23,5 @@ export async function TagsWidget() {
   return <div className="widget"><h3 className="widget-title">Argomenti</h3><div className="tag-cloud">{tags.map((t) => <Link key={t.id} href={`/tag/${t.slug}`}>{t.name}</Link>)}</div></div>;
 }
 export function Sidebar({ exclude = '' }: { exclude?: string }) {
-  return <aside className="sidebar"><MostRead exclude={exclude} /><NewsletterWidget /><FromCities /><TagsWidget /><div className="ad-slot">Spazio pubblicitario 300×250</div></aside>;
+  return <aside className="sidebar"><MostRead exclude={exclude} /><NewsletterWidget /><FromCities /><TagsWidget /><AdSlot slot="sidebar_300" /></aside>;
 }

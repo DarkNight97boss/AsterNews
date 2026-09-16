@@ -13,6 +13,9 @@ import { MediaPicker } from './media-picker';
 import { RichEditor } from './rich-editor';
 import { SeoAssistant } from './seo-assistant';
 import { EditorExtras } from './editor-extras';
+import { BlockEditor } from './block-editor';
+import { AiAssistant } from './ai-assistant';
+import { useEffect } from 'react';
 import type { SeoContext } from '@/lib/seo-engine';
 
 interface Props { initial: Article; isNew: boolean; isPublic: boolean; categories: Category[]; zones: Zone[]; tags: Tag[]; users: User[]; media: MediaItem[]; permissions: Permission[]; seoCtx: SeoContext; siteUrl: string; maxLinks: number; meId: string }
@@ -33,6 +36,9 @@ export function ArticleEditor({ initial, isNew, isPublic, categories, zones, tag
   const [tagInput, setTagInput] = useState(''); const [luTitle, setLuTitle] = useState(''); const [luBody, setLuBody] = useState('');
   const [scheduledAt, setScheduledAt] = useState(toLocalInput(initial.scheduledAt));
   const [slugTouched, setSlugTouched] = useState(!isNew);
+  const [editorMode, setEditorMode] = useState<'blocks' | 'classic'>('classic');
+  useEffect(() => { try { const m = localStorage.getItem('editor_mode'); if (m === 'blocks' || m === 'classic') setEditorMode(m); } catch { /* ignore */ } }, []);
+  const switchMode = (m: 'blocks' | 'classic') => { setEditorMode(m); try { localStorage.setItem('editor_mode', m); } catch { /* ignore */ } };
   const [pending, start] = useTransition();
   const can = (p: Permission) => permissions.includes(p);
   const set = <K extends keyof Article>(k: K, v: Article[K]) => { setA((x) => ({ ...x, [k]: v })); setDirty(true); };
@@ -80,7 +86,8 @@ export function ArticleEditor({ initial, isNew, isPublic, categories, zones, tag
             <input className="input" style={{ textTransform: 'uppercase', fontWeight: 800, fontSize: 13, letterSpacing: '.08em', color: 'var(--red)', border: 0, paddingLeft: 0 }} placeholder="OCCHIELLO (es. MALTEMPO)" value={a.kicker} onChange={(e) => set('kicker', e.target.value)} />
             <textarea className="title-input" rows={2} style={{ resize: 'none', lineHeight: 1.2 }} placeholder="Titolo dell'articolo" value={a.title} onChange={(e) => { set('title', e.target.value); if (!slugTouched) set('slug', slugify(e.target.value)); }} />
             <textarea className="subtitle-input" rows={2} placeholder="Sommario / sottotitolo" value={a.subtitle} onChange={(e) => set('subtitle', e.target.value)} />
-            <div style={{ marginTop: 14 }}><RichEditor value={a.content} articleId={a.id} onChange={(v) => set('content', v)} onPickImage={(cb) => { inlineCb.cb = cb; setPicker('inline'); }} /></div>
+            <div className="editor-mode"><span className="help">Editor:</span><button type="button" className={editorMode === 'blocks' ? 'on' : ''} onClick={() => switchMode('blocks')}>Blocchi</button><button type="button" className={editorMode === 'classic' ? 'on' : ''} onClick={() => switchMode('classic')}>Classico</button></div>
+            <div style={{ marginTop: 10 }}>{editorMode === 'blocks' ? <BlockEditor value={a.content} articleId={a.id} onChange={(v) => set('content', v)} onPickImage={(cb) => { inlineCb.cb = cb; setPicker('inline'); }} /> : <RichEditor value={a.content} articleId={a.id} onChange={(v) => set('content', v)} onPickImage={(cb) => { inlineCb.cb = cb; setPicker('inline'); }} />}</div>
           </div>
 
           <div className="panel">
@@ -89,6 +96,8 @@ export function ArticleEditor({ initial, isNew, isPublic, categories, zones, tag
               <textarea className="textarea" value={a.excerpt} onChange={(e) => set('excerpt', e.target.value)} placeholder="Lascia vuoto per generarlo dal sottotitolo" />
               <div className={`char-count ${a.excerpt.length > 200 ? 'over' : ''}`}>{a.excerpt.length}/200</div></div>
           </div>
+
+          <AiAssistant article={a} categories={categories.map((c) => ({ id: c.id, name: c.name }))} onPatch={(p) => { setA((x) => ({ ...x, ...p })); setDirty(true); }} onAddTag={(name) => addTag(name)} />
 
           <EditorExtras article={a} isNew={isNew} users={users} canAssign={can('article.assign')} canPublish={can('article.publish')} meId={meId} dirty={dirty} onRestoreDraft={(d) => { setA({ ...d, id: a.id }); setDirty(true); }} onPatch={(p) => setA((x) => ({ ...x, ...p }))} />
 
@@ -163,6 +172,9 @@ export function ArticleEditor({ initial, isNew, isPublic, categories, zones, tag
               <label className="switch"><input type="checkbox" checked={a.sponsored} onChange={(e) => set('sponsored', e.target.checked)} /> Contenuto sponsorizzato</label>
               <label className="switch"><input type="checkbox" checked={a.allowComments} onChange={(e) => set('allowComments', e.target.checked)} /> Consenti commenti</label>
               <label className="switch"><input type="checkbox" checked={!!a.premium} onChange={(e) => set('premium', e.target.checked)} /> Riservato agli abbonati (premium)</label>
+            </div>
+            <div className="field" style={{ marginTop: 12, marginBottom: 0 }}><label>Testo per i social (vuoto = automatico)</label><textarea className="textarea" style={{ minHeight: 56 }} value={a.socialText ?? ''} onChange={(e) => set('socialText', e.target.value)} placeholder="Usato da Facebook, X e Telegram alla pubblicazione" /></div>
+            <div style={{ display: 'none' }}>
             </div>
           </div>
           <div className="panel"><div className="panel-title">Categoria</div>

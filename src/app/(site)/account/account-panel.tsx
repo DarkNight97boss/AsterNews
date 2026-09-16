@@ -3,13 +3,14 @@
 import Link from 'next/link';
 import { useActionState, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import { customerPortalAction, loginReaderAction, logoutReaderAction, registerReaderAction, startCheckoutAction, updateReaderAction } from '@/lib/actions-readers';
+import { customerPortalAction, loginReaderAction, logoutReaderAction, registerReaderAction, requestMagicLinkAction, startCheckoutAction, updateReaderAction } from '@/lib/actions-readers';
 import type { Reader } from '@/lib/models';
 import { toast } from '@/components/ui/toaster';
 
-interface Props { reader: Reader | null; paywall: { enabled: boolean; price: number; free: number }; siteName: string; notice: string; redirectTo: string }
+interface Props { reader: Reader | null; paywall: { enabled: boolean; price: number; free: number }; siteName: string; notice: string; redirectTo: string; providers?: string[]; magic?: boolean; error?: string }
 
-export function AccountPanel({ reader, paywall, siteName, notice, redirectTo }: Props) {
+export function AccountPanel({ reader, paywall, siteName, notice, redirectTo, providers = [], magic = false, error = '' }: Props) {
+  const [magicEmail, setMagicEmail] = useState(''); const [magicMsg, setMagicMsg] = useState('');
   const router = useRouter();
   const [mode, setMode] = useState<'login' | 'register'>('login');
   const [state, loginAction, loginPending] = useActionState(loginReaderAction, null);
@@ -23,6 +24,13 @@ export function AccountPanel({ reader, paywall, siteName, notice, redirectTo }: 
         <div className="account-card">
           <h1>{mode === 'login' ? 'Accedi' : 'Crea il tuo account'}</h1>
           <p className="lead">Con un account {siteName} puoi commentare, salvare le preferenze e {paywall.enabled ? 'abbonarti ai contenuti premium.' : 'ricevere la newsletter.'}</p>
+          {error && <p className="error-text">{error === 'provider' ? 'Accesso non disponibile.' : error === 'annullato' ? 'Accesso annullato.' : error}</p>}
+          {(providers.length > 0 || magic) && <div className="social-login">
+            {providers.includes('google') && <a className="btn btn-outline" href={`/api/auth/google?back=${encodeURIComponent(redirectTo || '/account')}`}>Continua con Google</a>}
+            {providers.includes('facebook') && <a className="btn btn-outline" href={`/api/auth/facebook?back=${encodeURIComponent(redirectTo || '/account')}`}>Continua con Facebook</a>}
+            {magic && (magicMsg ? <p className="help">{magicMsg}</p> : <form className="magic-form" onSubmit={(e) => { e.preventDefault(); start(async () => { const r = await requestMagicLinkAction(magicEmail, redirectTo || '/account'); setMagicMsg(r.message ?? ''); if (!r.ok) toast.error(r.message ?? ''); }); }}><input className="input" type="email" placeholder="La tua email" value={magicEmail} onChange={(e) => setMagicEmail(e.target.value)} required /><button className="btn btn-dark" disabled={pending}>Inviami un link di accesso</button></form>)}
+            <div className="or">oppure con la password</div>
+          </div>}
           <div className="tabs"><button className={mode === 'login' ? 'active' : ''} onClick={() => setMode('login')}>Accedi</button><button className={mode === 'register' ? 'active' : ''} onClick={() => setMode('register')}>Registrati</button></div>
           {mode === 'login' ? (
             <form action={loginAction}>

@@ -67,8 +67,7 @@ async function makeDriver(): Promise<Driver> {
   }
   const { PGlite } = await import('@electric-sql/pglite');
   const dir = process.env.PGLITE_DIR ?? writableDir(path.join(process.cwd(), 'data', 'pg'));
-  const { pg_trgm } = await import('@electric-sql/pglite/contrib/pg_trgm');
-  const db = dir ? new PGlite(dir, { extensions: { pg_trgm } }) : new PGlite({ extensions: { pg_trgm } }); // senza cartella scrivibile (serverless) resta in memoria
+  const db = dir ? new PGlite(dir) : new PGlite(); // senza cartella scrivibile (serverless) resta in memoria; pg_trgm solo su Postgres remoto (in locale c'è il ripiego JS)
   return {
     all: async (q, args) => (await db.query(toPg(q), args.map(norm))).rows as Record<string, unknown>[],
     exec: async (q) => { await db.exec(q); },
@@ -171,6 +170,17 @@ CREATE TABLE IF NOT EXISTS error_log (id TEXT PRIMARY KEY, digest TEXT, message 
 CREATE INDEX IF NOT EXISTS idx_errors_last ON error_log(last_seen DESC);
 CREATE TABLE IF NOT EXISTS newsletter_sends (id TEXT PRIMARY KEY, subject TEXT, kind TEXT DEFAULT 'digest', recipients INTEGER DEFAULT 0, sent_at TEXT, status TEXT DEFAULT 'sent', message TEXT DEFAULT '');
 CREATE TABLE IF NOT EXISTS backups (id TEXT PRIMARY KEY, created_at TEXT, size INTEGER DEFAULT 0, url TEXT DEFAULT '', note TEXT DEFAULT '');
+CREATE TABLE IF NOT EXISTS social_posts (id TEXT PRIMARY KEY, article_id TEXT DEFAULT '', network TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'queued', text TEXT DEFAULT '', image TEXT DEFAULT '', url TEXT DEFAULT '', scheduled_at TEXT, sent_at TEXT, result TEXT DEFAULT '', created_by TEXT DEFAULT '', created_at TEXT);
+CREATE INDEX IF NOT EXISTS idx_social_status ON social_posts(status, scheduled_at);
+CREATE TABLE IF NOT EXISTS newsletters (id TEXT PRIMARY KEY, slug TEXT UNIQUE NOT NULL, name TEXT NOT NULL, description TEXT DEFAULT '', kind TEXT NOT NULL DEFAULT 'digest', config TEXT DEFAULT '{}', blocks TEXT DEFAULT '[]', schedule TEXT DEFAULT '{}', enabled INTEGER DEFAULT 1, is_default INTEGER DEFAULT 0, created_at TEXT);
+CREATE TABLE IF NOT EXISTS subscriber_lists (subscriber_id TEXT NOT NULL, list_id TEXT NOT NULL, created_at TEXT, PRIMARY KEY (subscriber_id, list_id));
+CREATE INDEX IF NOT EXISTS idx_sublists_list ON subscriber_lists(list_id);
+CREATE TABLE IF NOT EXISTS newsletter_events (id TEXT PRIMARY KEY, send_id TEXT NOT NULL, subscriber_id TEXT NOT NULL, kind TEXT NOT NULL, url TEXT DEFAULT '', created_at TEXT);
+CREATE INDEX IF NOT EXISTS idx_nlevents_send ON newsletter_events(send_id, kind);
+CREATE TABLE IF NOT EXISTS ads (id TEXT PRIMARY KEY, slot TEXT NOT NULL, name TEXT NOT NULL, type TEXT NOT NULL DEFAULT 'image', image TEXT DEFAULT '', url TEXT DEFAULT '', html TEXT DEFAULT '', label TEXT DEFAULT '', start_at TEXT, end_at TEXT, weight INTEGER DEFAULT 1, impressions INTEGER DEFAULT 0, clicks INTEGER DEFAULT 0, active INTEGER DEFAULT 1, created_at TEXT);
+CREATE INDEX IF NOT EXISTS idx_ads_slot ON ads(slot, active);
+CREATE TABLE IF NOT EXISTS listings (id TEXT PRIMARY KEY, kind TEXT NOT NULL, title TEXT NOT NULL, body TEXT DEFAULT '', image TEXT DEFAULT '', category TEXT DEFAULT '', price TEXT DEFAULT '', contact_name TEXT DEFAULT '', contact_email TEXT DEFAULT '', contact_phone TEXT DEFAULT '', zone_id TEXT DEFAULT '', status TEXT NOT NULL DEFAULT 'pending', paid INTEGER DEFAULT 0, amount REAL DEFAULT 0, expires_at TEXT, reader_id TEXT DEFAULT '', created_at TEXT, published_at TEXT, extra TEXT DEFAULT '{}');
+CREATE INDEX IF NOT EXISTS idx_listings_kind ON listings(kind, status, published_at DESC);
 CREATE TABLE IF NOT EXISTS import_jobs (id TEXT PRIMARY KEY, source TEXT NOT NULL, status TEXT NOT NULL, options TEXT DEFAULT '{}', file TEXT, total INTEGER DEFAULT 0, processed INTEGER DEFAULT 0, imported INTEGER DEFAULT 0, skipped INTEGER DEFAULT 0, errors TEXT DEFAULT '[]', message TEXT DEFAULT '', cursor_pos TEXT DEFAULT '', created_at TEXT, updated_at TEXT);
 `;
 
@@ -208,6 +218,12 @@ ALTER TABLE comments ADD COLUMN IF NOT EXISTS reader_id TEXT DEFAULT '';
 ALTER TABLE comments ADD COLUMN IF NOT EXISTS parent_id TEXT DEFAULT '';
 ALTER TABLE comments ADD COLUMN IF NOT EXISTS flags INTEGER DEFAULT 0;
 ALTER TABLE tags ADD COLUMN IF NOT EXISTS description TEXT DEFAULT '';
+ALTER TABLE newsletter_sends ADD COLUMN IF NOT EXISTS list_id TEXT DEFAULT '';
+ALTER TABLE newsletter_sends ADD COLUMN IF NOT EXISTS opens INTEGER DEFAULT 0;
+ALTER TABLE newsletter_sends ADD COLUMN IF NOT EXISTS clicks INTEGER DEFAULT 0;
+ALTER TABLE readers ADD COLUMN IF NOT EXISTS provider TEXT DEFAULT '';
+ALTER TABLE readers ADD COLUMN IF NOT EXISTS avatar TEXT DEFAULT '';
+ALTER TABLE articles ADD COLUMN IF NOT EXISTS social_text TEXT DEFAULT '';
 `;
 
 /** Vero solo dentro una funzione serverless (Vercel/Lambda), non quando VERCEL=1 arriva da un .env.local scaricato con `vercel env pull`. */
@@ -229,7 +245,7 @@ export async function ready(): Promise<Driver> {
       // Più istanze serverless possono partire insieme: CREATE ... IF NOT EXISTS concorrenti possono collidere, si riprova una volta.
       try { await d.exec(SCHEMA); } catch (e) { if (!isDuplicate(e)) throw e; await new Promise((r) => setTimeout(r, 500)); await d.exec(SCHEMA); }
       try { await d.exec(MIGRATIONS); } catch (e) { if (!isDuplicate(e)) throw e; }
-      try { await d.exec('CREATE EXTENSION IF NOT EXISTS pg_trgm'); } catch { /* estensione non disponibile: la ricerca "forse cercavi" usa il ripiego in JavaScript */ }
+      if (isRemote()) { try { await d.exec('CREATE EXTENSION IF NOT EXISTS pg_trgm'); } catch { /* estensione non disponibile: la ricerca "forse cercavi" usa il ripiego in JavaScript */ } }
       const su = await d.all("SELECT value FROM meta WHERE key = 'site_url'", []);
       if (su.length) (await import('./site-url')).setSiteUrlOverride(String(su[0].value));
       // I dati (demo o minimi) vengono inseriti dall'installazione guidata (/setup), non più automaticamente.

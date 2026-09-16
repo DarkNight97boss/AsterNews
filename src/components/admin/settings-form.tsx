@@ -4,13 +4,13 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState, useTransition } from 'react';
 import { saveSettingsAction } from '@/lib/actions';
-import { Category, DEFAULT_ANALYTICS, DEFAULT_BACKUP, DEFAULT_CACHE, DEFAULT_COMMUNITY, DEFAULT_MONITORING, DEFAULT_NEWSLETTER, DEFAULT_PAYWALL, DEFAULT_PUSH, DEFAULT_SEARCH, DEFAULT_STORAGE, SiteSettings } from '@/lib/models';
+import { Category, DEFAULT_ADS, DEFAULT_AI, DEFAULT_ANALYTICS, DEFAULT_AUTH, DEFAULT_BACKUP, DEFAULT_CACHE, DEFAULT_COMMUNITY, DEFAULT_LISTINGS, DEFAULT_MONITORING, DEFAULT_NEWSLETTER, DEFAULT_PAYWALL, DEFAULT_PUSH, DEFAULT_SEARCH, DEFAULT_SOCIAL, DEFAULT_STORAGE, DEFAULT_UPDATES, SiteSettings, SocialNetwork } from '@/lib/models';
 import { ThemePicker } from './theme-picker';
 import { DEFAULT_SEO_SETTINGS } from '@/lib/seo-engine';
 import { toast } from '@/components/ui/toaster';
 
-type Tab = 'generale' | 'tema' | 'seo' | 'email' | 'lettori' | 'servizi' | 'sistema';
-const TABS: { id: Tab; label: string }[] = [{ id: 'generale', label: 'Generale' }, { id: 'tema', label: 'Tema' }, { id: 'seo', label: 'SEO' }, { id: 'email', label: 'Newsletter ed email' }, { id: 'lettori', label: 'Lettori e abbonamenti' }, { id: 'servizi', label: 'Immagini, notifiche, statistiche' }, { id: 'sistema', label: 'Sistema' }];
+type Tab = 'generale' | 'tema' | 'seo' | 'email' | 'lettori' | 'social' | 'monetizzazione' | 'ai' | 'servizi' | 'sistema';
+const TABS: { id: Tab; label: string }[] = [{ id: 'generale', label: 'Generale' }, { id: 'tema', label: 'Tema' }, { id: 'seo', label: 'SEO' }, { id: 'email', label: 'Newsletter ed email' }, { id: 'lettori', label: 'Lettori e accesso' }, { id: 'social', label: 'Social' }, { id: 'monetizzazione', label: 'Pubblicità, abbonamenti, annunci' }, { id: 'ai', label: 'Assistente AI' }, { id: 'servizi', label: 'Immagini, notifiche, statistiche' }, { id: 'sistema', label: 'Sistema' }];
 
 export function SettingsForm({ initial, categories, env }: { initial: SiteSettings; categories: Category[]; env: { mailEnv: boolean; blob: boolean; supabaseStorage: boolean; cronSecret: boolean; stripeEnv: boolean } }) {
   const router = useRouter();
@@ -18,8 +18,9 @@ export function SettingsForm({ initial, categories, env }: { initial: SiteSettin
   const [s, setS] = useState<SiteSettings>({
     ...initial, seo: { ...DEFAULT_SEO_SETTINGS, ...(initial.seo ?? {}) }, newsletter: { ...DEFAULT_NEWSLETTER, ...(initial.newsletter ?? {}) }, storage: { ...DEFAULT_STORAGE, ...(initial.storage ?? {}) }, paywall: { ...DEFAULT_PAYWALL, ...(initial.paywall ?? {}) },
     community: { ...DEFAULT_COMMUNITY, ...(initial.community ?? {}) }, monitoring: { ...DEFAULT_MONITORING, ...(initial.monitoring ?? {}) }, analytics: { ...DEFAULT_ANALYTICS, ...(initial.analytics ?? {}) }, push: { ...DEFAULT_PUSH, ...(initial.push ?? {}) }, cache: { ...DEFAULT_CACHE, ...(initial.cache ?? {}) }, search: { ...DEFAULT_SEARCH, ...(initial.search ?? {}) }, backup: { ...DEFAULT_BACKUP, ...(initial.backup ?? {}) },
+    social: { ...DEFAULT_SOCIAL, ...(initial.social ?? {}) }, auth: { ...DEFAULT_AUTH, ...(initial.auth ?? {}) }, ads: { ...DEFAULT_ADS, ...(initial.ads ?? {}) }, listings: { ...DEFAULT_LISTINGS, ...(initial.listings ?? {}) }, ai: { ...DEFAULT_AI, ...(initial.ai ?? {}) }, updates: { ...DEFAULT_UPDATES, ...(initial.updates ?? {}) },
   });
-  const seo = s.seo!; const nl = s.newsletter!; const st = s.storage!; const pw = s.paywall!; const cm = s.community!; const mon = s.monitoring!; const an = s.analytics!; const ps = s.push!; const ch = s.cache!; const se = s.search!; const bk = s.backup!;
+  const seo = s.seo!; const nl = s.newsletter!; const st = s.storage!; const pw = s.paywall!; const cm = s.community!; const mon = s.monitoring!; const an = s.analytics!; const ps = s.push!; const ch = s.cache!; const se = s.search!; const bk = s.backup!; const so = s.social!; const au = s.auth!; const ad = s.ads!; const li = s.listings!; const ai = s.ai!; const upd = s.updates!;
   const up = <K extends keyof SiteSettings>(k: K, patch: Partial<NonNullable<SiteSettings[K]>>) => setS({ ...s, [k]: { ...(s[k] as object), ...patch } });
   const [pending, start] = useTransition();
   const cat = (id: string) => categories.find((c) => c.id === id);
@@ -107,6 +108,53 @@ export function SettingsForm({ initial, categories, env }: { initial: SiteSettin
           </div>
         </div>
         <div>
+          <div className="panel"><div className="panel-title">Accesso dei lettori</div>
+            <Switch on={au.magicLink} set={(v) => up('auth', { magicLink: v })} label="Accesso con link via email (magic link, senza password)" />
+            <div className="form-row" style={{ marginTop: 12 }}><div className="field"><label>Google: Client ID</label><input className="input" value={au.googleClientId} onChange={(e) => up('auth', { googleClientId: e.target.value })} placeholder="xxxx.apps.googleusercontent.com" /></div><div className="field"><label>Google: Client secret</label><input className="input" type="password" value={au.googleClientSecret} onChange={(e) => up('auth', { googleClientSecret: e.target.value })} /></div></div>
+            <div className="form-row"><div className="field"><label>Facebook: App ID</label><input className="input" value={au.facebookAppId} onChange={(e) => up('auth', { facebookAppId: e.target.value })} /></div><div className="field"><label>Facebook: App secret</label><input className="input" type="password" value={au.facebookAppSecret} onChange={(e) => up('auth', { facebookAppSecret: e.target.value })} /></div></div>
+            <p className="help">URL di callback da autorizzare: <code>/api/auth/google/callback</code> e <code>/api/auth/facebook/callback</code> sul dominio del sito. Login con Apple: richiede un account sviluppatore Apple, in arrivo.</p>
+          </div>
+        </div>
+      </div>}
+
+      {tab === 'social' && <div className="admin-grid-2">
+        <div>
+          <div className="panel"><div className="panel-title">Pubblicazione automatica</div>
+            <p className="help">Alla pubblicazione di un articolo il testo viene generato dal modello qui sotto (o dal campo «Testo per i social» dell'articolo) e inviato alle reti scelte. Coda, storico e condivisione manuale in <Link href="/admin/social">Social</Link>.</p>
+            <div className="chips" style={{ margin: '10px 0' }}>{(['facebook', 'telegram', 'x', 'webhook'] as SocialNetwork[]).map((n) => { const on = so.autoNetworks.includes(n); return <button key={n} type="button" className="chip" style={on ? { background: 'var(--black)', color: '#fff' } : undefined} onClick={() => up('social', { autoNetworks: on ? so.autoNetworks.filter((x) => x !== n) : [...so.autoNetworks, n] })}>{n === 'x' ? 'X' : n === 'webhook' ? 'Webhook' : n[0].toUpperCase() + n.slice(1)}</button>; })}</div>
+            <div className="field"><label>Modello del testo (segnaposto: {'{kicker} {title} {excerpt} {url} {hashtags}'})</label><textarea className="textarea" style={{ minHeight: 70 }} value={so.template} onChange={(e) => up('social', { template: e.target.value })} /></div>
+            <Switch on={so.hashtagsFromTags} set={(v) => up('social', { hashtagsFromTags: v })} label="Aggiungi hashtag dai tag dell'articolo" />
+          </div>
+          <div className="panel"><div className="panel-title">Facebook (pagina)</div>
+            <div className="form-row"><div className="field"><label>ID pagina</label><input className="input" value={so.facebookPageId} onChange={(e) => up('social', { facebookPageId: e.target.value })} /></div><div className="field"><label>Token di accesso della pagina (lunga durata)</label><input className="input" type="password" value={so.facebookToken} onChange={(e) => up('social', { facebookToken: e.target.value })} /></div></div>
+            <p className="help">Da Meta for Developers: app con permesso pages_manage_posts, poi «Page Access Token» della pagina.</p>
+          </div>
+        </div>
+        <div>
+          <div className="panel"><div className="panel-title">Telegram (canale)</div>
+            <div className="form-row"><div className="field"><label>Token del bot</label><input className="input" type="password" value={so.telegramBotToken} onChange={(e) => up('social', { telegramBotToken: e.target.value })} placeholder="123456:ABC…" /></div><div className="field"><label>Chat/canale (es. @tuatestata o -100…)</label><input className="input" value={so.telegramChatId} onChange={(e) => up('social', { telegramChatId: e.target.value })} /></div></div>
+            <p className="help">Crea il bot con @BotFather e aggiungilo come amministratore del canale.</p>
+          </div>
+          <div className="panel"><div className="panel-title">X (Twitter)</div>
+            <div className="form-row"><div className="field"><label>API key</label><input className="input" value={so.xApiKey} onChange={(e) => up('social', { xApiKey: e.target.value })} /></div><div className="field"><label>API secret</label><input className="input" type="password" value={so.xApiSecret} onChange={(e) => up('social', { xApiSecret: e.target.value })} /></div></div>
+            <div className="form-row"><div className="field"><label>Access token</label><input className="input" value={so.xAccessToken} onChange={(e) => up('social', { xAccessToken: e.target.value })} /></div><div className="field"><label>Access token secret</label><input className="input" type="password" value={so.xAccessSecret} onChange={(e) => up('social', { xAccessSecret: e.target.value })} /></div></div>
+            <p className="help">App su developer.x.com con permessi Read and Write (OAuth 1.0a).</p>
+          </div>
+          <div className="panel"><div className="panel-title">Webhook (Buffer, Zapier, Make, WhatsApp Channel)</div>
+            <div className="field"><label>URL</label><input className="input" value={so.webhookUrl} onChange={(e) => up('social', { webhookUrl: e.target.value })} placeholder="https://hooks.zapier.com/…" /></div>
+            <p className="help">Riceve un JSON con testo, URL, immagine, titolo ed estratto: da lì puoi pubblicare ovunque, compresi canali WhatsApp e Instagram tramite Buffer/Zapier.</p>
+          </div>
+        </div>
+      </div>}
+
+      {tab === 'monetizzazione' && <div className="admin-grid-2">
+        <div>
+          <div className="panel"><div className="panel-title">Pubblicità</div>
+            <Switch on={ad.enabled} set={(v) => up('ads', { enabled: v })} label="Spazi pubblicitari attivi sul sito" />
+            <div className="form-row" style={{ marginTop: 12 }}><div className="field"><label>Google AdSense: ID cliente</label><input className="input" value={ad.adsenseClient} onChange={(e) => up('ads', { adsenseClient: e.target.value })} placeholder="ca-pub-XXXXXXXXXXXX" /></div><div className="field"><label>Etichetta sugli annunci</label><input className="input" value={ad.label} onChange={(e) => up('ads', { label: e.target.value })} /></div></div>
+            <Switch on={ad.houseAdsOnly} set={(v) => up('ads', { houseAdsOnly: v })} label="Solo annunci propri (niente AdSense negli spazi vuoti)" />
+            <p className="help" style={{ marginTop: 8 }}>Gli annunci propri si gestiscono in <Link href="/admin/pubblicita">Pubblicità</Link>: posizione, periodo, peso, impressioni e clic. Con AdSense gli spazi senza annuncio proprio mostrano gli annunci Google.</p>
+          </div>
           <div className="panel"><div className="panel-title">Abbonamenti e paywall soft</div>
             <Switch on={pw.enabled} set={(v) => up('paywall', { enabled: v })} label="Paywall attivo" />
             <div className="form-row" style={{ marginTop: 12 }}><div className="field"><label>Articoli gratuiti al mese</label><input className="input" type="number" min={0} max={100} value={pw.freeArticles} onChange={(e) => up('paywall', { freeArticles: Number(e.target.value) })} /></div><div className="field"><label>Prezzo mensile (€)</label><input className="input" type="number" step="0.01" value={pw.monthlyPrice} onChange={(e) => up('paywall', { monthlyPrice: Number(e.target.value) })} /></div></div>
@@ -115,6 +163,25 @@ export function SettingsForm({ initial, categories, env }: { initial: SiteSettin
             <p className="help">Webhook da registrare su Stripe: <code>/api/stripe/webhook</code> (eventi checkout.session.completed, customer.subscription.updated/deleted, invoice.payment_failed). Gli articoli &quot;premium&quot; sono sempre riservati agli abbonati; gli altri seguono il contatore mensile.</p>
           </div>
         </div>
+        <div>
+          <div className="panel"><div className="panel-title">Annunci e necrologi dei lettori</div>
+            <Switch on={li.enabled} set={(v) => up('listings', { enabled: v })} label="Servizio attivo (pagine /annunci e /necrologi)" />
+            <div className="form-row" style={{ marginTop: 12 }}><div className="field"><label>Prezzo annuncio (€, 0 = gratis)</label><input className="input" type="number" step="0.1" value={li.priceAnnuncio} onChange={(e) => up('listings', { priceAnnuncio: Number(e.target.value) })} /></div><div className="field"><label>Prezzo necrologio (€)</label><input className="input" type="number" step="0.1" value={li.priceNecrologio} onChange={(e) => up('listings', { priceNecrologio: Number(e.target.value) })} /></div><div className="field"><label>Durata (giorni)</label><input className="input" type="number" min={1} max={365} value={li.days} onChange={(e) => up('listings', { days: Number(e.target.value) })} /></div></div>
+            <Switch on={li.moderation} set={(v) => up('listings', { moderation: v })} label="Approvazione della redazione prima della pubblicazione" /><br />
+            <Switch on={li.freeForReaders} set={(v) => up('listings', { freeForReaders: v })} label="Gratis per i lettori registrati" />
+            <p className="help" style={{ marginTop: 8 }}>I pagamenti usano la chiave Stripe qui sotto (pagamento singolo). Moderazione e inserimento manuale in <Link href="/admin/annunci">Annunci e necrologi</Link>.</p>
+          </div>
+        </div>
+      </div>}
+
+      {tab === 'ai' && <div className="admin-grid-2">
+        <div className="panel"><div className="panel-title">Assistente AI (Claude)</div>
+          <Switch on={ai.enabled} set={(v) => up('ai', { enabled: v })} label="Assistente attivo nell'editor" />
+          <div className="form-row" style={{ marginTop: 12 }}><div className="field"><label>Chiave API Anthropic</label><input className="input" type="password" value={ai.apiKey} onChange={(e) => up('ai', { apiKey: e.target.value })} placeholder="sk-ant-… (oppure variabile ANTHROPIC_API_KEY)" /></div><div className="field"><label>Modello</label><select className="select" value={ai.model} onChange={(e) => up('ai', { model: e.target.value })}><option value="claude-opus-5">Claude Opus 5 (consigliato)</option><option value="claude-sonnet-5">Claude Sonnet 5 (più economico)</option><option value="claude-haiku-4-5">Claude Haiku 4.5 (veloce)</option></select></div></div>
+          <div className="field"><label>Stile della testata (istruzioni per titoli e riscritture)</label><textarea className="textarea" style={{ minHeight: 80 }} value={ai.style} onChange={(e) => up('ai', { style: e.target.value })} /></div>
+          <p className="help">Cosa fa: titoli alternativi, sommario ed estratto, meta description, tag e occhiello, alt text delle foto, riscrittura di comunicati nello stile della testata, traduzione, elenco dei punti da verificare, testi per i social. Propone soltanto: nulla viene pubblicato senza un clic del redattore. Le richieste vanno direttamente ad Anthropic con la tua chiave; i testi non vengono usati per addestrare modelli.</p>
+        </div>
+        <div className="panel"><div className="panel-title">Costi indicativi</div><p className="help">Un articolo medio (600 parole) costa circa 0,5-2 centesimi per funzione con Sonnet 5 e 2-5 centesimi con Opus 5. Le chiamate usano ragionamento adattivo a sforzo basso per contenere i costi; il fallback di sicurezza lato server è attivo.</p></div>
       </div>}
 
       {tab === 'servizi' && <div className="admin-grid-2">
@@ -156,6 +223,11 @@ export function SettingsForm({ initial, categories, env }: { initial: SiteSettin
             <Switch on={bk.enabled} set={(v) => up('backup', { enabled: v })} label="Backup giornaliero (con il cron)" />
             <div className="field" style={{ marginTop: 10, maxWidth: 220 }}><label>Backup da conservare</label><input className="input" type="number" min={1} max={60} value={bk.keep} onChange={(e) => up('backup', { keep: Number(e.target.value) })} /></div>
             <p className="help">I backup vanno nello storage immagini (bucket dedicato) oppure, se assente, nel database. Esportazione, ripristino e stato in <Link href="/admin/backup">Backup</Link>.</p>
+          </div>
+          <div className="panel"><div className="panel-title">Aggiornamenti</div>
+            <div className="form-row"><div className="field"><label>Repository GitHub (utente/repo)</label><input className="input" value={upd.repo} onChange={(e) => up('updates', { repo: e.target.value })} /></div><div className="field"><label>Canale</label><select className="select" value={upd.channel} onChange={(e) => up('updates', { channel: e.target.value as 'stable' | 'beta' })}><option value="stable">Stabile (main)</option><option value="beta">Beta</option></select></div></div>
+            <div className="field"><label>Deploy Hook Vercel (aggiornamento con un clic)</label><input className="input" type="password" value={upd.deployHookUrl} onChange={(e) => up('updates', { deployHookUrl: e.target.value })} placeholder="https://api.vercel.com/v1/integrations/deploy/…" /></div>
+            <p className="help">Controllo e pulsante in <Link href="/admin/aggiornamenti">Aggiornamenti</Link>.</p>
           </div>
           <div className="panel"><div className="panel-title">Dati e demo</div><p className="help">Database Postgres (Supabase in produzione, PGlite in locale). Per ripartire da zero con i dati dimostrativi usa la pagina Backup → ripristino, oppure reinstalla cancellando la chiave <code>installed</code>.</p></div>
         </div>

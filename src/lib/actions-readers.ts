@@ -150,3 +150,24 @@ export async function adminUpdateReaderAction(id: string, patch: { banned?: bool
   revalidatePath('/admin/lettori');
   return ok('Lettore aggiornato.');
 }
+
+// ---------------- Magic link (accesso senza password) ----------------
+export async function requestMagicLinkAction(email: string, back = '/account'): Promise<ActionResult> {
+  const e = email.trim().toLowerCase();
+  if (!EMAIL.test(e)) return fail('Email non valida.');
+  if (!(await mailConfigured())) return fail('Accesso via email non disponibile: il servizio email non è configurato.');
+  let r = await x.findReaderByEmail(e);
+  if (!r) { r = { id: uid('rd'), email: e, name: '', verified: false, premium: false, premiumUntil: null, stripeCustomer: '', banned: false, createdAt: new Date().toISOString(), lastLogin: null }; await x.insertReader(r, null); }
+  if (r.banned) return fail('Account sospeso.');
+  const token = randomToken(24); await x.insertToken(token, 'reader-magic', r.id, 15 * 60_000, back);
+  const s = await getSettings(); const link = `${siteUrl()}/account/magic?t=${token}&back=${encodeURIComponent(back)}`;
+  await sendMail({ to: e, subject: `Il tuo link di accesso · ${s.siteName}`, html: mailLayout(s.siteName, 'Accedi con un clic', `<p>Ecco il tuo link di accesso a ${esc(s.siteName)}. Vale 15 minuti e funziona una sola volta.</p>${button(link, 'Accedi')}`), text: link });
+  return ok('Ti abbiamo inviato un link di accesso: controlla la posta.');
+}
+export async function magicLoginAction(token: string): Promise<boolean> {
+  const t = await x.consumeToken(token, 'reader-magic'); if (!t) return false;
+  const r = await x.findReader(t.subject); if (!r || r.banned) return false;
+  await x.updateReader(r.id, { verified: true, lastLogin: new Date().toISOString() });
+  await startSession(r.id, 'reader');
+  return true;
+}

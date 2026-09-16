@@ -12,6 +12,7 @@ import { getActiveTheme } from '@/lib/theme-server';
 import { ArticleFanpage } from '@/components/site/fanpage/article-fanpage';
 import { siteUrl } from '@/lib/site-url';
 import { ArticleBody } from '@/components/site/article-body';
+import { AdSlot } from '@/components/site/ad-slot';
 import { Paywall } from '@/components/site/paywall';
 import { Analytics } from '@/components/site/analytics';
 import { getCurrentReader } from '@/lib/auth';
@@ -137,7 +138,8 @@ export default async function ArticlePage({ params }: PageProps<'/[categorySlug]
             </section>
           )}
           {a.format === 'gallery' && a.gallery.length > 0 && <Gallery images={a.gallery} />}
-          {gated ? <Paywall articleId={a.id} premiumOnly={!!a.premium} price={paywall.monthlyPrice} free={paywall.freeArticles}><ArticleBody html={a.content} faq={a.faq} /></Paywall> : <ArticleBody html={a.content} faq={a.faq} />}
+          {gated ? <Paywall articleId={a.id} premiumOnly={!!a.premium} price={paywall.monthlyPrice} free={paywall.freeArticles}><ArticleBody html={a.content} faq={a.faq} inlineAd={<AdSlot slot="article_inline" size="728×90" className="ad-inline" />} /></Paywall> : <ArticleBody html={a.content} faq={a.faq} inlineAd={<AdSlot slot="article_inline" size="728×90" className="ad-inline" />} />}
+          <AdSlot slot="article_bottom" size="728×90" className="ad-inline" />
           {settings.googleNewsUrl && <p className="gnews" style={{ fontFamily: 'var(--font-serif)', textAlign: 'center', marginTop: 24 }}>Scegli <a href={settings.googleNewsUrl} target="_blank" rel="noopener" style={{ color: 'var(--red)', textDecoration: 'underline' }}>{settings.siteName}</a> come fonte preferita su Google News</p>}
           <div className="article-foot"><span className="copy">© Riproduzione riservata</span><ShareBar title={a.title} withMail /></div>
           {tags.length > 0 && <div className="article-tags">{tags.map((t) => <Link key={t.id} href={`/tag/${t.slug}`}>#{t.name}</Link>)}</div>}
@@ -167,7 +169,7 @@ export default async function ArticlePage({ params }: PageProps<'/[categorySlug]
         <aside className="sidebar">
           <MostRead n={5} exclude={a.id} />
           <NewsletterWidget />
-          <div className="ad-slot">Spazio pubblicitario 300×250</div>
+          <AdSlot slot="sidebar_300" />
         </aside>
       </div>
     </>

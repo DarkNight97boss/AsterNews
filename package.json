@@ -13,6 +13,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.126.0",
     "@electric-sql/pglite": "^0.5.8",
     "@types/pg": "^8.23.1",
     "@vercel/blob": "^2.8.0",

@@ -23,6 +23,7 @@ export async function subscribe(email: string, source = 'sito'): Promise<{ ok: b
   const token = randomToken(24);
   const s: Subscriber = { id: existing?.id ?? uid('s'), email: e, createdAt: existing?.createdAt ?? new Date().toISOString(), status: doubleOptIn ? 'pending' : 'confirmed', token, confirmedAt: doubleOptIn ? null : new Date().toISOString(), source };
   await repo.insertSubscriber(s);
+  try { const { ensureDefaultList } = await import('./newsletters'); const { subscribeToList } = await import('./repo-extra2'); const def = await ensureDefaultList(); const saved = await repo.findSubscriberByEmail(e); if (saved) await subscribeToList(saved.id, def.id); } catch { /* lista predefinita non disponibile */ }
   if (!doubleOptIn) return { ok: true, message: 'Iscrizione completata. Benvenuto!' };
   const site = await getSettings();
   const r = await sendMail({ to: e, subject: `Conferma l'iscrizione a ${site.siteName}`, html: mailLayout(site.siteName, 'Conferma la tua iscrizione', `<p>Grazie per esserti iscritto alla newsletter di <b>${esc(site.siteName)}</b>. Conferma il tuo indirizzo per ricevere ogni mattina le notizie del giorno.</p>${button(confirmUrl(token), 'Confermo l\'iscrizione')}<p style="color:#71717a;font-size:13px">Se non hai richiesto tu l'iscrizione ignora questa email: non riceverai nulla.</p>`), text: `Conferma l'iscrizione: ${confirmUrl(token)}` });
