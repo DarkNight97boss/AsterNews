@@ -223,6 +223,16 @@ ALTER TABLE media ADD COLUMN IF NOT EXISTS height INTEGER DEFAULT 0;
 ALTER TABLE media ADD COLUMN IF NOT EXISTS variants TEXT DEFAULT '{}';
 ALTER TABLE media ADD COLUMN IF NOT EXISTS focal_x REAL DEFAULT 0.5;
 ALTER TABLE media ADD COLUMN IF NOT EXISTS focal_y REAL DEFAULT 0.5;
+ALTER TABLE media ADD COLUMN IF NOT EXISTS folder TEXT DEFAULT '';
+ALTER TABLE media ADD COLUMN IF NOT EXISTS tags TEXT DEFAULT '';
+ALTER TABLE media ADD COLUMN IF NOT EXISTS credit TEXT DEFAULT '';
+ALTER TABLE media ADD COLUMN IF NOT EXISTS license TEXT DEFAULT '';
+ALTER TABLE media ADD COLUMN IF NOT EXISTS rights_until TEXT DEFAULT '';
+ALTER TABLE media ADD COLUMN IF NOT EXISTS hash TEXT DEFAULT '';
+ALTER TABLE media ADD COLUMN IF NOT EXISTS exclusive INTEGER DEFAULT 0;
+ALTER TABLE media ADD COLUMN IF NOT EXISTS lat REAL DEFAULT 0;
+ALTER TABLE media ADD COLUMN IF NOT EXISTS lon REAL DEFAULT 0;
+ALTER TABLE media ADD COLUMN IF NOT EXISTS deleted_at TEXT;
 ALTER TABLE subscribers ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'confirmed';
 ALTER TABLE subscribers ADD COLUMN IF NOT EXISTS token TEXT DEFAULT '';
 ALTER TABLE subscribers ADD COLUMN IF NOT EXISTS confirmed_at TEXT;
@@ -265,7 +275,8 @@ export async function ready(): Promise<Driver> {
     g.__asterReady = (async () => {
       // Più istanze serverless possono partire insieme: CREATE ... IF NOT EXISTS concorrenti possono collidere, si riprova una volta.
       try { await d.exec(SCHEMA); } catch (e) { if (!isDuplicate(e)) throw e; await new Promise((r) => setTimeout(r, 500)); await d.exec(SCHEMA); }
-      try { await d.exec(MIGRATIONS); } catch (e) { if (!isDuplicate(e)) throw e; }
+      // Le migrazioni si eseguono una per una: se una fallisce (colonna già presente, indice duplicato) le successive devono comunque girare.
+      for (const stmt of MIGRATIONS.split(/;\s*\n/).map((x) => x.trim()).filter(Boolean)) { try { await d.exec(stmt); } catch (e) { if (!isDuplicate(e)) console.error('[db] migrazione saltata:', stmt.slice(0, 80), (e as Error).message); } }
       if (isRemote()) { try { await d.exec('CREATE EXTENSION IF NOT EXISTS pg_trgm'); } catch { /* estensione non disponibile: la ricerca "forse cercavi" usa il ripiego in JavaScript */ } }
       const su = await d.all("SELECT value FROM meta WHERE key = 'site_url'", []);
       if (su.length) (await import('./site-url')).setSiteUrlOverride(String(su[0].value));

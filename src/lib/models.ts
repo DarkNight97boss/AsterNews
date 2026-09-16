@@ -143,6 +143,7 @@ export interface MediaItem {
   variants?: Record<string, string>;
   focalX?: number;
   focalY?: number;
+  folder?: string; tags?: string; credit?: string; license?: string; rightsUntil?: string; hash?: string; exclusive?: boolean; lat?: number; lon?: number; deletedAt?: string | null;
 }
 
 export interface Subscriber {
@@ -197,7 +198,9 @@ export interface BackupEntry { id: string; createdAt: string; size: number; url:
 export interface HitRow { day: string; hour: number; path: string; articleId: string; source: string; count: number; readMs: number }
 
 export interface NewsletterSettings { provider: 'none' | 'resend' | 'brevo'; apiKey: string; fromEmail: string; fromName: string; digestEnabled: boolean; digestHour: number; doubleOptIn: boolean }
-export interface StorageSettings { provider: 'auto' | 'supabase' | 'vercel-blob' | 'local' | 'db'; bucket: string; maxWidth: number }
+export interface StorageSettings { provider: 'auto' | 'supabase' | 'vercel-blob' | 'local' | 'db'; bucket: string; maxWidth: number; unsplashKey?: string; pexelsKey?: string }
+export interface VideoSettings { provider: 'none' | 'cloudflare' | 'mux'; cfAccountId: string; cfApiToken: string; cfCustomerCode: string; muxTokenId: string; muxTokenSecret: string }
+export const DEFAULT_VIDEO: VideoSettings = { provider: 'none', cfAccountId: '', cfApiToken: '', cfCustomerCode: '', muxTokenId: '', muxTokenSecret: '' };
 export interface PaywallSettings { enabled: boolean; freeArticles: number; monthlyPrice: number; stripeSecretKey: string; stripePriceId: string; stripeWebhookSecret: string }
 export interface CommunitySettings { commentsRequireAccount: boolean; blockedWords: string; flagsToHide: number }
 export interface MonitoringSettings { alertEmail: string; webhookUrl: string; slowQueryMs: number; sentryDsn: string }
@@ -261,6 +264,7 @@ export interface SiteSettings {
   performance?: PerformanceSettings;
   customFields?: Record<string, CustomField[]>;
   workflow?: WorkflowSettings;
+  video?: VideoSettings;
 }
 
 export const DEFAULT_NEWSLETTER: NewsletterSettings = { provider: 'none', apiKey: '', fromEmail: '', fromName: '', digestEnabled: false, digestHour: 7, doubleOptIn: true };

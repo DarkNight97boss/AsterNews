@@ -33,6 +33,7 @@ export function AdminShell({ user, permissions, unread, reviewCount, pendingComm
           {can('category.manage') && <A href="/admin/categorie"><span className="ico">☰</span> Categorie</A>}
           {can('tag.manage') && <A href="/admin/tag"><span className="ico">#</span> Tag</A>}
           <A href="/admin/media"><span className="ico">▣</span> Media</A>
+          <A href="/admin/mobile"><span className="ico">📱</span> Invia dal telefono</A>
           {(user.role === 'admin' || user.role === 'editor') && <A href="/admin/pagine"><span className="ico">📄</span> Pagine</A>}
           {(user.role === 'admin' || user.role === 'editor') && <A href="/admin/blocchi"><span className="ico">♻️</span> Blocchi riutilizzabili</A>}
           {can('article.publish') && (

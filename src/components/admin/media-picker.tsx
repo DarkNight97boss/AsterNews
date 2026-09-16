@@ -9,12 +9,13 @@ export function readFileAsDataUrl(file: File): Promise<string> {
   return new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result as string); r.onerror = rej; r.readAsDataURL(file); });
 }
 /** Carica un file sull'API di upload (ridimensionamento + WebP + storage). */
-export async function uploadFile(file: File, onProgress?: (pct: number) => void): Promise<MediaItem> {
+export async function uploadFile(file: File, onProgress?: (pct: number) => void, opts: { folder?: string; exclusive?: boolean; lat?: number; lon?: number; alt?: string } = {}): Promise<MediaItem> {
   return new Promise((res, rej) => {
     const xhr = new XMLHttpRequest();
     xhr.open('POST', '/api/media/upload');
     xhr.setRequestHeader('Content-Type', file.type || 'application/octet-stream');
     xhr.setRequestHeader('X-File-Name', encodeURIComponent(file.name));
+    if (opts.folder) xhr.setRequestHeader('X-Folder', encodeURIComponent(opts.folder)); if (opts.exclusive) xhr.setRequestHeader('X-Exclusive', '1'); if (opts.lat) xhr.setRequestHeader('X-Lat', String(opts.lat)); if (opts.lon) xhr.setRequestHeader('X-Lon', String(opts.lon)); if (opts.alt) xhr.setRequestHeader('X-Alt', encodeURIComponent(opts.alt));
     xhr.upload.onprogress = (e) => { if (e.lengthComputable && onProgress) onProgress(Math.round((e.loaded / e.total) * 100)); };
     xhr.onload = () => { try { const d = JSON.parse(xhr.responseText); if (xhr.status >= 200 && xhr.status < 300) res(d as MediaItem); else rej(new Error(d.error ?? `Errore ${xhr.status}`)); } catch { rej(new Error(`Errore ${xhr.status}`)); } };
     xhr.onerror = () => rej(new Error('Errore di rete durante il caricamento'));

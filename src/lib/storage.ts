@@ -12,11 +12,13 @@ export interface StoredFile { url: string; path: string; provider: Provider; wid
 const VARIANT_WIDTHS = [360, 640, 768, 1024, 1600];
 
 export async function storageSettings(): Promise<StorageSettings> { return { ...DEFAULT_STORAGE, ...((await getSettings()).storage ?? {}) }; }
-const supabaseKey = () => process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SECRET_KEY || '';
-const supabaseUrl = () => (process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || '').replace(/\/+$/, '');
+/** Le variabili scaricate con `vercel env pull` possono valere "[SENSITIVE]": vanno trattate come assenti. */
+const env = (k: string) => { const v = process.env[k] ?? ''; return v && !v.includes('[SENSITIVE]') ? v : ''; };
+const supabaseKey = () => env('SUPABASE_SERVICE_ROLE_KEY') || env('SUPABASE_SECRET_KEY');
+const supabaseUrl = () => (env('SUPABASE_URL') || env('NEXT_PUBLIC_SUPABASE_URL')).replace(/\/+$/, '');
 export async function resolveProvider(): Promise<Provider> {
   const s = await storageSettings();
-  const has = { supabase: !!(supabaseUrl() && supabaseKey()), blob: !!process.env.BLOB_READ_WRITE_TOKEN };
+  const has = { supabase: !!(supabaseUrl() && supabaseKey()), blob: !!env('BLOB_READ_WRITE_TOKEN') };
   if (s.provider === 'supabase' && has.supabase) return 'supabase';
   if (s.provider === 'vercel-blob' && has.blob) return 'vercel-blob';
   if (s.provider === 'db') return 'db';
