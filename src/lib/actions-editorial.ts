@@ -62,6 +62,7 @@ export async function addNoteAction(articleId: string, body: string, kind: Artic
   if (!body.trim()) return fail('Scrivi un testo.');
   const n: ArticleNote = { id: uid('nt'), articleId, userId: u.id, kind, body: body.trim().slice(0, 4000), resolved: false, createdAt: new Date().toISOString() };
   await x.insertNote(n);
+  try { const { findMentions } = await import('./workflow'); const mentioned = findMentions(body, await repo.listUsers()).filter((m) => m.id !== u.id); if (mentioned.length) { const x3 = await import('./repo-extra3'); for (const m of mentioned) await x3.insertNotification({ id: uid('nt'), userId: m.id, kind: 'mention', text: `${u.name} ti ha menzionato su «${a.title}»: ${body.slice(0, 120)}`, url: `/admin/articoli/${articleId}`, read: false, createdAt: n.createdAt }); } } catch { /* ignora */ }
   if (kind === 'changes') {
     await repo.patchArticle(articleId, { status: 'draft', updated_at: n.createdAt });
     await log(u.id, 'ha richiesto modifiche a', a, body.slice(0, 200));

@@ -101,7 +101,7 @@ export function articleStmts(a: Article, opts: { wpId?: string } = {}): { sql: s
 }
 /** Inserisce o aggiorna un articolo (riga, tag, indice full-text) in una sola transazione. */
 export async function upsertArticle(a: Article, opts: { wpId?: string } = {}): Promise<void> { await batch(articleStmts(a, opts)); }
-export async function patchArticle(id: string, patch: Partial<Record<'status' | 'published_at' | 'scheduled_at' | 'updated_at' | 'cover_image' | 'seo_score' | 'assigned_to' | 'deadline' | 'premium', string | number | null>>): Promise<void> {
+export async function patchArticle(id: string, patch: Partial<Record<'status' | 'published_at' | 'scheduled_at' | 'updated_at' | 'cover_image' | 'seo_score' | 'assigned_to' | 'deadline' | 'premium' | 'extra' | 'featured' | 'breaking' | 'views', string | number | null>>): Promise<void> {
   const keys = Object.keys(patch); if (!keys.length) return;
   await run(`UPDATE articles SET ${keys.map((k) => `${k} = ?`).join(', ')} WHERE id = ?`, [...(Object.values(patch)), id]);
 }

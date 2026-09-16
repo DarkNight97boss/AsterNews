@@ -183,3 +183,6 @@
 .template-picker { .template-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 10px; } .template-card { text-align: left; border: 1px solid var(--gray-200); background: #fff; border-radius: 8px; padding: 10px 12px; cursor: pointer; font-family: inherit; b { display: block; margin-bottom: 4px; } span { font-size: 12px; color: var(--gray-600); } &:hover { border-color: var(--blue); } } }
 .corr-item { font-size: 13px; padding: 6px 0; border-bottom: 1px solid var(--gray-100); display: flex; gap: 6px; align-items: center; }
 .block-editor .snippet-ref { background: #eef3fb; border: 1px dashed var(--blue); padding: 8px 12px; font-weight: 700; }
+.stages { list-style: none; margin: 0 0 10px; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; li { font-size: 12px; padding: 4px 10px; border-radius: 14px; background: var(--gray-100); color: var(--gray-600); &.done { background: #e2f3ea; color: #0b7a4b; } &.current { background: var(--black); color: #fff; font-weight: 700; } } }
+.desk-card, .rule-card { border: 1px solid var(--gray-200); border-radius: 8px; padding: 10px; margin-bottom: 10px; }
+.rule-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 8px; font-size: 13px; b { font-size: 11px; letter-spacing: .08em; color: var(--gray-500); } .select { max-width: 200px; } }

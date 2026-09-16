@@ -104,9 +104,14 @@ export interface Article {
 }
 
 /** Dati aggiuntivi dell'articolo (una colonna JSON, così le funzioni nuove non richiedono nuove colonne). */
-export interface ArticleExtra { fields?: Record<string, string>; corrections?: { date: string; text: string }[]; showHistory?: boolean; template?: string; titleB?: string; abStats?: { a: number; b: number; ca: number; cb: number; winner?: 'a' | 'b' }; audioUrl?: string; audioDuration?: number; lang?: string; translationOf?: string; translations?: Record<string, string>; stage?: string; deskId?: string; slots?: { homeFrom?: string; homeTo?: string; socialAt?: string; newsletterAt?: string }; wordsTarget?: number; podcast?: { chapters?: { time: string; title: string }[]; episode?: number } }
+export interface ArticleExtra { fields?: Record<string, string>; corrections?: { date: string; text: string }[]; showHistory?: boolean; template?: string; titleB?: string; abStats?: { a: number; b: number; ca: number; cb: number; winner?: 'a' | 'b' }; audioUrl?: string; audioDuration?: number; lang?: string; translationOf?: string; translations?: Record<string, string>; stage?: number; deskId?: string; slots?: { homeFrom?: string; homeTo?: string; socialAt?: string; newsletterAt?: string }; wordsTarget?: number; podcast?: { chapters?: { time: string; title: string }[]; episode?: number } }
 export interface CustomField { key: string; label: string; type: 'text' | 'number' | 'date' | 'url' | 'rating' | 'select'; options?: string }
 export interface Snippet { id: string; name: string; html: string; updatedAt: string }
+export interface Desk { id: string; name: string; categoryIds: string[]; userIds: string[] }
+export interface WorkflowRule { id: string; name: string; enabled: boolean; if: { categoryId?: string; format?: ArticleFormat; tagId?: string; zoneId?: string; hasVideo?: boolean; titleContains?: string }; then: { featured?: boolean; breaking?: boolean; premium?: boolean; tagId?: string; kicker?: string; social?: string[] } }
+export interface WorkflowSettings { desks: Desk[]; steps: string[]; rules: WorkflowRule[] }
+export const DEFAULT_WORKFLOW: WorkflowSettings = { desks: [], steps: [], rules: [] };
+export interface Contact { id: string; name: string; role: string; org: string; phone: string; email: string; notes: string; tags: string; createdBy: string; updatedAt: string }
 export interface Comment {
   id: string;
   articleId: string;
@@ -255,6 +260,7 @@ export interface SiteSettings {
   onboarding?: OnboardingSettings;
   performance?: PerformanceSettings;
   customFields?: Record<string, CustomField[]>;
+  workflow?: WorkflowSettings;
 }
 
 export const DEFAULT_NEWSLETTER: NewsletterSettings = { provider: 'none', apiKey: '', fromEmail: '', fromName: '', digestEnabled: false, digestHour: 7, doubleOptIn: true };

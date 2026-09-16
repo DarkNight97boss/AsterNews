@@ -18,6 +18,8 @@ import { AiAssistant } from './ai-assistant';
 import { TemplatePicker } from './template-picker';
 import { TranscribePanel } from './transcribe-panel';
 import { customFieldsAction } from '@/lib/actions-pages';
+import { advanceStageAction } from '@/lib/actions-workflow';
+import { workflowInfoAction } from '@/lib/actions-workflow';
 import type { CustomField } from '@/lib/models';
 import { checkAccessibility } from '@/lib/a11y-check';
 import { useEffect } from 'react';
@@ -43,7 +45,8 @@ export function ArticleEditor({ initial, isNew, isPublic, categories, zones, tag
   const [slugTouched, setSlugTouched] = useState(!isNew);
   const [editorMode, setEditorMode] = useState<'blocks' | 'classic'>('classic');
   const [focus, setFocus] = useState(false); const [fieldDefs, setFieldDefs] = useState<Record<string, CustomField[]>>({}); const [corrText, setCorrText] = useState('');
-  useEffect(() => { customFieldsAction().then(setFieldDefs).catch(() => {}); }, []);
+  useEffect(() => { customFieldsAction().then(setFieldDefs).catch(() => {}); workflowInfoAction().then(setWf).catch(() => {}); }, []);
+  const [wf, setWf] = useState<{ steps: string[]; desks: { id: string; name: string }[] }>({ steps: [], desks: [] });
   const extra = a.extra ?? {}; const setExtra = (patch: Partial<NonNullable<Article['extra']>>) => set('extra', { ...extra, ...patch });
   const catFields = fieldDefs[a.categoryId] ?? [];
   useEffect(() => { try { const m = localStorage.getItem('editor_mode'); if (m === 'blocks' || m === 'classic') setEditorMode(m); } catch { /* ignore */ } }, []);
@@ -113,6 +116,17 @@ export function ArticleEditor({ initial, isNew, isPublic, categories, zones, tag
           <EditorExtras article={a} isNew={isNew} users={users} canAssign={can('article.assign')} canPublish={can('article.publish')} meId={meId} dirty={dirty} onRestoreDraft={(d) => { setA({ ...d, id: a.id }); setDirty(true); }} onPatch={(p) => setA((x) => ({ ...x, ...p }))} />
 
           {catFields.length > 0 && <div className="panel"><div className="panel-title">Scheda ({categories.find((c) => c.id === a.categoryId)?.name})</div>{catFields.map((f) => <div className="field" key={f.key}><label>{f.label}</label>{f.type === 'rating' ? <select className="select" value={extra.fields?.[f.key] ?? ''} onChange={(e) => setExtra({ fields: { ...(extra.fields ?? {}), [f.key]: e.target.value } })}><option value="">—</option>{[1, 2, 3, 4, 5].map((n) => <option key={n} value={n}>{'★'.repeat(n)}</option>)}</select> : f.type === 'select' ? <select className="select" value={extra.fields?.[f.key] ?? ''} onChange={(e) => setExtra({ fields: { ...(extra.fields ?? {}), [f.key]: e.target.value } })}><option value="">—</option>{(f.options ?? '').split(',').map((o) => o.trim()).filter(Boolean).map((o) => <option key={o} value={o}>{o}</option>)}</select> : <input className="input" type={f.type === 'number' ? 'number' : f.type === 'date' ? 'date' : f.type === 'url' ? 'url' : 'text'} value={extra.fields?.[f.key] ?? ''} onChange={(e) => setExtra({ fields: { ...(extra.fields ?? {}), [f.key]: e.target.value } })} />}</div>)}</div>}
+          {wf.steps.length > 0 && !isNew && <div className="panel"><div className="panel-title">Flusso di approvazione</div>
+            <ol className="stages">{wf.steps.map((st, i) => <li key={st} className={i < (extra.stage ?? 0) ? 'done' : i === (extra.stage ?? 0) ? 'current' : ''}>{i < (extra.stage ?? 0) ? '✔' : i + 1}. {st}</li>)}<li className={(extra.stage ?? 0) >= wf.steps.length ? 'current' : ''}>Pubblicazione</li></ol>
+            {(extra.stage ?? 0) < wf.steps.length ? <button type="button" className="btn btn-outline btn-sm" onClick={async () => { const r = await advanceStageAction(a.id); (r.ok ? toast.success : toast.error)(r.message ?? ''); if (r.ok && r.stage !== undefined) setA((x) => ({ ...x, extra: { ...(x.extra ?? {}), stage: r.stage } })); }}>Approva fase «{wf.steps[extra.stage ?? 0]}»</button> : <p className="help">Tutte le fasi approvate: si può pubblicare.</p>}
+            {extra.deskId && <p className="help" style={{ marginTop: 6 }}>Desk: {wf.desks.find((d) => d.id === extra.deskId)?.name ?? extra.deskId}</p>}
+          </div>}
+          <div className="panel"><div className="panel-title">Pianificazione per canale</div>
+            <div className="form-row"><div className="field"><label>In home da</label><input className="input" type="datetime-local" value={toLocalInput(extra.slots?.homeFrom ?? null)} onChange={(e) => setExtra({ slots: { ...(extra.slots ?? {}), homeFrom: e.target.value ? new Date(e.target.value).toISOString() : undefined } })} /></div><div className="field"><label>In home fino a</label><input className="input" type="datetime-local" value={toLocalInput(extra.slots?.homeTo ?? null)} onChange={(e) => setExtra({ slots: { ...(extra.slots ?? {}), homeTo: e.target.value ? new Date(e.target.value).toISOString() : undefined } })} /></div></div>
+            <div className="form-row"><div className="field"><label>Post social alle</label><input className="input" type="datetime-local" value={toLocalInput(extra.slots?.socialAt ?? null)} onChange={(e) => setExtra({ slots: { ...(extra.slots ?? {}), socialAt: e.target.value ? new Date(e.target.value).toISOString() : undefined } })} /></div><div className="field"><label>Newsletter alle</label><input className="input" type="datetime-local" value={toLocalInput(extra.slots?.newsletterAt ?? null)} onChange={(e) => setExtra({ slots: { ...(extra.slots ?? {}), newsletterAt: e.target.value ? new Date(e.target.value).toISOString() : undefined } })} /></div></div>
+            <p className="help">Vuoto = subito. L&apos;articolo resta pubblicato: cambia solo quando compare in evidenza in home e quando parte sui canali.</p>
+            {!isNew && <div style={{ display: 'flex', gap: 6, marginTop: 8 }}><a className="btn btn-outline btn-sm" href={`/api/export/article/${a.id}?format=print`} target="_blank" rel="noreferrer">🖨 Stampa / PDF</a><a className="btn btn-outline btn-sm" href={`/api/export/article/${a.id}?format=doc`}>📝 Word</a></div>}
+          </div>
           <div className="panel"><div className="panel-title">Correzioni e cronologia</div>
             <label className="switch" style={{ marginBottom: 8 }}><input type="checkbox" checked={!!extra.showHistory} onChange={(e) => setExtra({ showHistory: e.target.checked })} /> Mostra ai lettori la cronologia degli aggiornamenti</label>
             {(extra.corrections ?? []).map((c, i) => <div key={i} className="corr-item"><span className="help">{formatDate(c.date)}</span> {c.text} <button type="button" className="icon-btn danger" onClick={() => setExtra({ corrections: (extra.corrections ?? []).filter((_, j) => j !== i) })}>✕</button></div>)}

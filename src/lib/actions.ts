@@ -57,6 +57,15 @@ export async function saveArticleAction(input: Article, status: ArticleStatus): 
   let a2: Article;
   try { a2 = await (await import('./extensions')).runBeforeSave(a, { user: u, isNew: !existing, wasPublished: existing?.status === 'published' }); } catch (e) { return fail((e as Error).message); }
   Object.assign(a, a2);
+  // Desk, fasi di approvazione e regole automatiche
+  { const { workflowOf, deskFor, applyRules, canApproveStage } = await import('./workflow'); const w = workflowOf(await getSettings());
+    const desk = deskFor(w, a); a.extra = { ...(a.extra ?? {}), ...(desk ? { deskId: desk.id } : {}) };
+    if (w.steps.length && (a.status === 'published' || a.status === 'scheduled') && (a.extra.stage ?? 0) < w.steps.length && u.role !== 'admin') {
+      // chi può approvare l'ultima fase può pubblicare direttamente; gli altri restano in revisione
+      const last = w.steps.length - 1; if (!(a.extra.stage === last && canApproveStage(w, last, u, a))) { a.status = 'review'; a.scheduledAt = null; a.publishedAt = existing?.publishedAt ?? null; }
+    }
+    if (a.status === 'published' && existing?.status !== 'published' && w.rules.length) { const r = applyRules(w, a); Object.assign(a, r.article); if (r.social.length) (a as Article & { _ruleSocial?: string[] })._ruleSocial = r.social; }
+  }
   a.seoScore = analyze(a, ctx).score;
   if (existing) await x.insertRevision({ id: uid('rv'), articleId: a.id, userId: u.id, note: `${existing.status} → ${a.status}`, data: existing, createdAt: now });
   await repo.upsertArticle(a);
@@ -65,15 +74,15 @@ export async function saveArticleAction(input: Article, status: ArticleStatus): 
   if (a.status === 'review' && existing?.status !== 'review') { const x3 = await import('./repo-extra-notify'); await x3.notifyPublishers(u, `${u.name} ha inviato in revisione «${a.title}»`, `/admin/articoli/${a.id}`); }
   if (a.status === 'published' && existing?.status !== 'published') {
     (await import('./extensions')).runAfterPublish(a, { user: u, isNew: !existing, wasPublished: false }).catch(() => {});
-    const soc = await getSettings().then((s) => s.social?.autoNetworks ?? []);
-    if (soc.length) { const { enqueue, processQueue, configuredNetworks, socialSettings } = await import('./social'); const cfg = await socialSettings(); const nets = soc.filter((n) => configuredNetworks(cfg).includes(n)); if (nets.length) { await enqueue(a, nets, u.id); processQueue(nets.length).catch(() => {}); } }
+    const auto = await getSettings().then((s) => s.social?.autoNetworks ?? []); const soc = [...new Set([...auto, ...(((a as Article & { _ruleSocial?: string[] })._ruleSocial ?? []) as typeof auto)])];
+    if (soc.length) { const { enqueue, processQueue, configuredNetworks, socialSettings } = await import('./social'); const cfg = await socialSettings(); const nets = soc.filter((n) => configuredNetworks(cfg).includes(n)); const when = a.extra?.slots?.socialAt && a.extra.slots.socialAt > now ? a.extra.slots.socialAt : null; if (nets.length) { await enqueue(a, nets, u.id, when); if (!when) processQueue(nets.length).catch(() => {}); } }
   }
   if (a.status === 'published' && a.breaking && existing?.status !== 'published') { // ultim'ora: notifica push automatica (se attiva)
     const { sendPush, pushEnabled } = await import('./push'); const s = await getSettings();
     if ((await pushEnabled()) && (s.push?.autoBreaking ?? true)) { const cats = await getCategories(); sendPush({ title: `Ultim'ora · ${s.siteName}`, body: a.title, url: `/${cats.find((c) => c.id === a.categoryId)?.slug ?? 'notizie'}/${a.slug}`, image: a.coverImage || undefined, tag: a.id }).catch(() => {}); }
   }
   refresh();
-  const msg = a.status === 'published' ? 'Articolo pubblicato!' : a.status === 'scheduled' ? 'Articolo programmato.' : a.status === 'review' ? 'Inviato in revisione.' : 'Bozza salvata.';
+  const msg = a.status === 'published' ? 'Articolo pubblicato!' : a.status === 'scheduled' ? 'Articolo programmato.' : a.status === 'review' ? (status === 'published' ? 'In revisione: serve l\'approvazione delle fasi previste dal flusso di lavoro.' : 'Inviato in revisione.') : 'Bozza salvata.';
   return ok(msg, a.id);
 }
 

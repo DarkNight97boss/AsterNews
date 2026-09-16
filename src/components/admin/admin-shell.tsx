@@ -28,6 +28,7 @@ export function AdminShell({ user, permissions, unread, reviewCount, pendingComm
           <A href="/admin/scrivi"><span className="ico">✨</span> Scrivi (semplice)</A>
           <A href="/admin/articoli/nuovo"><span className="ico">＋</span> Editor completo</A>
           <A href="/admin/calendario"><span className="ico">🗓</span> Calendario</A>
+          <A href="/admin/contatti"><span className="ico">📇</span> Rubrica contatti</A>
           {can('stats.view') && <A href="/admin/statistiche"><span className="ico">📈</span> Statistiche</A>}
           {can('category.manage') && <A href="/admin/categorie"><span className="ico">☰</span> Categorie</A>}
           {can('tag.manage') && <A href="/admin/tag"><span className="ico">#</span> Tag</A>}
@@ -39,6 +40,7 @@ export function AdminShell({ user, permissions, unread, reviewCount, pendingComm
               <div className="nav-group">Città</div>
               <A href="/admin/eventi"><span className="ico">📅</span> Eventi {pendingEvents > 0 && <span className="pill">{pendingEvents}</span>}</A>
               {can('category.manage') && <A href="/admin/zone"><span className="ico">📍</span> Zone</A>}
+              <A href="/admin/redazione"><span className="ico">🗂</span> Desk e flussi</A>
             </>
           )}
           {can('comment.moderate') && (

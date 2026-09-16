@@ -38,7 +38,7 @@ export const listPublished = async (f: repo.ArticleFilter, limit = 50, offset = 
 export const getPublished = (limit = 60, offset = 0) => listPublished({}, limit, offset);
 export const countPublished = async (f: repo.ArticleFilter = {}) => repo.countArticles({ ...f, status: 'published' });
 export const getBreaking = (limit = 5) => listPublished({ breaking: true }, limit);
-export const getFeatured = (limit = 8) => listPublished({ featured: true }, limit);
+export const getFeatured = async (limit = 8) => { const { inHomeWindow } = await import('./workflow'); return (await listPublished({ featured: true }, limit + 4)).filter((a) => inHomeWindow(a)).slice(0, limit); };
 export const getMostRead = (limit = 8) => listPublished({}, limit, 0, 'views');
 export const getLiveArticles = () => listPublished({ format: 'live', liveActive: true }, 5);
 export const getVideos = (limit = 6) => listPublished({ format: 'video' }, limit);
