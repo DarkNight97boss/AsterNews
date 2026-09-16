@@ -6,6 +6,7 @@ import { useState, useTransition } from 'react';
 import { saveSettingsAction } from '@/lib/actions';
 import { Category, DEFAULT_ADS, DEFAULT_AI, DEFAULT_ANALYTICS, DEFAULT_AUTH, DEFAULT_BACKUP, DEFAULT_CACHE, DEFAULT_COMMUNITY, DEFAULT_LISTINGS, DEFAULT_MONITORING, DEFAULT_NEWSLETTER, DEFAULT_PAYWALL, DEFAULT_PUSH, DEFAULT_SEARCH, DEFAULT_SOCIAL, DEFAULT_STORAGE, DEFAULT_UPDATES, SiteSettings, SocialNetwork } from '@/lib/models';
 import { ThemePicker } from './theme-picker';
+import { ThemeCssEditor } from './theme-css-editor';
 import { DEFAULT_SEO_SETTINGS } from '@/lib/seo-engine';
 import { toast } from '@/components/ui/toaster';
 
@@ -65,7 +66,7 @@ export function SettingsForm({ initial, categories, env }: { initial: SiteSettin
         </div>
       </div>}
 
-      {tab === 'tema' && <div className="panel"><div className="panel-title">Tema del sito</div><p className="help" style={{ marginBottom: 14 }}>Il motore è lo stesso: cambiano colori, font, testata, layout della home e stile delle card. Per siti gemelli con dominio proprio usa le <Link href="/admin/edizioni">Edizioni</Link>.</p><ThemePicker value={s.theme} onChange={(theme) => setS({ ...s, theme })} /></div>}
+      {tab === 'tema' && <div className="panel"><div className="panel-title">Tema del sito</div><p className="help" style={{ marginBottom: 14 }}>Il motore è lo stesso: cambiano colori, font, testata, layout della home e stile delle card. Per siti gemelli con dominio proprio usa le <Link href="/admin/edizioni">Edizioni</Link>.</p><ThemePicker value={s.theme} onChange={(theme) => setS({ ...s, theme })} /><ThemeCssEditor initialCss={s.theme?.customCss ?? ''} versions={(s.themeVersions ?? []).map((v) => ({ id: v.id, at: v.at, label: v.label }))} /></div>}
 
       {tab === 'seo' && <div className="admin-grid-2"><div className="panel"><div className="panel-title">Search Console, lingue e distribuzione</div>
             <div className="field"><label>Proprietà Search Console (es. https://www.miosito.it/ oppure sc-domain:miosito.it)</label><input className="input" value={s.seo?.gscSiteUrl ?? ''} onChange={(e) => up('seo', { gscSiteUrl: e.target.value })} /></div>

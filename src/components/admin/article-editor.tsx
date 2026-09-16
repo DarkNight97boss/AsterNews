@@ -19,6 +19,7 @@ import { TemplatePicker } from './template-picker';
 import { TranscribePanel } from './transcribe-panel';
 import { SeoIntel } from './seo-intel';
 import { generateAudioAction, setPodcastMetaAction } from '@/lib/actions-channels';
+import { editionsListAction, syndicateArticleAction } from '@/lib/actions-system';
 import { customFieldsAction } from '@/lib/actions-pages';
 import { advanceStageAction } from '@/lib/actions-workflow';
 import { workflowInfoAction } from '@/lib/actions-workflow';
@@ -49,6 +50,7 @@ export function ArticleEditor({ initial, isNew, isPublic, categories, zones, tag
   const [focus, setFocus] = useState(false); const [fieldDefs, setFieldDefs] = useState<Record<string, CustomField[]>>({}); const [corrText, setCorrText] = useState('');
   useEffect(() => { customFieldsAction().then(setFieldDefs).catch(() => {}); workflowInfoAction().then(setWf).catch(() => {}); }, []);
   const [wf, setWf] = useState<{ steps: string[]; desks: { id: string; name: string }[] }>({ steps: [], desks: [] });
+  const [editions, setEditions] = useState<{ id: string; name: string }[]>([]); useEffect(() => { editionsListAction().then(setEditions).catch(() => {}); }, []);
   const extra = a.extra ?? {}; const setExtra = (patch: Partial<NonNullable<Article['extra']>>) => set('extra', { ...extra, ...patch });
   const catFields = fieldDefs[a.categoryId] ?? [];
   useEffect(() => { try { const m = localStorage.getItem('editor_mode'); if (m === 'blocks' || m === 'classic') setEditorMode(m); } catch { /* ignore */ } }, []);
@@ -136,6 +138,7 @@ export function ArticleEditor({ initial, isNew, isPublic, categories, zones, tag
             <div className="field" style={{ marginTop: 8 }}><label>Capitoli (mm:ss | titolo, uno per riga) e numero puntata</label><textarea className="textarea" style={{ minHeight: 56, fontFamily: 'monospace', fontSize: 12 }} defaultValue={(extra.podcast?.chapters ?? []).map((c) => `${c.time} | ${c.title}`).join('\n')} onBlur={(e) => setPodcastMetaAction(a.id, { chapters: e.target.value, audioUrl: extra.audioUrl ?? '' }).then((r) => r.ok && toast.info('Capitoli salvati'))} /><input className="input" type="number" placeholder="N. puntata" value={extra.podcast?.episode ?? ''} onChange={(e) => setExtra({ podcast: { ...(extra.podcast ?? {}), episode: Number(e.target.value) || undefined } })} /></div>
             <p className="help">Con un audio l&apos;articolo entra nel feed podcast (/feed/podcast.xml) e nella pagina /podcast.</p>
           </div>}
+          {!isNew && editions.length > 0 && a.status === 'published' && <div className="panel"><div className="panel-title">Condividi con un'altra edizione</div><select className="select" defaultValue="" onChange={async (e) => { const id = e.target.value; if (!id) return; if (!confirm('Pubblicare una copia di questo articolo nell\'edizione scelta (con canonical sull\'originale)?')) { e.target.value = ''; return; } const r = await syndicateArticleAction(a.id, id); (r.ok ? toast.success : toast.error)(r.message ?? ''); e.target.value = ''; }}><option value="">Scegli l&apos;edizione…</option>{editions.filter((e) => e.id !== a.editionId).map((e) => <option key={e.id} value={e.id}>{e.name}</option>)}</select></div>}
           <div className="panel"><div className="panel-title">Correzioni e cronologia</div>
             <label className="switch" style={{ marginBottom: 8 }}><input type="checkbox" checked={!!extra.showHistory} onChange={(e) => setExtra({ showHistory: e.target.checked })} /> Mostra ai lettori la cronologia degli aggiornamenti</label>
             {(extra.corrections ?? []).map((c, i) => <div key={i} className="corr-item"><span className="help">{formatDate(c.date)}</span> {c.text} <button type="button" className="icon-btn danger" onClick={() => setExtra({ corrections: (extra.corrections ?? []).filter((_, j) => j !== i) })}>✕</button></div>)}

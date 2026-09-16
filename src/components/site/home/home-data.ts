@@ -7,6 +7,7 @@ export interface HomeData {
   opinionCat?: Category; opinions: Article[]; localCat?: Category;
   videos: Article[]; events: Event[];
   sections: { category: Category; articles: Article[] }[];
+  blocks?: import('@/lib/home-blocks').ResolvedBlock[];
 }
 
 export async function getHomeData(): Promise<HomeData> {
@@ -25,12 +26,14 @@ export async function getHomeData(): Promise<HomeData> {
     Promise.all(settings.homeSections.map((id) => cats.find((c) => c.id === id)).filter((c): c is Category => !!c && c.showOnHome).map(async (c) => ({ category: c, articles: (await articlesByCategory(c.id, 9)).filter((a) => !used.has(a.id)).slice(0, 4) }))),
   ]);
   const dossierLead = dossiers.find((a) => a.featured) ?? dossiers[0];
+  const blocks = settings.homeBlocks?.length ? await (await import('@/lib/home-blocks')).resolveHomeBlocks(settings.homeBlocks, new Set(used)) : undefined;
   return {
     lead: newsPool[0], pair: newsPool.slice(1, 3), hero,
     latest: published.filter((a) => !used.has(a.id)).slice(0, 8),
     dossierCat, dossierLead, dossierRest: dossiers.filter((a) => a.id !== dossierLead?.id).slice(0, 3),
     opinionCat, opinions, localCat, videos, events,
     sections: sectionLists.filter((s) => s.articles.length > 0),
+    blocks,
   };
 }
 

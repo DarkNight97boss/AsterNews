@@ -3,9 +3,11 @@ import { ArticleCard } from '@/components/site/article-card';
 import { EventCard } from '@/components/site/event-card';
 import { MostRead, NewsletterWidget } from '@/components/site/widgets';
 import type { HomeData } from './home-data';
+import { HomeBlocks } from './blocks';
 
 /** Blocchi comuni a tutti i layout: eventi, sezioni per categoria, opinioni, video, più letti + newsletter. */
 export function CommonSections({ d, sectionVariant = 'sm', cols = 4 }: { d: HomeData; sectionVariant?: 'sm' | 'md'; cols?: 3 | 4 }) {
+  if (d.blocks?.length) return <HomeBlocks blocks={d.blocks} events={d.events} />;
   return (
     <>
       {d.events.length > 0 && <section className="section home-events"><div className="section-title"><h2>Cosa fare in città</h2><Link href="/eventi">Tutti gli eventi →</Link></div><div className="events-grid">{d.events.map((e) => <EventCard key={e.id} event={e} />)}</div></section>}

@@ -101,3 +101,40 @@ export async function savePerformanceSettingsAction(p: import('./models').Perfor
   revalidateTag('settings', 'max'); revalidatePath('/admin/prestazioni');
   return { ok: true, message: 'Impostazioni prestazioni salvate.' };
 }
+
+// ---------------- Builder home, libreria layout, CSS e versioni tema, edizioni ----------------
+export async function saveHomeBlocksAction(blocks: import('./models').HomeBlock[]): Promise<ActionResult> {
+  await requirePermission('settings.manage'); const s = await getSettings();
+  await repo.saveSettingsRow({ ...s, homeBlocks: blocks.slice(0, 30).map((b) => ({ ...b, id: b.id || uid('hb'), title: (b.title ?? '').slice(0, 60), count: Math.min(12, Math.max(1, Number(b.count) || 4)), html: b.type === 'html' ? (b.html ?? '').slice(0, 20000) : undefined })) });
+  revalidateTag('settings', 'max'); revalidateTag('articles', 'max'); revalidatePath('/', 'layout'); return { ok: true, message: 'Home salvata.' };
+}
+async function snapshotTheme(label: string): Promise<void> { const s = await getSettings(); const versions = [{ id: uid('tv'), at: new Date().toISOString(), label, theme: s.theme }, ...(s.themeVersions ?? [])].slice(0, 12); await repo.saveSettingsRow({ ...s, themeVersions: versions }); }
+export async function applyLayoutPresetAction(id: string): Promise<ActionResult> {
+  await requirePermission('settings.manage'); const { LAYOUT_PRESETS } = await import('./layout-library'); const p = LAYOUT_PRESETS.find((x) => x.id === id); if (!p) return { ok: false, message: 'Layout non trovato.' };
+  await snapshotTheme('prima del layout ' + p.name); const s = await getSettings();
+  await repo.saveSettingsRow({ ...s, theme: { ...s.theme, ...p.theme }, homeBlocks: p.blocks.map((b) => ({ ...b, id: uid('hb') })) });
+  revalidateTag('settings', 'max'); revalidatePath('/', 'layout'); return { ok: true, message: `Layout «${p.name}» applicato.` };
+}
+export async function importLayoutAction(input: string): Promise<ActionResult> {
+  await requirePermission('settings.manage');
+  try { let text = input.trim(); if (/^https?:\/\//.test(text)) { const r = await fetch(text, { signal: AbortSignal.timeout(10_000) }); text = await r.text(); } const j = JSON.parse(text) as { theme?: Partial<import('./themes').ThemeSettings>; blocks?: import('./models').HomeBlock[]; name?: string }; if (!j.blocks && !j.theme) return { ok: false, message: 'JSON senza tema né blocchi.' }; await snapshotTheme('prima dell\'importazione'); const s = await getSettings(); await repo.saveSettingsRow({ ...s, theme: { ...s.theme, ...(j.theme ?? {}) }, homeBlocks: (j.blocks ?? s.homeBlocks ?? []).map((b) => ({ ...b, id: uid('hb') })) }); revalidateTag('settings', 'max'); revalidatePath('/', 'layout'); return { ok: true, message: `Layout ${j.name ? '«' + j.name + '» ' : ''}importato.` }; } catch (e) { return { ok: false, message: 'Importazione fallita: ' + (e as Error).message }; }
+}
+export async function saveCustomCssAction(css: string): Promise<ActionResult> {
+  await requirePermission('settings.manage'); await snapshotTheme('modifica CSS'); const s = await getSettings();
+  await repo.saveSettingsRow({ ...s, theme: { ...s.theme, customCss: css.slice(0, 60000) } }); revalidateTag('settings', 'max'); revalidatePath('/', 'layout'); return { ok: true, message: 'CSS salvato (versione precedente conservata).' };
+}
+export async function restoreThemeVersionAction(id: string): Promise<ActionResult> {
+  await requirePermission('settings.manage'); const s = await getSettings(); const v = (s.themeVersions ?? []).find((x) => x.id === id); if (!v) return { ok: false, message: 'Versione non trovata.' };
+  await snapshotTheme('prima del ripristino'); const s2 = await getSettings(); await repo.saveSettingsRow({ ...s2, theme: v.theme }); revalidateTag('settings', 'max'); revalidatePath('/', 'layout'); return { ok: true, message: 'Tema ripristinato.' };
+}
+export async function saveEditionUsersAction(map: Record<string, string[]>): Promise<ActionResult> { await requirePermission('settings.manage'); const s = await getSettings(); await repo.saveSettingsRow({ ...s, editionUsers: map }); revalidateTag('settings', 'max'); revalidatePath('/admin', 'layout'); return { ok: true, message: 'Redazioni delle edizioni salvate.' }; }
+export async function editionsListAction(): Promise<{ id: string; name: string }[]> { const { getCurrentUser } = await import('./auth'); if (!(await getCurrentUser())) return []; const x = await import('./repo-extra'); return (await x.listEditions()).filter((e) => e.active).map((e) => ({ id: e.id, name: e.name })); }
+/** Syndication: copia l'articolo in un'altra edizione con canonical sull'originale. */
+export async function syndicateArticleAction(articleId: string, editionId: string): Promise<ActionResult> {
+  const me = await requirePermission('article.publish'); const a = await repo.findArticle(articleId); if (!a) return { ok: false, message: 'Articolo non trovato.' };
+  const x = await import('./repo-extra'); const ed = (await x.listEditions()).find((e) => e.id === editionId); if (!ed) return { ok: false, message: 'Edizione non trovata.' };
+  const cats = await repo.listCategories(); const c = cats.find((k) => k.id === a.categoryId); const { siteUrl } = await import('./site-url'); const now = new Date().toISOString(); const id = uid('a');
+  await repo.upsertArticle({ ...a, id, slug: `${a.slug}-${ed.slug}`, editionId, status: 'published', publishedAt: now, createdAt: now, updatedAt: now, views: 0, seo: { ...a.seo, canonical: `${siteUrl()}/${c?.slug ?? 'notizie'}/${a.slug}` }, extra: { ...(a.extra ?? {}), abStats: undefined, titleB: undefined } });
+  await repo.insertActivity({ id: uid('ac'), userId: me.id, action: `ha condiviso con l'edizione ${ed.name}`, target: a.title, articleId: id, createdAt: now });
+  revalidateTag('articles', 'max'); return { ok: true, message: `Articolo pubblicato anche su «${ed.name}».`, id };
+}

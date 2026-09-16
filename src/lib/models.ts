@@ -111,6 +111,9 @@ export interface Desk { id: string; name: string; categoryIds: string[]; userIds
 export interface WorkflowRule { id: string; name: string; enabled: boolean; if: { categoryId?: string; format?: ArticleFormat; tagId?: string; zoneId?: string; hasVideo?: boolean; titleContains?: string }; then: { featured?: boolean; breaking?: boolean; premium?: boolean; tagId?: string; kicker?: string; social?: string[] } }
 export interface WorkflowSettings { desks: Desk[]; steps: string[]; rules: WorkflowRule[] }
 export const DEFAULT_WORKFLOW: WorkflowSettings = { desks: [], steps: [], rules: [] };
+export interface HomeBlock { id: string; type: 'latest' | 'category' | 'tag' | 'zone' | 'format' | 'events' | 'mostread' | 'newsletter' | 'html'; title: string; sourceId: string; layout: 'grid4' | 'grid3' | 'grid2' | 'list' | 'band'; count: number; html?: string }
+export interface ThemeVersion { id: string; at: string; label: string; theme: ThemeSettings }
+export interface PageExtra { brand?: string; countdownAt?: string; countdownLabel?: string; feedTagId?: string; feedCount?: number; ctaLabel?: string; ctaUrl?: string }
 export interface WebhookConfig { id: string; url: string; secret: string; events: string[]; enabled: boolean }
 export interface Contact { id: string; name: string; role: string; org: string; phone: string; email: string; notes: string; tags: string; createdBy: string; updatedAt: string }
 export interface Comment {
@@ -177,7 +180,7 @@ export interface SocialPost { id: string; articleId: string; network: SocialNetw
 export interface Ad { id: string; slot: string; name: string; type: 'image' | 'html' | 'adsense'; image: string; url: string; html: string; label: string; startAt: string | null; endAt: string | null; weight: number; impressions: number; clicks: number; active: boolean; createdAt: string }
 export type ListingKind = 'annuncio' | 'necrologio';
 export interface Listing { id: string; kind: ListingKind; title: string; body: string; image: string; category: string; price: string; contactName: string; contactEmail: string; contactPhone: string; zoneId: string; status: 'pending' | 'published' | 'rejected' | 'expired'; paid: boolean; amount: number; expiresAt: string | null; readerId: string; createdAt: string; publishedAt: string | null; extra: Record<string, string> }
-export interface Page { id: string; slug: string; title: string; content: string; excerpt: string; status: 'draft' | 'published'; template: 'standard' | 'landing' | 'wide'; coverImage: string; seo: SeoMeta; showInMenu: boolean; menuOrder: number; authorId: string; createdAt: string; updatedAt: string }
+export interface Page { id: string; slug: string; title: string; content: string; excerpt: string; status: 'draft' | 'published'; template: 'standard' | 'landing' | 'wide'; coverImage: string; seo: SeoMeta; showInMenu: boolean; menuOrder: number; authorId: string; createdAt: string; updatedAt: string; extra?: PageExtra }
 export interface MenuItem { id: string; label: string; url: string; children?: MenuItem[] }
 export interface MenusSettings { header: MenuItem[]; footer: MenuItem[]; useCustomHeader: boolean }
 export interface DonationsSettings { enabled: boolean; title: string; text: string; amounts: number[]; thanks: string }
@@ -272,6 +275,9 @@ export interface SiteSettings {
   workflow?: WorkflowSettings;
   video?: VideoSettings;
   webhooks?: WebhookConfig[];
+  homeBlocks?: HomeBlock[];
+  themeVersions?: ThemeVersion[];
+  editionUsers?: Record<string, string[]>;
 }
 
 export const DEFAULT_NEWSLETTER: NewsletterSettings = { provider: 'none', apiKey: '', fromEmail: '', fromName: '', digestEnabled: false, digestHour: 7, doubleOptIn: true };

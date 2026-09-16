@@ -36,6 +36,7 @@ export interface ThemeSettings {
   homeLayout?: HomeLayout;
   cardStyle?: CardStyle;
   radius?: number;
+  customCss?: string;
 }
 
 export type ResolvedTheme = Omit<ThemePreset, 'swatch' | 'description'> & { presetId: string; skin: Skin };

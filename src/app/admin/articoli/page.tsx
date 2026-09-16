@@ -15,7 +15,9 @@ export default async function ArticlesPage({ searchParams }: PageProps<'/admin/a
   const sort = (['published', 'updated', 'views', 'title', 'created'].includes(str('ordina')) ? str('ordina') : 'updated') as ArticleSort;
   const dir = str('dir') === 'asc' ? 'asc' : 'desc';
   const trash = str('cestino') === '1' && can(me, 'article.delete');
-  const filter = { trash: trash || undefined, q: str('q') || undefined, status: (str('status') || undefined) as ArticleStatus | undefined, categoryId: str('categoria') || undefined, authorId: can(me, 'article.edit.any') ? (str('mine') === '1' ? me.id : str('autore') || undefined) : me.id };
+  const editionScope = me.role === 'admin' ? [] : Object.entries((await (await import('@/lib/queries')).getSettings()).editionUsers ?? {}).filter(([, ids]) => ids.includes(me.id)).map(([eid]) => eid);
+  const editionId = editionScope.length === 1 ? editionScope[0] : undefined;
+  const filter = { trash: trash || undefined, editionId, q: str('q') || undefined, status: (str('status') || undefined) as ArticleStatus | undefined, categoryId: str('categoria') || undefined, authorId: can(me, 'article.edit.any') ? (str('mine') === '1' ? me.id : str('autore') || undefined) : me.id };
   const [articles, total, counts, categories, users, trashCount] = await Promise.all([adminArticles(filter, sort, dir, PER_PAGE, (page - 1) * PER_PAGE), adminCount(filter), countByStatus(can(me, 'article.edit.any') ? {} : { authorId: me.id }), getCategories(), getUsers(), can(me, 'article.delete') ? countTrash() : Promise.resolve(0)]);
   return (
     <>

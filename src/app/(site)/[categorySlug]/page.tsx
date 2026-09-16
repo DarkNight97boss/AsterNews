@@ -9,6 +9,8 @@ import { getActiveTheme } from '@/lib/theme-server';
 import { CategoryFanpage } from '@/components/site/fanpage/category-fanpage';
 import { findPageBySlug } from '@/lib/repo-extra3';
 import { ArticleBody } from '@/components/site/article-body';
+import { Countdown } from '@/components/site/countdown';
+import { LandingFeed } from '@/components/site/landing-feed';
 import { SmartImage } from '@/components/ui/smart-image';
 
 export async function generateMetadata({ params }: PageProps<'/[categorySlug]'>): Promise<Metadata> {
@@ -25,11 +27,14 @@ export default async function CategoryPage({ params, searchParams }: PageProps<'
   if (!c) {
     const pg = await findPageBySlug(categorySlug);
     if (pg) return (
-      <article className={`static-page tpl-${pg.template}`}>
+      <article className={`static-page tpl-${pg.template}`} style={pg.template === 'landing' && pg.extra?.brand ? ({ ['--brand' as string]: pg.extra.brand, ['--accent' as string]: pg.extra.brand } as React.CSSProperties) : undefined}>
         {pg.template !== 'landing' && <header className="page-head"><h1>{pg.title}</h1>{pg.excerpt && <p className="lead">{pg.excerpt}</p>}</header>}
         {pg.coverImage && <figure className="article-cover"><div className="cover-frame"><SmartImage src={pg.coverImage} alt={pg.title} priority slot="cover" /></div></figure>}
         {pg.template === 'landing' && <h1 className="landing-title">{pg.title}</h1>}
+        {pg.template === 'landing' && pg.extra?.countdownAt && <Countdown at={pg.extra.countdownAt} label={pg.extra.countdownLabel ?? ''} />}
+        {pg.template === 'landing' && pg.extra?.ctaLabel && pg.extra.ctaUrl && <p style={{ textAlign: 'center', margin: '16px 0' }}><a className="btn btn-primary" href={pg.extra.ctaUrl}>{pg.extra.ctaLabel}</a></p>}
         <ArticleBody html={pg.content} className={pg.template === 'wide' || pg.template === 'landing' ? 'article-body page-wide' : 'article-body page-narrow'} />
+        {pg.template === 'landing' && pg.extra?.feedTagId && <LandingFeed tagRef={pg.extra.feedTagId} count={pg.extra.feedCount ?? 6} />}
       </article>
     );
     const t = await legacyRedirectFor(categorySlug); if (t) permanentRedirect(t); notFound();

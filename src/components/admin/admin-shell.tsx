@@ -61,6 +61,7 @@ export function AdminShell({ user, permissions, unread, reviewCount, pendingComm
               {can('user.manage') && <A href="/admin/utenti"><span className="ico">👥</span> Utenti e ruoli</A>}
               {can('settings.manage') && <A href="/admin/impostazioni"><span className="ico">⚙</span> Impostazioni</A>}
               {can('settings.manage') && <A href="/admin/menu"><span className="ico">🧭</span> Menu del sito</A>}
+              {can('settings.manage') && <A href="/admin/home"><span className="ico">🏠</span> Builder home</A>}
               {can('settings.manage') && <A href="/admin/api"><span className="ico">🔑</span> API pubblica</A>}
               {can('settings.manage') && <A href="/admin/donazioni"><span className="ico">❤️</span> Donazioni</A>}
               {can('settings.manage') && <A href="/admin/importa"><span className="ico">⬇</span> Importa da WordPress</A>}
