@@ -40,6 +40,19 @@ Su Vercel: collega l'integrazione Supabase (crea `POSTGRES_URL`), fai il deploy 
 - **Annunci e necrologi** dei lettori con pagamento Stripe (pagamento singolo), moderazione, scadenza, pagine pubbliche `/annunci` e `/necrologi`.
 - **Aggiornamenti con un clic** (controllo su GitHub, canale stabile/beta, Deploy Hook Vercel) ed **estensioni** con hook (`beforeArticleSave`, `filterContent`, `afterArticlePublish`, `dailyJob`) e quattro estensioni incluse (firma automatica, parole vietate, webhook alla pubblicazione, avviso articoli datati).
 
+### Novità della terza tornata
+- **Pagine statiche** (Chi siamo, Contatti, Privacy…) con editor a blocchi, modelli standard/largo/landing, SEO e presenza nel menu; **menu personalizzati** di testata (con sottovoci) e piè di pagina in `/admin/menu`.
+- **Cestino**: gli articoli eliminati restano recuperabili 30 giorni (ripristino, eliminazione definitiva, svuota cestino); la ricerca in redazione cerca anche nel testo e nelle note.
+- **Coautori e pseudonimi**: firma personalizzata (byline) e più autori per articolo, mostrati nell'articolo e nei dati strutturati.
+- **Card social automatiche** (`/api/og/{id}.png`, 1200×630) usate come immagine di condivisione quando manca la foto; dati strutturati `NewsMediaOrganization` + `WebSite` con ricerca; sitemap con immagini e video.
+- **Controllo link rotti** notturno (o manuale) in Redirect e 404.
+- **Commenti annidati** con risposte, voto «utile», risposta della redazione evidenziata e segnalazione.
+- **Articoli salvati** e **preferenze del lettore** (zone, categorie, argomenti) con pagina «Per te»; esportazione dei propri dati e cancellazione dell'account (GDPR).
+- **Donazioni** con Stripe Checkout: pagina `/sostieni`, riquadro in colonna, importi configurabili, registro e totali.
+- **API pubblica** JSON di sola lettura (`/api/v1/...`) con chiavi opzionali, limite di richieste e CORS; **esportazione WXR** compatibile WordPress e **importazione da feed RSS/Atom**.
+- **Protezione anti-abuso** (limiti per IP su commenti, login, donazioni, API) e **audit di accessibilità** nell'editor (alt mancanti, gerarchia titoli, link generici, contrasto).
+- **Guida ai primi passi** in dashboard, pannello **«Il mio lavoro»**, **notifiche in-app** (campanella) per assegnazioni, richieste di modifica e articoli in revisione, **ruoli personalizzabili** con matrice permessi.
+
 ## Dati e infrastruttura
 
 - Postgres via `POSTGRES_URL` / `DATABASE_URL` (driver `pg`, pooler Supabase in transaction mode); senza variabili, PGlite in `data/pg`. Schema e migrazioni idempotenti in `src/lib/db.ts`.

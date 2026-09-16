@@ -8,10 +8,11 @@ import { ROLE_LABELS, Role, User } from '@/lib/models';
 import { formatDate } from '@/lib/utils';
 import { ActionButton } from '@/components/ui/action-button';
 import { toast } from '@/components/ui/toaster';
+import { RolesMatrix } from './roles-matrix';
 
 const ROLES: Role[] = ['admin', 'editor', 'author', 'contributor'];
 
-export function UsersManager({ users, meId, counts }: { users: User[]; meId: string; counts: Record<string, number> }) {
+export function UsersManager({ users, meId, counts, rolePerms }: { users: User[]; meId: string; counts: Record<string, number>; rolePerms: Record<string, string[]> }) {
   const router = useRouter();
   const [editing, setEditing] = useState<User | null>(null);
   const [pwUser, setPwUser] = useState<User | null>(null); const [newPw, setNewPw] = useState(''); const [link, setLink] = useState('');
@@ -20,16 +21,7 @@ export function UsersManager({ users, meId, counts }: { users: User[]; meId: str
   return (
     <>
       <div className="page-title"><div><h1>Utenti e ruoli</h1><p>Redazione e permessi di accesso al CMS.</p></div><div className="actions"><button className="btn btn-primary" onClick={() => setEditing({ id: '', name: '', email: '', role: 'author', avatar: '', bio: '', active: true, createdAt: '' })}>+ Nuovo utente</button></div></div>
-      <div className="panel"><div className="panel-title">Permessi per ruolo</div>
-        <div className="table-wrap" style={{ border: 0 }}><table className="table">
-          <thead><tr><th>Ruolo</th><th>Articoli</th><th>Pubblicazione</th><th>Categorie / Tag</th><th>Commenti</th><th>Utenti / Impostazioni</th></tr></thead>
-          <tbody>
-            <tr><td><b>Amministratore</b></td><td>Tutti</td><td>✔</td><td>✔</td><td>✔</td><td>✔</td></tr>
-            <tr><td><b>Caporedattore</b></td><td>Tutti</td><td>✔</td><td>✔</td><td>✔</td><td>—</td></tr>
-            <tr><td><b>Redattore</b></td><td>Solo propri</td><td>✔ (propri)</td><td>Solo tag</td><td>—</td><td>—</td></tr>
-            <tr><td><b>Collaboratore</b></td><td>Solo propri (bozza / revisione)</td><td>—</td><td>—</td><td>—</td><td>—</td></tr>
-          </tbody></table></div>
-      </div>
+      <RolesMatrix current={rolePerms} />
       <div className="table-wrap"><table className="table">
         <thead><tr><th>Utente</th><th>Email</th><th>Ruolo</th><th>Articoli</th><th>Stato</th><th>Sicurezza</th><th>Dal</th><th></th></tr></thead>
         <tbody>

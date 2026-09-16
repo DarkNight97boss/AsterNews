@@ -6,10 +6,11 @@ import { ReactNode, useState } from 'react';
 import { logoutAction } from '@/lib/actions-auth';
 import { ROLE_LABELS, User } from '@/lib/models';
 import { Permission } from '@/lib/permissions';
+import { NotificationsBell } from './notifications-bell';
 
-interface Props { user: User; permissions: Permission[]; reviewCount: number; pendingComments: number; pendingEvents: number; newReports: number; children: ReactNode }
+interface Props { user: User; permissions: Permission[]; unread: number; reviewCount: number; pendingComments: number; pendingEvents: number; newReports: number; children: ReactNode }
 
-export function AdminShell({ user, permissions, reviewCount, pendingComments, pendingEvents, newReports, children }: Props) {
+export function AdminShell({ user, permissions, unread, reviewCount, pendingComments, pendingEvents, newReports, children }: Props) {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
   const can = (p: Permission) => permissions.includes(p);
@@ -31,6 +32,7 @@ export function AdminShell({ user, permissions, reviewCount, pendingComments, pe
           {can('category.manage') && <A href="/admin/categorie"><span className="ico">☰</span> Categorie</A>}
           {can('tag.manage') && <A href="/admin/tag"><span className="ico">#</span> Tag</A>}
           <A href="/admin/media"><span className="ico">▣</span> Media</A>
+          {(user.role === 'admin' || user.role === 'editor') && <A href="/admin/pagine"><span className="ico">📄</span> Pagine</A>}
           {can('article.publish') && (
             <>
               <div className="nav-group">Città</div>
@@ -54,6 +56,9 @@ export function AdminShell({ user, permissions, reviewCount, pendingComments, pe
               <div className="nav-group">Sistema</div>
               {can('user.manage') && <A href="/admin/utenti"><span className="ico">👥</span> Utenti e ruoli</A>}
               {can('settings.manage') && <A href="/admin/impostazioni"><span className="ico">⚙</span> Impostazioni</A>}
+              {can('settings.manage') && <A href="/admin/menu"><span className="ico">🧭</span> Menu del sito</A>}
+              {can('settings.manage') && <A href="/admin/api"><span className="ico">🔑</span> API pubblica</A>}
+              {can('settings.manage') && <A href="/admin/donazioni"><span className="ico">❤️</span> Donazioni</A>}
               {can('settings.manage') && <A href="/admin/importa"><span className="ico">⬇</span> Importa da WordPress</A>}
               {can('redirect.manage') && <A href="/admin/redirect"><span className="ico">↪</span> Redirect e 404</A>}
               {can('settings.manage') && <A href="/admin/pubblicita"><span className="ico">💶</span> Pubblicità</A>}
@@ -82,6 +87,7 @@ export function AdminShell({ user, permissions, reviewCount, pendingComments, pe
           <button className="btn btn-ghost btn-icon burger-admin" onClick={() => setOpen(true)}>☰</button>
           <span className="crumb">ASTER News / <b>Redazione</b></span>
           <span className="spacer" />
+          <NotificationsBell initialUnread={unread} />
           <Link href="/admin/scrivi" className="btn btn-primary btn-sm">✨ Scrivi un articolo</Link>
         </div>
         <div className="admin-content">{children}</div>

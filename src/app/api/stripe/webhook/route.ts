@@ -23,7 +23,9 @@ export async function POST(req: Request) {
   const ev = JSON.parse(payload) as { type: string; data: { object: Record<string, unknown> } };
   const o = ev.data.object;
   try {
-    if (ev.type === 'checkout.session.completed' && (o.metadata as { listing_id?: string })?.listing_id) {
+    if (ev.type === 'checkout.session.completed' && (o.metadata as { donation_id?: string })?.donation_id) {
+      const { completeDonation } = await import('@/lib/actions-donations'); await completeDonation(String((o.metadata as { donation_id: string }).donation_id));
+    } else if (ev.type === 'checkout.session.completed' && (o.metadata as { listing_id?: string })?.listing_id) {
       const { markListingPaid } = await import('@/lib/actions-listings'); await markListingPaid(String((o.metadata as { listing_id: string }).listing_id));
     } else if (ev.type === 'checkout.session.completed') {
       const readerId = String((o.metadata as { reader_id?: string })?.reader_id ?? o.client_reference_id ?? '');

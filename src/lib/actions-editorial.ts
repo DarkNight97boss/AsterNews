@@ -78,11 +78,13 @@ export async function assignArticleAction(articleId: string, assignedTo: string,
   await repo.patchArticle(articleId, { assigned_to: assignedTo, deadline: deadline || null });
   const who = assignedTo ? await repo.findUser(assignedTo) : undefined;
   await log(u.id, who ? `ha assegnato a ${who.name}` : 'ha rimosso l\'assegnazione di', a, deadline ? `scadenza ${new Date(deadline).toLocaleString('it-IT')}` : '');
+  if (who && who.id !== u.id) await inApp(who.id, 'assign', `${u.name} ti ha assegnato «${a.title}»${deadline ? ` (scadenza ${new Date(deadline).toLocaleDateString('it-IT')})` : ''}`, `/admin/articoli/${a.id}`);
   if (who && who.id !== u.id) await notifyUser(who.email, who.name, `Ti è stato assegnato: ${a.title}`, `<p>${esc(u.name)} ti ha assegnato l'articolo «${esc(a.title)}»${deadline ? ` con scadenza ${esc(new Date(deadline).toLocaleString('it-IT'))}` : ''}.</p>`, `/admin/articoli/${a.id}`);
   revalidatePath('/admin', 'layout');
   return ok(who ? `Assegnato a ${who.name}.` : 'Assegnazione rimossa.');
 }
-async function notifyAuthor(a: Article, from: string, subject: string, html: string): Promise<void> { const author = await repo.findUser(a.authorId); if (author) await notifyUser(author.email, author.name, subject, html, `/admin/articoli/${a.id}`); }
+async function notifyAuthor(a: Article, from: string, subject: string, html: string): Promise<void> { const author = await repo.findUser(a.authorId); if (author) { await inApp(author.id, 'changes', subject, `/admin/articoli/${a.id}`); await notifyUser(author.email, author.name, subject, html, `/admin/articoli/${a.id}`); } }
+async function inApp(userId: string, kind: string, text: string, url: string): Promise<void> { const x3 = await import('./repo-extra3'); await x3.insertNotification({ id: uid('nf'), userId, kind, text, url, read: false, createdAt: new Date().toISOString() }); }
 async function notifyUser(email: string, name: string, subject: string, html: string, path: string): Promise<void> {
   if (!(await mailConfigured())) return;
   const s = await getSettings();

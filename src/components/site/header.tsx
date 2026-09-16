@@ -9,11 +9,11 @@ import { ThemeToggle } from './theme-toggle';
 
 export interface OpinionTeaser { title: string; url: string; author: string; avatar: string }
 export interface WeatherTeaser { icon: string; label: string; temp: number; city: string }
-interface Props { logoUrl?: string; categories: Category[]; zones: Zone[]; opinions: OpinionTeaser[]; weather: WeatherTeaser | null; liveLink: string | null; isLoggedIn: boolean; today: string; subscribeUrl: string; siteName: string; tagline: string; socials: Record<string, string>; headerStyle: HeaderStyle; topicsByCategory?: Record<string, { name: string; slug: string }[]>; pills?: { name: string; href: string }[] }
+interface Props { logoUrl?: string; customMenu?: { id: string; label: string; url: string; children?: { id: string; label: string; url: string }[] }[]; extraLinks?: { id: string; label: string; url: string }[]; categories: Category[]; zones: Zone[]; opinions: OpinionTeaser[]; weather: WeatherTeaser | null; liveLink: string | null; isLoggedIn: boolean; today: string; subscribeUrl: string; siteName: string; tagline: string; socials: Record<string, string>; headerStyle: HeaderStyle; topicsByCategory?: Record<string, { name: string; slug: string }[]>; pills?: { name: string; href: string }[] }
 
 const STATIC_NAMES: Record<string, string> = { notizie: 'Notizie', cerca: 'Cerca', tag: 'Argomenti', autore: 'Firme', meteo: 'Meteo', eventi: 'Cosa fare in città', zone: 'Zone', segnalazioni: 'Segnalazioni', video: 'Video', foto: 'Foto' };
 
-export function SiteHeader({ logoUrl = '', categories, zones, opinions, weather, liveLink, isLoggedIn, today, subscribeUrl, siteName, tagline, socials, headerStyle, topicsByCategory = {}, pills = [] }: Props) {
+export function SiteHeader({ logoUrl = '', customMenu, extraLinks = [], categories, zones, opinions, weather, liveLink, isLoggedIn, today, subscribeUrl, siteName, tagline, socials, headerStyle, topicsByCategory = {}, pills = [] }: Props) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [q, setQ] = useState('');
@@ -23,8 +23,12 @@ export function SiteHeader({ logoUrl = '', categories, zones, opinions, weather,
   const isHome = pathname === '/';
   const sectionName = STATIC_NAMES[first] ?? categories.find((c) => c.slug === first)?.name ?? '';
   const menu = categories.filter((c) => c.showInMenu);
-  const mainMenu = [{ slug: 'notizie', name: 'Notizie' }, { slug: 'eventi', name: 'Cosa fare in città' }, { slug: 'zone', name: 'Zone' }, ...menu.filter((c) => c.kind === 'dossier' || c.kind === 'opinion')];
-  const wideMenu = [{ slug: 'notizie', name: 'Ultime' }, ...menu.filter((c) => c.kind !== 'local'), { slug: 'eventi', name: 'Eventi' }, { slug: 'zone', name: 'Zone' }];
+  const _customNav = customMenu ? <ul className="nav-custom">{customMenu.map((m) => <li key={m.id} className={m.children?.length ? 'has-sub' : ''}><Link href={m.url}>{m.label}</Link>{m.children?.length ? <ul className="sub">{m.children.map((c) => <li key={c.id}><Link href={c.url}>{c.label}</Link></li>)}</ul> : null}</li>)}</ul> : null;
+  const _extraNav = extraLinks.length ? extraLinks.map((l) => <Link key={l.id} href={l.url} className="nav-extra">{l.label}</Link>) : null;
+  const customItems = (customMenu ?? []).map((m) => ({ slug: m.url.replace(/^\//, ''), name: m.label }));
+  const extraItems = extraLinks.map((l) => ({ slug: l.url.replace(/^\//, ''), name: l.label }));
+  const mainMenu = customItems.length ? [...customItems, ...extraItems] : [{ slug: 'notizie', name: 'Notizie' }, { slug: 'eventi', name: 'Cosa fare in città' }, { slug: 'zone', name: 'Zone' }, ...menu.filter((c) => c.kind === 'dossier' || c.kind === 'opinion'), ...extraItems];
+  const wideMenu = customItems.length ? [...customItems, ...extraItems] : [{ slug: 'notizie', name: 'Ultime' }, ...menu.filter((c) => c.kind !== 'local'), { slug: 'eventi', name: 'Eventi' }, { slug: 'zone', name: 'Zone' }, ...extraItems];
   const active = (slug: string) => (first === slug ? 'active' : undefined);
   const close = () => setMenuOpen(false);
   const submit = (e: React.FormEvent) => { e.preventDefault(); if (q.trim()) { router.push(`/cerca?q=${encodeURIComponent(q)}`); setSearchOpen(false); } };

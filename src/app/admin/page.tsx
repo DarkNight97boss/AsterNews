@@ -1,13 +1,29 @@
 import Link from 'next/link';
 import { StatusBadge } from '@/components/admin/badges';
 import { getCurrentUser } from '@/lib/auth';
-import { countByStatus, getActivity, getCategories, getMostRead, getUsers, recentlyUpdated, stats, weakSeo } from '@/lib/queries';
+import { OnboardingCard, type OnboardingStep } from '@/components/admin/onboarding-card';
+import { countByStatus, getActivity, getCategories, getMostRead, getSettings, getUsers, recentlyUpdated, stats, weakSeo } from '@/lib/queries';
+import { myWork } from '@/lib/repo-extra3';
+import { can } from '@/lib/permissions';
 import { timeAgo } from '@/lib/utils';
 
 const compact = (n: number) => (n >= 1e6 ? (n / 1e6).toFixed(1).replace('.0', '') + 'M' : n >= 1000 ? (n / 1000).toFixed(1).replace('.0', '') + 'k' : String(n));
 
 export default async function DashboardPage() {
-  const [me, counts, st, top, recent, weak, activity, cats, users] = await Promise.all([getCurrentUser(), countByStatus(), stats(), getMostRead(7), recentlyUpdated(6), weakSeo(5), getActivity(10), getCategories(), getUsers()]);
+  const [me, counts, st, top, recent, weak, activity, cats, users, s] = await Promise.all([getCurrentUser(), countByStatus(), stats(), getMostRead(7), recentlyUpdated(6), weakSeo(5), getActivity(10), getCategories(), getUsers(), getSettings()]);
+  const work = me ? await myWork(me.id) : { drafts: [], assigned: [], review: [], changes: [] };
+  const isAdmin = !!me && can(me, 'settings.manage');
+  const steps: OnboardingStep[] = [
+    { done: !!s.siteName && s.siteName !== 'ASTER News' && !!s.description, label: 'Nome, motto e descrizione della testata', href: '/admin/impostazioni', hint: 'Compaiono in testata, nei risultati di ricerca e nelle condivisioni.' },
+    { done: !!s.theme && (s.theme.preset !== 'today' || !!s.theme.brand || !!s.theme.accent), label: 'Tema e colori della testata', href: '/admin/impostazioni?tab=tema', hint: 'Scegli un tema o carica il tuo logo.' },
+    { done: cats.length > 0, label: 'Categorie del giornale', href: '/admin/categorie', hint: 'Cronaca, Politica, Sport… decidono il menu.' },
+    { done: counts.published > 0, label: 'Primo articolo pubblicato', href: '/admin/scrivi', hint: 'Scrivilo con l\'editor semplice o importa da WordPress.' },
+    { done: users.length > 1, label: 'Invita la redazione', href: '/admin/utenti', hint: 'Giornalisti, caporedattori, collaboratori con permessi diversi.' },
+    { done: !!(s.socials?.facebook || s.socials?.instagram || s.socials?.x || s.socials?.telegram), label: 'Profili social', href: '/admin/impostazioni', hint: 'Link in testata e nel piè di pagina.' },
+    { done: !!(s.newsletter?.provider && s.newsletter.provider !== 'none'), label: 'Newsletter e posta in uscita', href: '/admin/newsletter', hint: 'Resend o Brevo per inviare newsletter e notifiche.' },
+    { done: !!(s.analytics?.enabled ?? true) && st.views > 0, label: 'Prime visite registrate', href: '/admin/statistiche', hint: 'Le statistiche interne si attivano con la prima visita.' },
+  ];
+  const showOnboarding = isAdmin && !s.onboarding?.dismissed && steps.some((x) => !x.done);
   const cat = (id: string) => cats.find((c) => c.id === id); const user = (id: string) => users.find((u) => u.id === id);
   const maxViews = Math.max(1, ...top.map((a) => a.views));
   const seoColor = st.seo.avg >= 80 ? '#0b7a4b' : st.seo.avg >= 55 ? '#e67e00' : '#d7262d';
@@ -21,8 +37,18 @@ export default async function DashboardPage() {
         <div className="stat" style={{ ['--stat-color' as string]: '#1f4e9c' }}><div className="stat-label">Visualizzazioni</div><div className="stat-value">{compact(st.views)}</div><div className="stat-sub">totali</div></div>
         <div className="stat" style={{ ['--stat-color' as string]: '#e2001a' }}><div className="stat-label">Commenti in attesa</div><div className="stat-value">{st.pendingComments}</div><div className="stat-sub">{st.subscribers} iscritti newsletter</div></div>
       </div>
+      {showOnboarding && <OnboardingCard steps={steps} />}
       <div className="admin-grid-2">
         <div>
+          <div className="panel"><div className="panel-title">Il mio lavoro <Link href="/admin/articoli?mine=1" className="btn btn-ghost btn-sm">I miei articoli</Link></div>
+            {work.changes.length === 0 && work.assigned.length === 0 && work.drafts.length === 0 && work.review.length === 0 && <p className="help">Nessun articolo in lavorazione. Buona giornata!</p>}
+            <table className="table"><tbody>
+              {work.changes.map((a) => <tr key={'c' + a.id}><td><span className="badge badge-red">modifiche richieste</span></td><td className="t-title"><Link href={`/admin/articoli/${a.id}`}>{a.title || '(senza titolo)'}</Link><div className="t-sub">{timeAgo(a.updatedAt)}</div></td></tr>)}
+              {work.assigned.filter((a) => !work.changes.some((c) => c.id === a.id)).map((a) => <tr key={'a' + a.id}><td><span className="badge badge-blue">assegnato</span></td><td className="t-title"><Link href={`/admin/articoli/${a.id}`}>{a.title || '(senza titolo)'}</Link><div className="t-sub">{a.deadline ? `scadenza ${timeAgo(a.deadline)}` : 'senza scadenza'}</div></td></tr>)}
+              {work.drafts.filter((a) => !work.assigned.some((c) => c.id === a.id) && !work.changes.some((c) => c.id === a.id)).slice(0, 5).map((a) => <tr key={'d' + a.id}><td><StatusBadge status={a.status} /></td><td className="t-title"><Link href={`/admin/articoli/${a.id}`}>{a.title || '(senza titolo)'}</Link><div className="t-sub">{timeAgo(a.updatedAt)}</div></td></tr>)}
+              {me && can(me, 'article.publish') && work.review.slice(0, 5).map((a) => <tr key={'r' + a.id}><td><StatusBadge status={a.status} /></td><td className="t-title"><Link href={`/admin/articoli/${a.id}`}>{a.title || '(senza titolo)'}</Link><div className="t-sub">{user(a.authorId)?.name} · da approvare</div></td></tr>)}
+            </tbody></table>
+          </div>
           <div className="panel"><div className="panel-title">Articoli più letti <Link href="/admin/articoli" className="btn btn-ghost btn-sm">Tutti</Link></div>
             <div className="bars" style={{ marginBottom: 28 }}>{top.map((a) => <div key={a.id} className="bar" style={{ height: `${(a.views / maxViews) * 100}%` }} title={`${a.title} · ${a.views} visualizzazioni`}><span className="bar-label">{compact(a.views)}</span></div>)}</div>
             <table className="table"><tbody>{top.map((a, i) => <tr key={a.id}><td style={{ width: 30, color: 'var(--gray-400)', fontWeight: 800 }}>{i + 1}</td><td className="t-title"><Link href={`/admin/articoli/${a.id}`}>{a.title}</Link><div className="t-sub">{cat(a.categoryId)?.name} · {user(a.authorId)?.name}</div></td><td style={{ textAlign: 'right', fontWeight: 700 }}>{compact(a.views)}</td></tr>)}</tbody></table>

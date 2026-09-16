@@ -14,12 +14,16 @@ import { PushPrompt } from '@/components/site/push-prompt';
 import { DEFAULT_ANALYTICS, DEFAULT_PUSH } from '@/lib/models';
 import { currentEdition } from '@/lib/edition';
 import { A11yBar } from '@/components/site/a11y-bar';
+import { DEFAULT_MENUS } from '@/lib/models';
+import { listPages } from '@/lib/repo-extra3';
 
 export default async function SiteLayout({ children }: LayoutProps<'/'>) {
   await ensureInstalled();
   const [s0, edition] = await Promise.all([getSettings(), currentEdition()]);
   const s = edition ? { ...s0, siteName: edition.name, tagline: edition.tagline || s0.tagline } : s0;
   const [me, weather, cookieStore, { theme, preview }, categories, users, zones, counts, live] = await Promise.all([getCurrentUser(), getWeather(s.weatherCity, s.weatherLat, s.weatherLon), cookies(), getActiveTheme(), getCategories(), getUsers(), getZones(), zoneCounts(), getLiveArticles()]);
+  const menus = { ...DEFAULT_MENUS, ...(s.menus ?? {}) };
+  const menuPages = (await listPages(true)).filter((p) => p.showInMenu).map((p) => ({ id: p.id, label: p.title, url: `/${p.slug}` }));
   const opinionCat = categories.find((c) => c.kind === 'opinion');
   const opinionArticles = opinionCat ? await listPublished({ categoryId: opinionCat.id }, 2) : [];
   const opinions = opinionArticles.map((a) => { const u = users.find((x) => x.id === a.authorId); return { title: a.title, url: articleUrlWith(a, categories), author: u?.name ?? '', avatar: u?.avatar ?? '' }; });
@@ -31,7 +35,7 @@ export default async function SiteLayout({ children }: LayoutProps<'/'>) {
   return (
     <div className="site-frame">
       {preview && <PreviewBar themeName={theme.name} />}
-      <SiteHeader logoUrl={edition?.logo || ''} categories={categories} zones={topZones} opinions={opinions} weather={weather ? { icon: weatherIcon(weather.current.code), label: weatherLabel(weather.current.code), temp: weather.current.temp, city: weather.city } : null} liveLink={live[0] ? articleUrlWith(live[0], categories) : null} isLoggedIn={!!me} today={today} subscribeUrl={s.subscribeUrl} siteName={s.siteName} tagline={s.tagline} socials={s.socials} headerStyle={theme.headerStyle} topicsByCategory={topicsByCategory} pills={pills} />
+      <SiteHeader logoUrl={edition?.logo || ''} customMenu={menus.useCustomHeader && menus.header.length ? menus.header : undefined} extraLinks={menuPages} categories={categories} zones={topZones} opinions={opinions} weather={weather ? { icon: weatherIcon(weather.current.code), label: weatherLabel(weather.current.code), temp: weather.current.temp, city: weather.city } : null} liveLink={live[0] ? articleUrlWith(live[0], categories) : null} isLoggedIn={!!me} today={today} subscribeUrl={s.subscribeUrl} siteName={s.siteName} tagline={s.tagline} socials={s.socials} headerStyle={theme.headerStyle} topicsByCategory={topicsByCategory} pills={pills} />
       <Ticker />
       <A11yBar />
       <main className="page"><div className="container">{children}</div></main>

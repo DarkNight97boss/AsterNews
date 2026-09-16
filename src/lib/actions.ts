@@ -62,6 +62,7 @@ export async function saveArticleAction(input: Article, status: ArticleStatus): 
   await repo.upsertArticle(a);
   await x.deleteAutosave(a.id); await x.releaseLock(a.id, u.id);
   await log(u.id, a.status === 'published' ? 'ha pubblicato' : 'ha salvato', a.title, a.id);
+  if (a.status === 'review' && existing?.status !== 'review') { const x3 = await import('./repo-extra-notify'); await x3.notifyPublishers(u, `${u.name} ha inviato in revisione «${a.title}»`, `/admin/articoli/${a.id}`); }
   if (a.status === 'published' && existing?.status !== 'published') {
     (await import('./extensions')).runAfterPublish(a, { user: u, isNew: !existing, wasPublished: false }).catch(() => {});
     const soc = await getSettings().then((s) => s.social?.autoNetworks ?? []);
@@ -93,11 +94,10 @@ export async function deleteArticleAction(id: string): Promise<ActionResult> {
   const a = await repo.findArticle(id);
   if (!a) return fail('Articolo non trovato.');
   if (!(can(u, 'article.delete') || (a.authorId === u.id && a.status === 'draft'))) return fail('Non puoi eliminare questo articolo.');
-  await x.insertRevision({ id: uid('rv'), articleId: id, userId: u.id, note: 'eliminato (recuperabile dalle revisioni per 50 salvataggi)', data: a, createdAt: new Date().toISOString() });
-  await repo.deleteArticleRow(id);
-  await log(u.id, 'ha eliminato', a.title, a.id);
+  await repo.trashArticle(id);
+  await log(u.id, 'ha spostato nel cestino', a.title, a.id);
   refresh();
-  return ok('Articolo eliminato.');
+  return ok('Articolo spostato nel cestino (recuperabile per 30 giorni).');
 }
 export async function bulkDeleteAction(ids: string[]): Promise<ActionResult> { let n = 0; for (const id of ids) if ((await deleteArticleAction(id)).ok) n++; return ok(`${n} articoli eliminati.`); }
 export async function duplicateArticleAction(id: string): Promise<ActionResult> {
@@ -293,7 +293,7 @@ export async function submitRawArticleAction(input: { title: string; text: strin
 
 // ---------------- Importazione WordPress (job in background) ----------------
 export type { ImportJob } from './repo';
-export interface WpImportOptions { source: 'wxr' | 'rest'; file?: string; url?: string; maxPosts?: number; optimize: boolean; statusMode: 'keep' | 'draft' | 'review'; categoryMap: Record<string, string>; overwrite: boolean; downloadMedia: boolean }
+export interface WpImportOptions { source: 'wxr' | 'rest' | 'feed'; file?: string; url?: string; maxPosts?: number; optimize: boolean; statusMode: 'keep' | 'draft' | 'review'; categoryMap: Record<string, string>; overwrite: boolean; downloadMedia: boolean }
 
 export async function startImportJobAction(opts: WpImportOptions): Promise<ActionResult> {
   const me = await requirePermission('settings.manage');

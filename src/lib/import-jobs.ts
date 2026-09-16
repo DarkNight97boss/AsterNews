@@ -98,12 +98,35 @@ async function* restPosts(url: string, max: number, onTotal?: (t: number) => voi
     if (posts.length < 50) break;
   }
 }
+/** Importazione da feed RSS/Atom (Substack, Medium, Blogger, WordPress.com): gli articoli completi se il feed li include (content:encoded). */
+async function* feedPosts(url: string, max: number, onTotal?: (t: number) => Promise<void>): AsyncGenerator<WpPost> {
+  const res = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0 ASTERNews-import', Accept: 'application/rss+xml, application/atom+xml, application/xml' }, signal: AbortSignal.timeout(30000) });
+  if (!res.ok) throw new Error(`Feed non raggiungibile (${res.status})`);
+  const xml = await res.text();
+  const items = [...xml.matchAll(/<item\b[\s\S]*?<\/item>|<entry\b[\s\S]*?<\/entry>/g)].map((m) => m[0]).slice(0, max);
+  await onTotal?.(items.length);
+  const un = (v: string) => v.replace(/^\s*<!\[CDATA\[([\s\S]*?)\]\]>\s*$/, '$1').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&').replace(/&quot;/g, '"').trim();
+  const tag = (block: string, t: string) => { const m = block.match(new RegExp(`<${t}(?:\\s[^>]*)?>([\\s\\S]*?)</${t}>`)); return m ? un(m[1]) : ''; };
+  let i = 0;
+  for (const it of items) {
+    i++;
+    const title = tag(it, 'title'); const link = tag(it, 'link') || (it.match(/<link[^>]*href="([^"]+)"/)?.[1] ?? '');
+    const content = tag(it, 'content:encoded') || tag(it, 'content') || tag(it, 'description') || tag(it, 'summary');
+    const date = tag(it, 'pubDate') || tag(it, 'published') || tag(it, 'updated') || tag(it, 'dc:date');
+    const author = tag(it, 'dc:creator') || tag(it, 'name') || '';
+    const cats = [...it.matchAll(/<category(?:\s[^>]*term="([^"]+)")?[^>]*>([\s\S]*?)<\/category>|<category[^>]*term="([^"]+)"[^>]*\/>/g)].map((m) => un(m[1] || m[2] || m[3] || '')).filter(Boolean);
+    const image = it.match(/<media:content[^>]*url="([^"]+)"|<enclosure[^>]*url="([^"]+)"[^>]*type="image|<img[^>]*src="([^"]+)"/)?.slice(1).find(Boolean) ?? '';
+    if (!title) continue;
+    yield { wpId: 'feed-' + createHash('md5').update(link || title).digest('hex').slice(0, 10), title, slug: '', link, date: date ? new Date(date).toISOString() : new Date().toISOString(), status: 'publish', author, content: cleanWpContent(content), excerpt: '', categories: cats.slice(0, 1), tags: cats.slice(1, 6), image, type: 'post' };
+  }
+  void i;
+}
 async function countWxr(file: string): Promise<number> { let n = 0; for await (const it of wxrItems(file)) if (it.includes('<wp:post_type><![CDATA[post]]>') || it.includes('<wp:post_type>post</wp:post_type>')) n++; return n; }
 
 export async function previewImport(opts: WpImportOptions): Promise<ImportPreview> {
   const cats = new Map<string, number>(); const authors = new Set<string>(); const sample: string[] = [];
   let total = 0, publishable = 0, existing = 0;
-  const gen = opts.source === 'wxr' ? wxrPosts(path.join(IMPORT_DIR, path.basename(opts.file ?? ''))) : restPosts(opts.url!, Math.min(opts.maxPosts ?? 200, 300));
+  const gen = opts.source === 'wxr' ? wxrPosts(path.join(IMPORT_DIR, path.basename(opts.file ?? ''))) : opts.source === 'feed' ? feedPosts(opts.url!, Math.min(opts.maxPosts ?? 200, 300)) : restPosts(opts.url!, Math.min(opts.maxPosts ?? 200, 300));
   for await (const p of gen) {
     total++; if (p.status === 'publish') publishable++;
     p.categories.forEach((c) => cats.set(c, (cats.get(c) ?? 0) + 1)); if (p.author) authors.add(p.author);
@@ -167,7 +190,7 @@ async function runJob(id: string, budgetMs: number): Promise<boolean> {
 
   let pending: { a: Article; wpId?: string }[] = [];
   const flush = async () => { if (pending.length) { await repo.bulkUpsertArticles(pending); pending = []; } await repo.updateJob(id, { processed, imported, skipped, total: Math.max(total, processed), errors, cursor: String(index), message: `Importati ${imported} su ${processed}` }); };
-  const gen = opts.source === 'wxr' ? wxrPosts(file) : restPosts(opts.url!, opts.maxPosts ?? 100000, async (t) => { total = t; await repo.updateJob(id, { total: t }); }, resumeFrom);
+  const gen = opts.source === 'wxr' ? wxrPosts(file) : opts.source === 'feed' ? feedPosts(opts.url!, opts.maxPosts ?? 1000, async (t) => { total = t; await repo.updateJob(id, { total: t }); }) : restPosts(opts.url!, opts.maxPosts ?? 100000, async (t) => { total = t; await repo.updateJob(id, { total: t }); }, resumeFrom);
   let ctxCache: { at: number; ctx: Awaited<ReturnType<typeof seoContext>> } | null = null;
   const ctxFor = async () => { if (!ctxCache || Date.now() - ctxCache.at > 60000) ctxCache = { at: Date.now(), ctx: await seoContext('') }; return ctxCache.ctx; };
 

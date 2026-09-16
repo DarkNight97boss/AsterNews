@@ -15,6 +15,7 @@ import { SeoAssistant } from './seo-assistant';
 import { EditorExtras } from './editor-extras';
 import { BlockEditor } from './block-editor';
 import { AiAssistant } from './ai-assistant';
+import { checkAccessibility } from '@/lib/a11y-check';
 import { useEffect } from 'react';
 import type { SeoContext } from '@/lib/seo-engine';
 
@@ -101,6 +102,8 @@ export function ArticleEditor({ initial, isNew, isPublic, categories, zones, tag
 
           <EditorExtras article={a} isNew={isNew} users={users} canAssign={can('article.assign')} canPublish={can('article.publish')} meId={meId} dirty={dirty} onRestoreDraft={(d) => { setA({ ...d, id: a.id }); setDirty(true); }} onPatch={(p) => setA((x) => ({ ...x, ...p }))} />
 
+          <div className="panel"><div className="panel-title">Accessibilità</div>{(() => { const issues = checkAccessibility(a.content, a.title); return issues.length ? <ul className="ai-list">{issues.map((i, k) => <li key={k}><span className={`badge ${i.level === 'error' ? 'badge-red' : 'badge-gray'}`}>{i.level === 'error' ? 'da correggere' : 'consiglio'}</span> {i.text}</li>)}</ul> : <p className="help">Nessun problema di accessibilità rilevato nel testo.</p>; })()}</div>
+
           <div className="panel"><div className="panel-title">Domande e risposte (FAQ) <button className="btn btn-outline btn-sm" onClick={() => set('faq', [...(a.faq ?? []), { q: '', a: '' }])}>+ Aggiungi</button></div>
             <p className="help">Compaiono in fondo all&apos;articolo e come dati strutturati FAQ per Google.</p>
             <div className="faq-list">{(a.faq ?? []).map((f, i) => <div key={i} className="faq-item"><input className="input" placeholder="Domanda" value={f.q} onChange={(e) => set('faq', (a.faq ?? []).map((x, j) => (j === i ? { ...x, q: e.target.value } : x)))} /><textarea className="textarea" style={{ minHeight: 50, marginTop: 6 }} placeholder="Risposta" value={f.a} onChange={(e) => set('faq', (a.faq ?? []).map((x, j) => (j === i ? { ...x, a: e.target.value } : x)))} /><button className="icon-btn danger" onClick={() => set('faq', (a.faq ?? []).filter((_, j) => j !== i))}>Rimuovi</button></div>)}</div>
@@ -164,6 +167,8 @@ export function ArticleEditor({ initial, isNew, isPublic, categories, zones, tag
             <div className="field"><label>Stato</label><select className="select" value={a.status} onChange={(e) => set('status', e.target.value as ArticleStatus)}>{allowed.map((s) => <option key={s} value={s}>{STATUS_LABELS[s]}</option>)}</select></div>
             {can('article.publish') && <div className="field"><label>Programma pubblicazione</label><input className="input" type="datetime-local" value={scheduledAt} onChange={(e) => { setScheduledAt(e.target.value); setDirty(true); }} /><div className="help">Imposta data e ora futura, poi premi &quot;Programma&quot;.</div></div>}
             {a.publishedAt && <div className="field"><label>Pubblicato il</label><input className="input" type="datetime-local" value={toLocalInput(a.publishedAt)} onChange={(e) => set('publishedAt', e.target.value ? new Date(e.target.value).toISOString() : null)} /></div>}
+            <div className="field"><label>Firma personalizzata (pseudonimo o «La redazione»)</label><input className="input" value={a.byline ?? ''} onChange={(e) => set('byline', e.target.value)} placeholder="vuoto = nome dell'autore" /></div>
+            <div className="field"><label>Coautori</label><div className="chips">{users.filter((u) => u.id !== a.authorId).map((u) => { const on = (a.coauthorIds ?? []).includes(u.id); return <button key={u.id} type="button" className="chip" style={on ? { background: 'var(--black)', color: '#fff' } : undefined} onClick={() => set('coauthorIds', on ? (a.coauthorIds ?? []).filter((x) => x !== u.id) : [...(a.coauthorIds ?? []), u.id])}>{u.name}</button>; })}</div></div>
             <div className="field"><label>Autore</label><select className="select" value={a.authorId} disabled={!can('article.edit.any')} onChange={(e) => set('authorId', e.target.value)}>{users.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}</select></div>
             <div className="field"><label>Formato</label><select className="select" value={a.format} onChange={(e) => set('format', e.target.value as ArticleFormat)}>{FORMATS.map((f) => <option key={f} value={f}>{FORMAT_LABELS[f]}</option>)}</select></div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 6 }}>

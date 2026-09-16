@@ -1,8 +1,12 @@
 import Link from 'next/link';
 import { getCategories, getSettings } from '@/lib/queries';
+import { listPages } from '@/lib/repo-extra3';
+import { DEFAULT_MENUS } from '@/lib/models';
 
 export async function Footer() {
-  const [s, cats] = await Promise.all([getSettings(), getCategories()]);
+  const [s, cats, pages] = await Promise.all([getSettings(), getCategories(), listPages(true)]);
+  const menus = { ...DEFAULT_MENUS, ...(s.menus ?? {}) };
+  const footerLinks = menus.footer.length ? menus.footer.map((m) => ({ id: m.id, label: m.label, url: m.url })) : pages.map((p) => ({ id: p.id, label: p.title, url: `/${p.slug}` }));
   return (
     <footer className="site-footer">
       <div className="container">
@@ -24,7 +28,7 @@ export async function Footer() {
         </div>
         <div className="footer-bottom">
           <span>© {new Date().getFullYear()} {s.siteName}. Tutti i diritti riservati.</span>
-          <span>Privacy · Cookie policy · Contatti · Pubblicità</span>
+          <span>{footerLinks.length ? footerLinks.map((l, i) => <span key={l.id}>{i > 0 && ' · '}<Link href={l.url}>{l.label}</Link></span>) : 'Privacy · Cookie policy · Contatti · Pubblicità'}</span>
         </div>
       </div>
     </footer>

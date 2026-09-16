@@ -17,7 +17,11 @@ import { Paywall } from '@/components/site/paywall';
 import { Analytics } from '@/components/site/analytics';
 import { getCurrentReader } from '@/lib/auth';
 import { DEFAULT_COMMUNITY, DEFAULT_PAYWALL } from '@/lib/models';
-import { FlagButton } from '@/components/site/article-extras';
+import { CommentsThread } from '@/components/site/comments-thread';
+import { SaveButton } from '@/components/site/save-button';
+import { DonateWidget } from '@/components/site/donate-widget';
+import { isBookmarked, votedCommentIds } from '@/lib/repo-extra3';
+import { getUsers } from '@/lib/queries';
 
 function shortTime(iso: string): string {
   const d = new Date(iso);
@@ -38,7 +42,7 @@ export async function generateMetadata({ params }: PageProps<'/[categorySlug]/[a
     keywords: [a.seo.focusKeyword, ...tags.map((t) => t.name)].filter((k): k is string => !!k),
     robots: a.seo.noIndex ? { index: false, follow: false } : undefined,
     alternates: { canonical: a.seo.canonical || articleUrl(a) },
-    openGraph: { type: 'article', title: a.title, description: a.excerpt, images: a.coverImage ? [{ url: a.coverImage }] : [], publishedTime: a.publishedAt ?? undefined, modifiedTime: a.updatedAt, authors: author ? [author.name] : undefined, section: cats.find((c) => c.id === a.categoryId)?.name },
+    openGraph: { type: 'article', title: a.title, description: a.excerpt, images: a.coverImage ? [{ url: a.coverImage }, { url: `/api/og/${a.id}.png`, width: 1200, height: 630 }] : [{ url: `/api/og/${a.id}.png`, width: 1200, height: 630 }], publishedTime: a.publishedAt ?? undefined, modifiedTime: a.updatedAt, authors: author ? [author.name] : undefined, section: cats.find((c) => c.id === a.categoryId)?.name },
     twitter: { card: 'summary_large_image', title: a.title, description: a.excerpt },
   };
 }
@@ -74,6 +78,8 @@ export default async function ArticlePage({ params }: PageProps<'/[categorySlug]
     { '@type': 'ListItem', position: cat ? 3 : 2, name: a.title, item: `${base}${articleUrl(a)}` },
   ] };
   const reader = await getCurrentReader();
+  const [saved, votedIds, allUsers] = await Promise.all([reader ? isBookmarked(reader.id, a.id) : Promise.resolve(false), reader ? votedCommentIds(reader.id, a.id) : Promise.resolve([] as string[]), getUsers()]);
+  const coauthors = allUsers.filter((u) => (a.coauthorIds ?? []).includes(u.id));
   const paywall = { ...DEFAULT_PAYWALL, ...(settings.paywall ?? {}) };
   const community = { ...DEFAULT_COMMUNITY, ...(settings.community ?? {}) };
   const gated = paywall.enabled && !reader?.premium;
@@ -99,13 +105,15 @@ export default async function ArticlePage({ params }: PageProps<'/[categorySlug]
       <Analytics articleId={a.id} />
       <div className="article-grid">
         <aside className="article-aside">
-          {author && (
+          {a.byline ? <div className="a-name">{a.byline}</div> : author && (
             <>
               <img className="a-avatar" src={author.avatar} alt={author.name} />
               <Link className="a-name" href={`/autore/${author.id}`}>{author.name}</Link>
+              {coauthors.map((c) => <Link key={c.id} className="a-name a-coauthor" href={`/autore/${c.id}`}>e {c.name}</Link>)}
               <div className="a-role">{ROLE_LABELS[author.role]}</div>
             </>
           )}
+          <SaveButton articleId={a.id} saved={saved} loggedIn={!!reader} />
           <div className="a-date">{formatDate(a.publishedAt)}{a.updatedAt > (a.publishedAt || '') && <><br />aggiornato {timeAgo(a.updatedAt)}</>}<br />{readingTime(a.content)} min di lettura</div>
           <ShareBar title={a.title} />
           {tags.length > 0 && <><div className="aside-title">Si parla di</div><div className="topic-list">{tags.map((t) => <Link key={t.id} href={`/tag/${t.slug}`}>{t.name.toLowerCase()}</Link>)}</div></>}
@@ -160,7 +168,7 @@ export default async function ArticlePage({ params }: PageProps<'/[categorySlug]
             <section className="comments">
               <h3>Commenti ({comments.length})</h3>
               {comments.length === 0 && <p style={{ color: 'var(--muted)' }}>Nessun commento. Sii il primo a commentare.</p>}
-              {comments.map((c) => <div key={c.id} className="comment"><div className="c-head"><b>{c.authorName}{c.readerId && <span className="badge-reader" title="Lettore registrato"> ✓</span>}</b><span>{relativeDate(c.createdAt)} <FlagButton commentId={c.id} /></span></div><p>{c.body}</p></div>)}
+              <CommentsThread articleId={a.id} comments={comments} votedIds={votedIds} canReply={!community.commentsRequireAccount || !!reader} readerName={reader?.name || reader?.email || ''} />
               <CommentForm articleId={a.id} moderated={settings.commentsModeration} readerName={reader?.name || reader?.email || ''} requireAccount={community.commentsRequireAccount} />
             </section>
           )}
@@ -170,6 +178,7 @@ export default async function ArticlePage({ params }: PageProps<'/[categorySlug]
           <MostRead n={5} exclude={a.id} />
           <NewsletterWidget />
           <AdSlot slot="sidebar_300" />
+          <DonateWidget />
         </aside>
       </div>
     </>

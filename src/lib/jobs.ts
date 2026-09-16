@@ -31,6 +31,8 @@ export async function runDailyJobs(): Promise<JobReport> {
   const s = await getSettings();
   const bk = { ...DEFAULT_BACKUP, ...(s.backup ?? {}) };
   if (bk.enabled) { try { const { createBackup, pruneBackups } = await import('./backup'); const r = await createBackup('automatico'); await pruneBackups(bk.keep); steps.backup = r.url ? `salvato (${Math.round(r.size / 1024)} KB)` : 'salvato nel database'; } catch (e) { steps.backup = 'errore: ' + (e as Error).message; } }
+  try { const n = await repo.purgeTrash(30); if (n) steps.cestino = `${n} articoli eliminati definitivamente`; } catch { /* ignore */ }
+  try { const { checkBrokenLinks } = await import('./broken-links'); steps.link = await checkBrokenLinks(); } catch (e) { steps.link = 'errore: ' + (e as Error).message; }
   try { const { expireListings } = await import('./repo-extra2'); await expireListings(); steps.annunci = 'scadenze aggiornate'; } catch { /* ignore */ }
   try { const { runDailyExtensions } = await import('./extensions'); Object.assign(steps, await runDailyExtensions()); } catch { /* ignore */ }
   steps.salute = await healthCheck();

@@ -24,7 +24,7 @@ export const getCategories = cache((): Promise<Category[]> => cCategories());
 export const getTags = cache((): Promise<Tag[]> => cTags());
 export const getUsers = cache((): Promise<User[]> => cUsers());
 export const getZones = cache((): Promise<Zone[]> => cZones());
-export const getSettings = cache(async () => { const s = await cSettings(); setCacheSeconds({ ...DEFAULT_CACHE, ...(s.cache ?? {}) }.enabled ? { ...DEFAULT_CACHE, ...(s.cache ?? {}) }.seconds : 0); return s; });
+export const getSettings = cache(async () => { const s = await cSettings(); if (s.roles?.overrides) { const { setPermissionOverrides } = await import('./permissions'); setPermissionOverrides(s.roles.overrides as Record<string, string[]>); } setCacheSeconds({ ...DEFAULT_CACHE, ...(s.cache ?? {}) }.enabled ? { ...DEFAULT_CACHE, ...(s.cache ?? {}) }.seconds : 0); return s; });
 const synonyms = async (): Promise<Record<string, string[]>> => { const raw = ({ ...DEFAULT_SEARCH, ...((await getSettings()).search ?? {}) }).synonyms; const out: Record<string, string[]> = {}; raw.split(/\r?\n/).forEach((l) => { const [k, v] = l.split('='); if (k && v) out[k.trim().toLowerCase()] = v.split(',').map((x) => x.trim().toLowerCase()).filter(Boolean); }); return out; };
 export const getSeoSettings = async (): Promise<SeoSettings> => ({ ...DEFAULT_SEO_SETTINGS, ...((await getSettings()).seo ?? {}) });
 export const getTheme = async () => resolveTheme((await getSettings()).theme);

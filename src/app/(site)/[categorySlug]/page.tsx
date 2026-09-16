@@ -7,17 +7,33 @@ import { Sidebar } from '@/components/site/widgets';
 import { articlesByCategory, categoryBySlug, countPublished, getSettings, legacyRedirectFor, topTagsForCategory } from '@/lib/queries';
 import { getActiveTheme } from '@/lib/theme-server';
 import { CategoryFanpage } from '@/components/site/fanpage/category-fanpage';
+import { findPageBySlug } from '@/lib/repo-extra3';
+import { ArticleBody } from '@/components/site/article-body';
+import { SmartImage } from '@/components/ui/smart-image';
 
 export async function generateMetadata({ params }: PageProps<'/[categorySlug]'>): Promise<Metadata> {
   const { categorySlug } = await params;
   const c = await categoryBySlug(categorySlug);
-  return c ? { title: c.name, description: c.description } : {};
+  if (c) return { title: c.name, description: c.description };
+  const pg = await findPageBySlug(categorySlug);
+  return pg ? { title: pg.seo.title || pg.title, description: pg.seo.description || pg.excerpt, robots: pg.seo.noIndex ? { index: false } : undefined, alternates: pg.seo.canonical ? { canonical: pg.seo.canonical } : undefined } : {};
 }
 
 export default async function CategoryPage({ params, searchParams }: PageProps<'/[categorySlug]'>) {
   const [{ categorySlug }, sp] = await Promise.all([params, searchParams]);
   const c = await categoryBySlug(categorySlug);
-  if (!c) { const t = await legacyRedirectFor(categorySlug); if (t) permanentRedirect(t); notFound(); }
+  if (!c) {
+    const pg = await findPageBySlug(categorySlug);
+    if (pg) return (
+      <article className={`static-page tpl-${pg.template}`}>
+        {pg.template !== 'landing' && <header className="page-head"><h1>{pg.title}</h1>{pg.excerpt && <p className="lead">{pg.excerpt}</p>}</header>}
+        {pg.coverImage && <figure className="article-cover"><div className="cover-frame"><SmartImage src={pg.coverImage} alt={pg.title} priority sizes="(max-width: 768px) 100vw, 1100px" /></div></figure>}
+        {pg.template === 'landing' && <h1 className="landing-title">{pg.title}</h1>}
+        <ArticleBody html={pg.content} className={pg.template === 'wide' || pg.template === 'landing' ? 'article-body page-wide' : 'article-body page-narrow'} />
+      </article>
+    );
+    const t = await legacyRedirectFor(categorySlug); if (t) permanentRedirect(t); notFound();
+  }
   const page = Math.max(1, Number(sp.pagina ?? 1) || 1);
   const perPage = (await getSettings()).articlesPerPage;
   const { theme } = await getActiveTheme();

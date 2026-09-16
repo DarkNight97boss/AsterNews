@@ -93,6 +93,9 @@ export interface Article {
   editionId?: string;
   faq?: { q: string; a: string }[];
   socialText?: string;
+  deletedAt?: string | null;
+  coauthorIds?: string[];
+  byline?: string;
   publishedAt: string | null;
   scheduledAt: string | null;
   createdAt: string;
@@ -110,6 +113,8 @@ export interface Comment {
   readerId?: string;
   parentId?: string;
   flags?: number;
+  votes?: number;
+  staff?: boolean;
 }
 
 export interface MediaItem {
@@ -143,7 +148,8 @@ export interface Subscriber {
 export interface Session { id: string; userId: string; kind: 'staff' | 'reader'; createdAt: string; lastSeen: string; expiresAt: string; userAgent: string; ip: string; revoked: boolean }
 export interface Revision { id: string; articleId: string; userId: string; note: string; data: Article; createdAt: string }
 export interface ArticleNote { id: string; articleId: string; userId: string; kind: 'note' | 'changes' | 'system'; body: string; resolved: boolean; createdAt: string }
-export interface Reader { id: string; email: string; name: string; verified: boolean; premium: boolean; premiumUntil: string | null; stripeCustomer: string; banned: boolean; createdAt: string; lastLogin: string | null; provider?: string; avatar?: string }
+export interface Reader { id: string; email: string; name: string; verified: boolean; premium: boolean; premiumUntil: string | null; stripeCustomer: string; banned: boolean; createdAt: string; lastLogin: string | null; provider?: string; avatar?: string; prefs?: ReaderPrefs }
+export interface ReaderPrefs { zones?: string[]; tags?: string[]; categories?: string[] }
 export interface Redirect { id: string; fromPath: string; toPath: string; code: number; hits: number; createdAt: string }
 export interface NotFoundEntry { path: string; hits: number; referer: string; firstSeen: string; lastSeen: string }
 export interface Edition { id: string; slug: string; name: string; domain: string; tagline: string; zoneId: string; categoryIds: string[]; theme: Partial<import('./themes').ThemeSettings>; logo: string; active: boolean; createdAt: string }
@@ -157,6 +163,20 @@ export interface SocialPost { id: string; articleId: string; network: SocialNetw
 export interface Ad { id: string; slot: string; name: string; type: 'image' | 'html' | 'adsense'; image: string; url: string; html: string; label: string; startAt: string | null; endAt: string | null; weight: number; impressions: number; clicks: number; active: boolean; createdAt: string }
 export type ListingKind = 'annuncio' | 'necrologio';
 export interface Listing { id: string; kind: ListingKind; title: string; body: string; image: string; category: string; price: string; contactName: string; contactEmail: string; contactPhone: string; zoneId: string; status: 'pending' | 'published' | 'rejected' | 'expired'; paid: boolean; amount: number; expiresAt: string | null; readerId: string; createdAt: string; publishedAt: string | null; extra: Record<string, string> }
+export interface Page { id: string; slug: string; title: string; content: string; excerpt: string; status: 'draft' | 'published'; template: 'standard' | 'landing' | 'wide'; coverImage: string; seo: SeoMeta; showInMenu: boolean; menuOrder: number; authorId: string; createdAt: string; updatedAt: string }
+export interface MenuItem { id: string; label: string; url: string; children?: MenuItem[] }
+export interface MenusSettings { header: MenuItem[]; footer: MenuItem[]; useCustomHeader: boolean }
+export interface DonationsSettings { enabled: boolean; title: string; text: string; amounts: number[]; thanks: string }
+export interface ApiSettings { enabled: boolean; requireKey: boolean; rateLimitPerMinute: number }
+export interface RolesSettings { overrides: Partial<Record<Role, string[]>> }
+export interface OnboardingSettings { dismissed: boolean }
+export interface Donation { id: string; amount: number; name: string; email: string; message: string; status: 'pending' | 'paid' | 'failed'; readerId: string; createdAt: string; paidAt: string | null }
+export interface ApiKey { id: string; name: string; prefix: string; scopes: string[]; active: boolean; calls: number; lastUsed: string | null; createdBy: string; createdAt: string }
+export interface BrokenLink { id: string; articleId: string; url: string; status: number; error: string; checkedAt: string; fixed: boolean }
+export interface Notification { id: string; userId: string; kind: string; text: string; url: string; read: boolean; createdAt: string }
+export const DEFAULT_MENUS: MenusSettings = { header: [], footer: [], useCustomHeader: false };
+export const DEFAULT_DONATIONS: DonationsSettings = { enabled: false, title: 'Sostieni il giornalismo locale', text: 'Con un piccolo contributo aiuti la redazione a restare libera e indipendente.', amounts: [3, 5, 10, 25], thanks: 'Grazie di cuore! Il tuo sostegno fa la differenza.' };
+export const DEFAULT_API: ApiSettings = { enabled: true, requireKey: false, rateLimitPerMinute: 120 };
 export const AD_SLOTS: { id: string; name: string; size: string }[] = [{ id: 'home_top', name: 'Home – sopra l\'apertura', size: '970×250 / 728×90' }, { id: 'sidebar_300', name: 'Colonna destra', size: '300×250' }, { id: 'article_inline', name: 'Dentro l\'articolo (dopo il 3° paragrafo)', size: '728×90 / 300×250' }, { id: 'article_bottom', name: 'Fine articolo', size: '728×90' }, { id: 'newsletter', name: 'Newsletter', size: '600×150' }];
 export const LISTING_CATEGORIES = ['Casa e immobili', 'Auto e moto', 'Lavoro', 'Oggetti e arredo', 'Animali', 'Servizi', 'Corsi e lezioni', 'Altro'];
 export interface BackupEntry { id: string; createdAt: string; size: number; url: string; note: string }
@@ -219,6 +239,11 @@ export interface SiteSettings {
   ai?: AiSettings;
   updates?: UpdatesSettings;
   extensions?: ExtensionsSettings;
+  menus?: MenusSettings;
+  donations?: DonationsSettings;
+  api?: ApiSettings;
+  roles?: RolesSettings;
+  onboarding?: OnboardingSettings;
 }
 
 export const DEFAULT_NEWSLETTER: NewsletterSettings = { provider: 'none', apiKey: '', fromEmail: '', fromName: '', digestEnabled: false, digestHour: 7, doubleOptIn: true };

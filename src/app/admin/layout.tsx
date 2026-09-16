@@ -12,6 +12,6 @@ export default async function AdminLayout({ children }: LayoutProps<'/admin'>) {
   await ensureInstalled();
   const user = await getCurrentUser();
   if (!user) redirect('/login?redirect=/admin');
-  const [counts, st] = await Promise.all([countByStatus(), stats()]);
-  return <AdminShell user={user} permissions={permissionsOf(user)} reviewCount={can(user, 'article.publish') ? counts.review : 0} pendingComments={st.pendingComments} pendingEvents={st.pendingEvents} newReports={st.newReports}>{children}</AdminShell>;
+  const [counts, st, unread] = await Promise.all([countByStatus(), stats(), import('@/lib/repo-extra3').then((m) => m.countUnread(user.id)).catch(() => 0)]);
+  return <AdminShell user={user} permissions={permissionsOf(user)} unread={unread} reviewCount={can(user, 'article.publish') ? counts.review : 0} pendingComments={st.pendingComments} pendingEvents={st.pendingEvents} newReports={st.newReports}>{children}</AdminShell>;
 }

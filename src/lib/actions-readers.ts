@@ -77,17 +77,18 @@ export async function addCommentAction(input: { articleId: string; authorName: s
   if (!a || !a.allowComments || a.status !== 'published') return fail('Commenti non disponibili.');
   const s = await getSettings(); const community = { ...DEFAULT_COMMUNITY, ...(s.community ?? {}) };
   const reader = await getCurrentReader();
-  if (community.commentsRequireAccount && !reader) return fail('Per commentare devi accedere con un account lettore.');
-  const authorName = reader ? reader.name || reader.email.split('@')[0] : input.authorName.trim();
-  const email = reader ? reader.email : input.email.trim();
+  const { getCurrentUser } = await import('./auth'); const staffUser = await getCurrentUser();
+  if (community.commentsRequireAccount && !reader && !staffUser) return fail('Per commentare devi accedere con un account lettore.');
+  const authorName = staffUser ? staffUser.name : reader ? reader.name || reader.email.split('@')[0] : input.authorName.trim();
+  const email = staffUser ? staffUser.email : reader ? reader.email : input.email.trim();
   const body = input.body.trim();
-  if (!authorName || body.length < 3 || (!reader && !EMAIL.test(email))) return fail('Compila tutti i campi correttamente.');
+  if (!authorName || body.length < 3 || (!reader && !staffUser && !EMAIL.test(email))) return fail('Compila tutti i campi correttamente.');
   if (body.length > 2000) return fail('Massimo 2000 caratteri.');
   const blocked = community.blockedWords.split(/[\n,]/).map((w) => w.trim().toLowerCase()).filter(Boolean);
   const hasBlocked = blocked.some((w) => body.toLowerCase().includes(w));
   const linkSpam = (body.match(/https?:\/\//g) ?? []).length > 2;
-  const status: Comment['status'] = hasBlocked || linkSpam ? 'spam' : s.commentsModeration && !reader?.premium ? 'pending' : 'approved';
-  const c: Comment = { id: uid('cm'), articleId: a.id, authorName: authorName.slice(0, 60), email, body, status, createdAt: new Date().toISOString(), readerId: reader?.id ?? '', parentId: input.parentId ?? '', flags: 0 };
+  const status: Comment['status'] = staffUser ? 'approved' : hasBlocked || linkSpam ? 'spam' : s.commentsModeration && !reader?.premium ? 'pending' : 'approved';
+  const c: Comment = { id: uid('cm'), articleId: a.id, authorName: authorName.slice(0, 60), email, body, status, createdAt: new Date().toISOString(), readerId: reader?.id ?? '', parentId: input.parentId ?? '', flags: 0, votes: 0, staff: !!staffUser };
   await repo.insertComment(c);
   (revalidateTag('articles', 'max'), revalidatePath('/', 'layout'));
   if (status === 'spam') return ok('Il commento è stato inviato alla moderazione.');
@@ -170,4 +171,31 @@ export async function magicLoginAction(token: string): Promise<boolean> {
   await x.updateReader(r.id, { verified: true, lastLogin: new Date().toISOString() });
   await startSession(r.id, 'reader');
   return true;
+}
+
+// ---------------- Preferiti, preferenze, voti, privacy ----------------
+export async function toggleBookmarkAction(articleId: string): Promise<{ ok: boolean; saved?: boolean; message?: string }> {
+  const r = await getCurrentReader(); if (!r) return { ok: false, message: 'Accedi per salvare gli articoli.' };
+  const x3 = await import('./repo-extra3'); const saved = await x3.toggleBookmark(r.id, articleId);
+  return { ok: true, saved, message: saved ? 'Salvato tra i tuoi articoli.' : 'Rimosso dai salvati.' };
+}
+export async function savePrefsAction(prefs: { zones: string[]; tags: string[]; categories: string[] }): Promise<ActionResult> {
+  const r = await getCurrentReader(); if (!r) return fail('Accedi prima.');
+  const x3 = await import('./repo-extra3'); await x3.savePrefs(r.id, { zones: prefs.zones.slice(0, 20), tags: prefs.tags.slice(0, 30), categories: prefs.categories.slice(0, 20) });
+  revalidatePath('/account/per-te'); return ok('Preferenze salvate.');
+}
+export async function voteCommentAction(commentId: string): Promise<{ ok: boolean; votes?: number; voted?: boolean; message?: string }> {
+  const store = await cookies(); let voter = store.get('aster_vid')?.value;
+  if (!voter) { voter = randomToken(12); store.set('aster_vid', voter, { path: '/', maxAge: 60 * 60 * 24 * 365, sameSite: 'lax', httpOnly: true }); }
+  const reader = await getCurrentReader(); const x3 = await import('./repo-extra3');
+  const r = await x3.voteComment(commentId, reader?.id ?? voter);
+  return { ok: true, ...r };
+}
+export async function exportMyDataAction(): Promise<string> { const r = await getCurrentReader(); if (!r) return ''; const x3 = await import('./repo-extra3'); return JSON.stringify(await x3.exportReaderData(r.id), null, 1); }
+export async function deleteMyAccountAction(password: string): Promise<ActionResult> {
+  const r = await getCurrentReader(); if (!r) return fail('Accedi prima.');
+  const hash = await x.readerPasswordHash(r.id);
+  if (hash && !verifyPassword(password, hash)) return fail('Password errata.');
+  const x3 = await import('./repo-extra3'); await x3.deleteReaderData(r.id, r.email); await endSession('reader');
+  return ok('Account eliminato. I tuoi commenti restano anonimi.');
 }

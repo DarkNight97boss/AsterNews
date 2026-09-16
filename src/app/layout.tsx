@@ -37,6 +37,7 @@ export default async function RootLayout({ children }: LayoutProps<'/'>) {
     <html lang="it" data-theme={mode} data-site-theme={theme.presetId} data-card-style={theme.cardStyle} data-header={theme.headerStyle} data-skin={theme.skin} className={`${inter.variable} ${serif.variable} ${playfair.variable} ${oswald.variable} ${slab.variable}`}>
       <body>
         <style dangerouslySetInnerHTML={{ __html: themeCss(theme) }} />
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify([{ '@context': 'https://schema.org', '@type': 'NewsMediaOrganization', name: settings.siteName, url: siteUrl(), logo: { '@type': 'ImageObject', url: `${siteUrl()}/icon.png` }, sameAs: Object.values(settings.socials).filter(Boolean) }, { '@context': 'https://schema.org', '@type': 'WebSite', name: settings.siteName, url: siteUrl(), potentialAction: { '@type': 'SearchAction', target: { '@type': 'EntryPoint', urlTemplate: `${siteUrl()}/cerca?q={search_term_string}` }, 'query-input': 'required name=search_term_string' } }]) }} />
         {ads.enabled && ads.adsenseClient && <script async src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${ads.adsenseClient}`} crossOrigin="anonymous" />}
         {children}
         <Toaster />

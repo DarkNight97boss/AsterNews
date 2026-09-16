@@ -181,6 +181,15 @@ CREATE TABLE IF NOT EXISTS ads (id TEXT PRIMARY KEY, slot TEXT NOT NULL, name TE
 CREATE INDEX IF NOT EXISTS idx_ads_slot ON ads(slot, active);
 CREATE TABLE IF NOT EXISTS listings (id TEXT PRIMARY KEY, kind TEXT NOT NULL, title TEXT NOT NULL, body TEXT DEFAULT '', image TEXT DEFAULT '', category TEXT DEFAULT '', price TEXT DEFAULT '', contact_name TEXT DEFAULT '', contact_email TEXT DEFAULT '', contact_phone TEXT DEFAULT '', zone_id TEXT DEFAULT '', status TEXT NOT NULL DEFAULT 'pending', paid INTEGER DEFAULT 0, amount REAL DEFAULT 0, expires_at TEXT, reader_id TEXT DEFAULT '', created_at TEXT, published_at TEXT, extra TEXT DEFAULT '{}');
 CREATE INDEX IF NOT EXISTS idx_listings_kind ON listings(kind, status, published_at DESC);
+CREATE TABLE IF NOT EXISTS pages (id TEXT PRIMARY KEY, slug TEXT UNIQUE NOT NULL, title TEXT NOT NULL, content TEXT DEFAULT '', excerpt TEXT DEFAULT '', status TEXT NOT NULL DEFAULT 'draft', template TEXT DEFAULT 'standard', cover_image TEXT DEFAULT '', seo TEXT DEFAULT '{}', show_in_menu INTEGER DEFAULT 0, menu_order INTEGER DEFAULT 0, author_id TEXT DEFAULT '', created_at TEXT, updated_at TEXT);
+CREATE TABLE IF NOT EXISTS reader_bookmarks (reader_id TEXT NOT NULL, article_id TEXT NOT NULL, created_at TEXT, PRIMARY KEY (reader_id, article_id));
+CREATE TABLE IF NOT EXISTS comment_votes (comment_id TEXT NOT NULL, voter TEXT NOT NULL, value INTEGER DEFAULT 1, PRIMARY KEY (comment_id, voter));
+CREATE TABLE IF NOT EXISTS donations (id TEXT PRIMARY KEY, amount REAL NOT NULL, name TEXT DEFAULT '', email TEXT DEFAULT '', message TEXT DEFAULT '', status TEXT NOT NULL DEFAULT 'pending', reader_id TEXT DEFAULT '', created_at TEXT, paid_at TEXT);
+CREATE TABLE IF NOT EXISTS api_keys (id TEXT PRIMARY KEY, name TEXT NOT NULL, prefix TEXT NOT NULL, key_hash TEXT NOT NULL, scopes TEXT DEFAULT '["read"]', active INTEGER DEFAULT 1, calls INTEGER DEFAULT 0, last_used TEXT, created_by TEXT DEFAULT '', created_at TEXT);
+CREATE TABLE IF NOT EXISTS broken_links (id TEXT PRIMARY KEY, article_id TEXT NOT NULL, url TEXT NOT NULL, status INTEGER DEFAULT 0, error TEXT DEFAULT '', checked_at TEXT, fixed INTEGER DEFAULT 0);
+CREATE INDEX IF NOT EXISTS idx_broken_article ON broken_links(article_id);
+CREATE TABLE IF NOT EXISTS notifications (id TEXT PRIMARY KEY, user_id TEXT NOT NULL, kind TEXT DEFAULT 'info', text TEXT NOT NULL, url TEXT DEFAULT '', read INTEGER DEFAULT 0, created_at TEXT);
+CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(user_id, read, created_at DESC);
 CREATE TABLE IF NOT EXISTS import_jobs (id TEXT PRIMARY KEY, source TEXT NOT NULL, status TEXT NOT NULL, options TEXT DEFAULT '{}', file TEXT, total INTEGER DEFAULT 0, processed INTEGER DEFAULT 0, imported INTEGER DEFAULT 0, skipped INTEGER DEFAULT 0, errors TEXT DEFAULT '[]', message TEXT DEFAULT '', cursor_pos TEXT DEFAULT '', created_at TEXT, updated_at TEXT);
 `;
 
@@ -224,6 +233,13 @@ ALTER TABLE newsletter_sends ADD COLUMN IF NOT EXISTS clicks INTEGER DEFAULT 0;
 ALTER TABLE readers ADD COLUMN IF NOT EXISTS provider TEXT DEFAULT '';
 ALTER TABLE readers ADD COLUMN IF NOT EXISTS avatar TEXT DEFAULT '';
 ALTER TABLE articles ADD COLUMN IF NOT EXISTS social_text TEXT DEFAULT '';
+ALTER TABLE articles ADD COLUMN IF NOT EXISTS deleted_at TEXT;
+ALTER TABLE articles ADD COLUMN IF NOT EXISTS coauthor_ids TEXT DEFAULT '[]';
+ALTER TABLE articles ADD COLUMN IF NOT EXISTS byline TEXT DEFAULT '';
+CREATE INDEX IF NOT EXISTS idx_articles_deleted ON articles(deleted_at);
+ALTER TABLE comments ADD COLUMN IF NOT EXISTS votes INTEGER DEFAULT 0;
+ALTER TABLE comments ADD COLUMN IF NOT EXISTS staff INTEGER DEFAULT 0;
+ALTER TABLE readers ADD COLUMN IF NOT EXISTS prefs TEXT DEFAULT '{}';
 `;
 
 /** Vero solo dentro una funzione serverless (Vercel/Lambda), non quando VERCEL=1 arriva da un .env.local scaricato con `vercel env pull`. */

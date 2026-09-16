@@ -10,7 +10,7 @@ import { toast } from '@/components/ui/toaster';
 const STATUS: Record<ImportJob['status'], string> = { queued: 'In coda', running: 'In corso', done: 'Completata', failed: 'Fallita', cancelled: 'Annullata' };
 
 export function WpImporter({ categories, jobs: initialJobs, serverless }: { categories: Category[]; jobs: ImportJob[]; serverless: boolean }) {
-  const [source, setSource] = useState<'wxr' | 'rest'>(serverless ? 'rest' : 'wxr');
+  const [source, setSource] = useState<'wxr' | 'rest' | 'feed'>(serverless ? 'rest' : 'wxr');
   const [file, setFile] = useState<{ name: string; size: number } | null>(null); const [uploading, setUploading] = useState(0);
   const [url, setUrl] = useState(''); const [maxPosts, setMaxPosts] = useState(100000);
   const [optimize, setOptimize] = useState(true); const [statusMode, setStatusMode] = useState<'keep' | 'draft' | 'review'>('keep'); const [overwrite, setOverwrite] = useState(false); const [downloadMedia, setDownloadMedia] = useState(false);
@@ -46,6 +46,7 @@ export function WpImporter({ categories, jobs: initialJobs, serverless }: { cate
             <div className="filters" style={{ marginBottom: 16 }}>
               <button className={`btn btn-sm ${source === 'wxr' ? 'btn-dark' : 'btn-outline'}`} onClick={() => setSource('wxr')}>File di esportazione (WXR)</button>
               <button className={`btn btn-sm ${source === 'rest' ? 'btn-dark' : 'btn-outline'}`} onClick={() => setSource('rest')}>Dal sito online (REST API)</button>
+              <button className={`btn btn-sm ${source === 'feed' ? 'btn-dark' : 'btn-outline'}`} onClick={() => setSource('feed')}>Da un feed RSS / Atom</button>
             </div>
             {source === 'wxr' ? (
               <>
@@ -54,7 +55,7 @@ export function WpImporter({ categories, jobs: initialJobs, serverless }: { cate
               </>
             ) : (
               <>
-                <p className="help">Funziona con qualsiasi WordPress con API REST pubblica. Pagina per pagina, riprende da sola se si interrompe.</p>
+                <p className="help">{source === 'feed' ? 'Qualsiasi sito con feed RSS o Atom (Blogger, Medium, Substack, Joomla, un altro giornale). Vengono importati gli articoli presenti nel feed, di solito gli ultimi 10-50.' : 'Funziona con qualsiasi WordPress con API REST pubblica. Pagina per pagina, riprende da sola se si interrompe.'}</p>
                 <div className="form-row" style={{ marginTop: 12 }}><div className="field"><label>Indirizzo del sito</label><input className="input" value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://www.miosito.it" /></div><div className="field"><label>Massimo articoli</label><input className="input" type="number" min={1} value={maxPosts} onChange={(e) => setMaxPosts(Number(e.target.value))} /></div></div>
               </>
             )}
@@ -85,7 +86,7 @@ export function WpImporter({ categories, jobs: initialJobs, serverless }: { cate
             <div className="panel"><div className="panel-title">Importazioni</div>
               {jobs.map((j) => { const pct = j.total ? Math.min(100, Math.round((j.processed / j.total) * 100)) : 0; return (
                 <div key={j.id} className="job">
-                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}><b>{j.source === 'wxr' ? `File ${j.file}` : `REST ${String(j.options.url ?? '')}`}</b><span className={`badge ${j.status === 'done' ? 'badge-green' : j.status === 'running' ? 'badge-blue' : j.status === 'failed' ? 'badge-red' : 'badge-gray'}`}>{STATUS[j.status]}</span></div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}><b>{j.source === 'wxr' ? `File ${j.file}` : `${j.source === 'feed' ? 'Feed' : 'REST'} ${String(j.options.url ?? '')}`}</b><span className={`badge ${j.status === 'done' ? 'badge-green' : j.status === 'running' ? 'badge-blue' : j.status === 'failed' ? 'badge-red' : 'badge-gray'}`}>{STATUS[j.status]}</span></div>
                   <div className="progress"><div style={{ width: `${pct}%` }} /></div>
                   <div className="help">{j.processed}/{j.total || '?'} elaborati · {j.imported} importati · {j.skipped} saltati · {j.message}{j.errors.length > 0 && ` · ${j.errors.length} errori`}</div>
                   {(j.status === 'running' || j.status === 'queued') && <button className="btn btn-ghost btn-sm" onClick={() => start(async () => { await cancelImportJobAction(j.id); setActive(null); })}>Annulla</button>}
