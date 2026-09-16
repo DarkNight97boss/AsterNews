@@ -43,3 +43,9 @@ export async function aiFactCheckAction(content: string): Promise<R<{ claim: str
 export async function aiSocialAction(title: string, excerpt: string, url: string): Promise<R<{ facebook: string; x: string; telegram: string; hashtags: string[] }>> {
   return wrap(() => askJson(`Scrivi i testi per condividere questo articolo: "facebook" (2-3 righe coinvolgenti, con emoji sobrie), "x" (max 240 caratteri), "telegram" (titolo in grassetto markdown + una riga), "hashtags" (3-5 senza #). Non includere l'URL, verrà aggiunto.\nTitolo: ${title}\nSommario: ${excerpt}\nURL: ${url}\nJSON.`));
 }
+
+export async function transcribeAction(url: string, mode: 'testo' | 'verbale' | 'articolo'): Promise<R<string>> {
+  const me = await getCurrentUser(); if (!me) return { ok: false, message: 'Non autorizzato.' };
+  try { const { transcribeUrl, shapeTranscript } = await import('./transcribe'); const text = await transcribeUrl(url); if (!text.trim()) return { ok: false, message: 'Trascrizione vuota: il file non contiene parlato riconoscibile.' }; return { ok: true, data: await shapeTranscript(text, mode) }; }
+  catch (e) { return { ok: false, message: (e as Error).message }; }
+}

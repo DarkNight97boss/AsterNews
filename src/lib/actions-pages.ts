@@ -37,3 +37,24 @@ export async function saveMenusAction(m: MenusSettings): Promise<ActionResult> {
   revalidateTag('settings', 'max'); revalidatePath('/', 'layout');
   return { ok: true, message: 'Menu salvati.' };
 }
+
+// ---------------- Blocchi riutilizzabili ----------------
+export async function saveSnippetAction(s: import('./models').Snippet): Promise<ActionResult> {
+  const me = await requireUser(); if (!['admin', 'editor'].includes(me.role)) return { ok: false, message: 'Solo amministratori e caporedattori gestiscono i blocchi.' };
+  if (!s.name.trim()) return { ok: false, message: 'Dai un nome al blocco.' };
+  const id = s.id || uid('sn'); await x3.upsertSnippet({ id, name: s.name.trim().slice(0, 80), html: s.html, updatedAt: new Date().toISOString() });
+  revalidateTag('articles', 'max'); revalidatePath('/', 'layout'); revalidatePath('/admin/blocchi');
+  return { ok: true, message: 'Blocco salvato.', id };
+}
+export async function deleteSnippetAction(id: string): Promise<ActionResult> { await requirePermission('settings.manage'); await x3.deleteSnippet(id); revalidateTag('articles', 'max'); revalidatePath('/', 'layout'); revalidatePath('/admin/blocchi'); return { ok: true, message: 'Blocco eliminato.' }; }
+export async function listSnippetsAction(): Promise<{ id: string; name: string }[]> { await requireUser(); return (await x3.listSnippets()).map((s) => ({ id: s.id, name: s.name })); }
+
+// ---------------- Campi personalizzati per categoria ----------------
+export async function customFieldsAction(): Promise<Record<string, import('./models').CustomField[]>> { await requireUser(); return (await getSettings()).customFields ?? {}; }
+export async function saveCustomFieldsAction(categoryId: string, fields: import('./models').CustomField[]): Promise<ActionResult> {
+  await requirePermission('category.manage'); const s = await getSettings();
+  const clean = fields.filter((f) => f.key.trim() && f.label.trim()).slice(0, 20).map((f) => ({ key: slugify(f.key).replace(/-/g, '_').slice(0, 30), label: f.label.trim().slice(0, 40), type: f.type, ...(f.options ? { options: f.options } : {}) }));
+  await repo.saveSettingsRow({ ...s, customFields: { ...(s.customFields ?? {}), [categoryId]: clean } });
+  revalidateTag('settings', 'max'); revalidatePath('/admin/categorie');
+  return { ok: true, message: 'Campi salvati.' };
+}

@@ -188,6 +188,7 @@ CREATE TABLE IF NOT EXISTS donations (id TEXT PRIMARY KEY, amount REAL NOT NULL,
 CREATE TABLE IF NOT EXISTS api_keys (id TEXT PRIMARY KEY, name TEXT NOT NULL, prefix TEXT NOT NULL, key_hash TEXT NOT NULL, scopes TEXT DEFAULT '["read"]', active INTEGER DEFAULT 1, calls INTEGER DEFAULT 0, last_used TEXT, created_by TEXT DEFAULT '', created_at TEXT);
 CREATE TABLE IF NOT EXISTS broken_links (id TEXT PRIMARY KEY, article_id TEXT NOT NULL, url TEXT NOT NULL, status INTEGER DEFAULT 0, error TEXT DEFAULT '', checked_at TEXT, fixed INTEGER DEFAULT 0);
 CREATE INDEX IF NOT EXISTS idx_broken_article ON broken_links(article_id);
+CREATE TABLE IF NOT EXISTS snippets (id TEXT PRIMARY KEY, name TEXT NOT NULL, html TEXT DEFAULT '', updated_at TEXT);
 CREATE TABLE IF NOT EXISTS pagespeed_runs (id TEXT PRIMARY KEY, url TEXT NOT NULL, strategy TEXT DEFAULT 'mobile', performance INTEGER DEFAULT 0, accessibility INTEGER DEFAULT 0, best_practices INTEGER DEFAULT 0, seo INTEGER DEFAULT 0, lcp REAL DEFAULT 0, cls REAL DEFAULT 0, tbt REAL DEFAULT 0, fcp REAL DEFAULT 0, si REAL DEFAULT 0, opportunities TEXT DEFAULT '[]', created_at TEXT);
 CREATE INDEX IF NOT EXISTS idx_pagespeed_url ON pagespeed_runs(url, strategy, created_at DESC);
 CREATE TABLE IF NOT EXISTS notifications (id TEXT PRIMARY KEY, user_id TEXT NOT NULL, kind TEXT DEFAULT 'info', text TEXT NOT NULL, url TEXT DEFAULT '', read INTEGER DEFAULT 0, created_at TEXT);
@@ -238,6 +239,7 @@ ALTER TABLE articles ADD COLUMN IF NOT EXISTS social_text TEXT DEFAULT '';
 ALTER TABLE articles ADD COLUMN IF NOT EXISTS deleted_at TEXT;
 ALTER TABLE articles ADD COLUMN IF NOT EXISTS coauthor_ids TEXT DEFAULT '[]';
 ALTER TABLE articles ADD COLUMN IF NOT EXISTS byline TEXT DEFAULT '';
+ALTER TABLE articles ADD COLUMN IF NOT EXISTS extra TEXT DEFAULT '{}';
 CREATE INDEX IF NOT EXISTS idx_articles_deleted ON articles(deleted_at);
 ALTER TABLE comments ADD COLUMN IF NOT EXISTS votes INTEGER DEFAULT 0;
 ALTER TABLE comments ADD COLUMN IF NOT EXISTS staff INTEGER DEFAULT 0;

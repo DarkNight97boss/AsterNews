@@ -178,3 +178,8 @@
 .table.matrix { td, th { padding: 6px 8px; font-size: 13px; } input[type=checkbox] { width: 16px; height: 16px; } }
 .perf-metrics { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 13px; color: var(--gray-600); margin-bottom: 8px; b { color: var(--black); } }
 .perf-opps { summary { cursor: pointer; font-weight: 700; font-size: 13px; margin: 6px 0; } }
+.editor-tools { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; flex-wrap: wrap; }
+.editor-grid.focus-mode { grid-template-columns: minmax(0, 760px); justify-content: center; .editor-side { display: none; } }
+.template-picker { .template-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 10px; } .template-card { text-align: left; border: 1px solid var(--gray-200); background: #fff; border-radius: 8px; padding: 10px 12px; cursor: pointer; font-family: inherit; b { display: block; margin-bottom: 4px; } span { font-size: 12px; color: var(--gray-600); } &:hover { border-color: var(--blue); } } }
+.corr-item { font-size: 13px; padding: 6px 0; border-bottom: 1px solid var(--gray-100); display: flex; gap: 6px; align-items: center; }
+.block-editor .snippet-ref { background: #eef3fb; border: 1px dashed var(--blue); padding: 8px 12px; font-weight: 700; }

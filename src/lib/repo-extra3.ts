@@ -105,3 +105,10 @@ export async function insertPageSpeedRun(p: import('./models').PageSpeedRun): Pr
 export const listPageSpeedRuns = async (limit = 60): Promise<import('./models').PageSpeedRun[]> => (await all('SELECT * FROM pagespeed_runs ORDER BY created_at DESC LIMIT ?', [limit]) as Row[]).map(rowToPs);
 export const latestPageSpeedRun = async (url: string, strategy: string): Promise<import('./models').PageSpeedRun | null> => { const r = (await get('SELECT * FROM pagespeed_runs WHERE url = ? AND strategy = ? ORDER BY created_at DESC LIMIT 1', [url, strategy])) as Row | undefined; return r ? rowToPs(r) : null; };
 export async function prunePageSpeedRuns(keep = 400): Promise<void> { await run('DELETE FROM pagespeed_runs WHERE id NOT IN (SELECT id FROM pagespeed_runs ORDER BY created_at DESC LIMIT ?)', [keep]); }
+
+// ---------------- Blocchi riutilizzabili ----------------
+const rowToSnippet = (r: Row): import('./models').Snippet => ({ id: String(r.id), name: String(r.name), html: String(r.html ?? ''), updatedAt: String(r.updated_at ?? '') });
+export const listSnippets = async (): Promise<import('./models').Snippet[]> => (await all('SELECT * FROM snippets ORDER BY name') as Row[]).map(rowToSnippet);
+export const findSnippet = async (id: string): Promise<import('./models').Snippet | undefined> => { const r = (await get('SELECT * FROM snippets WHERE id = ?', [id])) as Row | undefined; return r ? rowToSnippet(r) : undefined; };
+export async function upsertSnippet(s: import('./models').Snippet): Promise<void> { await run('INSERT INTO snippets (id, name, html, updated_at) VALUES (?,?,?,?) ON CONFLICT (id) DO UPDATE SET name = excluded.name, html = excluded.html, updated_at = excluded.updated_at', [s.id, s.name, s.html, s.updatedAt]); }
+export async function deleteSnippet(id: string): Promise<void> { await run('DELETE FROM snippets WHERE id = ?', [id]); }

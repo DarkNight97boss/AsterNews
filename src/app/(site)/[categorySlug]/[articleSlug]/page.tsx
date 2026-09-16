@@ -12,6 +12,9 @@ import { getActiveTheme } from '@/lib/theme-server';
 import { ArticleFanpage } from '@/components/site/fanpage/article-fanpage';
 import { siteUrl } from '@/lib/site-url';
 import { ArticleBody } from '@/components/site/article-body';
+import { LiveFeed } from '@/components/site/live-feed';
+import { buildToc, wordCount } from '@/lib/content-render';
+import { listRevisions } from '@/lib/repo-extra';
 import { AdSlot } from '@/components/site/ad-slot';
 import { Paywall } from '@/components/site/paywall';
 import { Analytics } from '@/components/site/analytics';
@@ -57,12 +60,15 @@ export default async function ArticlePage({ params }: PageProps<'/[categorySlug]
   if (cat && cat.slug !== categorySlug) permanentRedirect(articleUrl(a));
   const [author, tags, rel, comments, videos, z, featuredAll, mostAll, settings] = await Promise.all([user(a.authorId), tagsByIds(a.tagIds), related(a, 6), approvedComments(a.id), listPublished({ format: 'video', excludeIds: [a.id] }, 1), zone(a.zoneId), getFeatured(5), getMostRead(7), getSettings()]);
   const liveUpdates = [...a.liveUpdates].sort((x, y) => y.time.localeCompare(x.time));
+  const fieldDefs = (settings.customFields?.[a.categoryId] ?? []).filter((f) => a.extra?.fields?.[f.key]);
+  const toc = wordCount(a.content) >= 900 ? buildToc(a.content) : [];
+  const history = a.extra?.showHistory ? (await listRevisions(a.id, 20)).filter((r) => r.data?.status === 'published') : [];
   const video = videos[0];
   const featured = featuredAll.filter((f) => f.id !== a.id).slice(0, 4);
   const mostWeek = mostAll.filter((m) => m.id !== a.id).slice(0, 6);
   const base0 = siteUrl();
   const jsonLd: Record<string, unknown> = {
-    '@context': 'https://schema.org', '@type': a.format === 'live' ? 'LiveBlogPosting' : 'NewsArticle', headline: a.title, description: a.excerpt, image: a.coverImage ? [a.coverImage] : undefined,
+    '@context': 'https://schema.org', '@type': a.format === 'live' ? 'LiveBlogPosting' : 'NewsArticle', ...(a.extra?.corrections?.length ? { correction: a.extra.corrections.map((c) => c.text).join(' | ') } : {}), headline: a.title, description: a.excerpt, image: a.coverImage ? [a.coverImage] : undefined,
     datePublished: a.publishedAt, dateModified: a.updatedAt, author: author ? [{ '@type': 'Person', name: author.name, url: `${base0}/autore/${author.id}` }] : undefined,
     publisher: { '@type': 'Organization', name: settings.siteName, logo: { '@type': 'ImageObject', url: `${base0}/icon.png` } }, articleSection: cat?.name, keywords: tags.map((t) => t.name).join(', '),
     mainEntityOfPage: `${base0}${articleUrlWith(a, cats)}`, isAccessibleForFree: !a.premium, ...(a.premium ? { hasPart: { '@type': 'WebPageElement', isAccessibleForFree: false, cssSelector: '.article-body' } } : {}),
@@ -139,14 +145,13 @@ export default async function ArticlePage({ params }: PageProps<'/[categorySlug]
           ) : a.coverImage ? (
             <figure className="article-cover"><div className="cover-frame"><SmartImage src={a.coverImage} alt={a.title} priority slot="cover" /></div>{a.coverCaption && <figcaption>{a.coverCaption}</figcaption>}</figure>
           ) : null}
-          {a.format === 'live' && liveUpdates.length > 0 && (
-            <section className="live-feed">
-              <div className="live-head"><span className="badge badge-live">Live</span> Aggiornamenti in tempo reale</div>
-              {liveUpdates.map((u) => <div key={u.id} className="live-item"><time>{shortTime(u.time)}</time><div><h4>{u.title}</h4><p>{u.body}</p></div></div>)}
-            </section>
-          )}
+          {a.format === 'live' && <LiveFeed articleId={a.id} initial={liveUpdates} active={a.liveActive} />}
+          {fieldDefs.length > 0 && <dl className="article-fields">{fieldDefs.map((f) => { const v = a.extra?.fields?.[f.key]; if (!v) return null; return <div key={f.key}><dt>{f.label}</dt><dd>{f.type === 'rating' ? <span className="stars" aria-label={`${v} su 5`}>{'★'.repeat(Number(v))}{'☆'.repeat(5 - Number(v))}</span> : f.type === 'url' ? <a href={v} target="_blank" rel="noopener">{v.replace(/^https?:\/\//, '')}</a> : v}</dd></div>; })}</dl>}
+          {toc.length >= 3 && <nav className="toc-box" aria-label="Indice"><b>In questo articolo</b><ol>{toc.map((t) => <li key={t.id}><a href={`#${t.id}`}>{t.text}</a></li>)}</ol></nav>}
           {a.format === 'gallery' && a.gallery.length > 0 && <Gallery images={a.gallery} />}
           {gated ? <Paywall articleId={a.id} premiumOnly={!!a.premium} price={paywall.monthlyPrice} free={paywall.freeArticles}><ArticleBody html={a.content} faq={a.faq} inlineAd={<AdSlot slot="article_inline" size="728×90" className="ad-inline" />} /></Paywall> : <ArticleBody html={a.content} faq={a.faq} inlineAd={<AdSlot slot="article_inline" size="728×90" className="ad-inline" />} />}
+          {(a.extra?.corrections?.length ?? 0) > 0 && <section className="corrections-box" aria-label="Correzioni"><b>Correzioni</b>{a.extra!.corrections!.map((c, i) => <p key={i}><time dateTime={c.date}>{new Date(c.date).toLocaleDateString('it-IT', { day: 'numeric', month: 'long', year: 'numeric' })}</time> · {c.text}</p>)}</section>}
+          {history.length > 0 && <details className="update-history"><summary>Cronologia degli aggiornamenti ({history.length})</summary><ul>{history.map((h) => <li key={h.id}><time dateTime={h.createdAt}>{new Date(h.createdAt).toLocaleString('it-IT', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</time>{h.note ? ` · ${h.note}` : ''}</li>)}</ul></details>}
           <AdSlot slot="article_bottom" size="728×90" className="ad-inline" />
           {settings.googleNewsUrl && <p className="gnews" style={{ fontFamily: 'var(--font-serif)', textAlign: 'center', marginTop: 24 }}>Scegli <a href={settings.googleNewsUrl} target="_blank" rel="noopener" style={{ color: 'var(--red)', textDecoration: 'underline' }}>{settings.siteName}</a> come fonte preferita su Google News</p>}
           <div className="article-foot"><span className="copy">© Riproduzione riservata</span><ShareBar title={a.title} withMail /></div>

@@ -96,12 +96,17 @@ export interface Article {
   deletedAt?: string | null;
   coauthorIds?: string[];
   byline?: string;
+  extra?: ArticleExtra;
   publishedAt: string | null;
   scheduledAt: string | null;
   createdAt: string;
   updatedAt: string;
 }
 
+/** Dati aggiuntivi dell'articolo (una colonna JSON, così le funzioni nuove non richiedono nuove colonne). */
+export interface ArticleExtra { fields?: Record<string, string>; corrections?: { date: string; text: string }[]; showHistory?: boolean; template?: string; titleB?: string; abStats?: { a: number; b: number; ca: number; cb: number; winner?: 'a' | 'b' }; audioUrl?: string; audioDuration?: number; lang?: string; translationOf?: string; translations?: Record<string, string>; stage?: string; deskId?: string; slots?: { homeFrom?: string; homeTo?: string; socialAt?: string; newsletterAt?: string }; wordsTarget?: number; podcast?: { chapters?: { time: string; title: string }[]; episode?: number } }
+export interface CustomField { key: string; label: string; type: 'text' | 'number' | 'date' | 'url' | 'rating' | 'select'; options?: string }
+export interface Snippet { id: string; name: string; html: string; updatedAt: string }
 export interface Comment {
   id: string;
   articleId: string;
@@ -200,7 +205,7 @@ export interface SocialSettings { facebookPageId: string; facebookToken: string;
 export interface AuthSettings { googleClientId: string; googleClientSecret: string; facebookAppId: string; facebookAppSecret: string; magicLink: boolean }
 export interface AdsSettings { enabled: boolean; adsenseClient: string; autoAds: boolean; label: string; houseAdsOnly: boolean }
 export interface ListingsSettings { enabled: boolean; priceAnnuncio: number; priceNecrologio: number; days: number; moderation: boolean; freeForReaders: boolean }
-export interface AiSettings { enabled: boolean; apiKey: string; model: string; style: string; autoAltText: boolean; autoSummary: boolean }
+export interface AiSettings { enabled: boolean; apiKey: string; model: string; style: string; autoAltText: boolean; autoSummary: boolean; transcribeProvider?: 'none' | 'openai' | 'deepgram'; transcribeKey?: string; moderation?: boolean; ttsProvider?: 'none' | 'openai' | 'elevenlabs'; ttsKey?: string; ttsVoice?: string; embeddingsProvider?: 'none' | 'openai' | 'voyage'; embeddingsKey?: string }
 export interface UpdatesSettings { repo: string; channel: 'stable' | 'beta'; deployHookUrl: string }
 export interface ExtensionsSettings { enabled: string[]; config: Record<string, Record<string, string>> }
 
@@ -249,6 +254,7 @@ export interface SiteSettings {
   roles?: RolesSettings;
   onboarding?: OnboardingSettings;
   performance?: PerformanceSettings;
+  customFields?: Record<string, CustomField[]>;
 }
 
 export const DEFAULT_NEWSLETTER: NewsletterSettings = { provider: 'none', apiKey: '', fromEmail: '', fromName: '', digestEnabled: false, digestHour: 7, doubleOptIn: true };

@@ -15,6 +15,10 @@ import { SeoAssistant } from './seo-assistant';
 import { EditorExtras } from './editor-extras';
 import { BlockEditor } from './block-editor';
 import { AiAssistant } from './ai-assistant';
+import { TemplatePicker } from './template-picker';
+import { TranscribePanel } from './transcribe-panel';
+import { customFieldsAction } from '@/lib/actions-pages';
+import type { CustomField } from '@/lib/models';
 import { checkAccessibility } from '@/lib/a11y-check';
 import { useEffect } from 'react';
 import type { SeoContext } from '@/lib/seo-engine';
@@ -38,6 +42,10 @@ export function ArticleEditor({ initial, isNew, isPublic, categories, zones, tag
   const [scheduledAt, setScheduledAt] = useState(toLocalInput(initial.scheduledAt));
   const [slugTouched, setSlugTouched] = useState(!isNew);
   const [editorMode, setEditorMode] = useState<'blocks' | 'classic'>('classic');
+  const [focus, setFocus] = useState(false); const [fieldDefs, setFieldDefs] = useState<Record<string, CustomField[]>>({}); const [corrText, setCorrText] = useState('');
+  useEffect(() => { customFieldsAction().then(setFieldDefs).catch(() => {}); }, []);
+  const extra = a.extra ?? {}; const setExtra = (patch: Partial<NonNullable<Article['extra']>>) => set('extra', { ...extra, ...patch });
+  const catFields = fieldDefs[a.categoryId] ?? [];
   useEffect(() => { try { const m = localStorage.getItem('editor_mode'); if (m === 'blocks' || m === 'classic') setEditorMode(m); } catch { /* ignore */ } }, []);
   const switchMode = (m: 'blocks' | 'classic') => { setEditorMode(m); try { localStorage.setItem('editor_mode', m); } catch { /* ignore */ } };
   const [pending, start] = useTransition();
@@ -81,7 +89,9 @@ export function ArticleEditor({ initial, isNew, isPublic, categories, zones, tag
         </div>
       </div>
 
-      <div className="editor-grid">
+      <div className="editor-tools"><button type="button" className={`btn btn-sm ${focus ? 'btn-dark' : 'btn-ghost'}`} onClick={() => setFocus(!focus)} title="Schermo pulito, solo testo">{focus ? '✕ Esci da Focus' : '◎ Modalità Focus'}</button><span className="help">{words} parole{extra.wordsTarget ? ` / obiettivo ${extra.wordsTarget}` : ''} · {Math.max(1, Math.round(words / 200))} min di lettura</span>{focus && <input className="input" style={{ width: 120 }} type="number" placeholder="Obiettivo parole" value={extra.wordsTarget ?? ''} onChange={(e) => setExtra({ wordsTarget: Number(e.target.value) || undefined })} />}</div>
+      {isNew && !a.content && !a.title && <TemplatePicker onPick={(t) => { setA((x) => ({ ...x, kicker: t.kicker, format: t.format, content: t.content, extra: { ...(x.extra ?? {}), template: t.id, fields: { ...(x.extra?.fields ?? {}), ...(t.fields ?? {}) } } })); setDirty(true); setEditorMode('blocks'); }} />}
+      <div className={`editor-grid ${focus ? 'focus-mode' : ''}`}>
         <div>
           <div className="panel">
             <input className="input" style={{ textTransform: 'uppercase', fontWeight: 800, fontSize: 13, letterSpacing: '.08em', color: 'var(--red)', border: 0, paddingLeft: 0 }} placeholder="OCCHIELLO (es. MALTEMPO)" value={a.kicker} onChange={(e) => set('kicker', e.target.value)} />
@@ -102,6 +112,14 @@ export function ArticleEditor({ initial, isNew, isPublic, categories, zones, tag
 
           <EditorExtras article={a} isNew={isNew} users={users} canAssign={can('article.assign')} canPublish={can('article.publish')} meId={meId} dirty={dirty} onRestoreDraft={(d) => { setA({ ...d, id: a.id }); setDirty(true); }} onPatch={(p) => setA((x) => ({ ...x, ...p }))} />
 
+          {catFields.length > 0 && <div className="panel"><div className="panel-title">Scheda ({categories.find((c) => c.id === a.categoryId)?.name})</div>{catFields.map((f) => <div className="field" key={f.key}><label>{f.label}</label>{f.type === 'rating' ? <select className="select" value={extra.fields?.[f.key] ?? ''} onChange={(e) => setExtra({ fields: { ...(extra.fields ?? {}), [f.key]: e.target.value } })}><option value="">—</option>{[1, 2, 3, 4, 5].map((n) => <option key={n} value={n}>{'★'.repeat(n)}</option>)}</select> : f.type === 'select' ? <select className="select" value={extra.fields?.[f.key] ?? ''} onChange={(e) => setExtra({ fields: { ...(extra.fields ?? {}), [f.key]: e.target.value } })}><option value="">—</option>{(f.options ?? '').split(',').map((o) => o.trim()).filter(Boolean).map((o) => <option key={o} value={o}>{o}</option>)}</select> : <input className="input" type={f.type === 'number' ? 'number' : f.type === 'date' ? 'date' : f.type === 'url' ? 'url' : 'text'} value={extra.fields?.[f.key] ?? ''} onChange={(e) => setExtra({ fields: { ...(extra.fields ?? {}), [f.key]: e.target.value } })} />}</div>)}</div>}
+          <div className="panel"><div className="panel-title">Correzioni e cronologia</div>
+            <label className="switch" style={{ marginBottom: 8 }}><input type="checkbox" checked={!!extra.showHistory} onChange={(e) => setExtra({ showHistory: e.target.checked })} /> Mostra ai lettori la cronologia degli aggiornamenti</label>
+            {(extra.corrections ?? []).map((c, i) => <div key={i} className="corr-item"><span className="help">{formatDate(c.date)}</span> {c.text} <button type="button" className="icon-btn danger" onClick={() => setExtra({ corrections: (extra.corrections ?? []).filter((_, j) => j !== i) })}>✕</button></div>)}
+            <div style={{ display: 'flex', gap: 6 }}><input className="input" placeholder="Testo della correzione (Corrige)" value={corrText} onChange={(e) => setCorrText(e.target.value)} /><button type="button" className="btn btn-outline btn-sm" disabled={!corrText.trim()} onClick={() => { setExtra({ corrections: [...(extra.corrections ?? []), { date: new Date().toISOString(), text: corrText.trim() }] }); setCorrText(''); }}>Aggiungi</button></div>
+            <p className="help" style={{ marginTop: 6 }}>Le correzioni compaiono datate in fondo all&apos;articolo e nei dati strutturati.</p>
+          </div>
+          <TranscribePanel onInsert={(html) => set('content', a.content + '\n' + html)} />
           <div className="panel"><div className="panel-title">Accessibilità</div>{(() => { const issues = checkAccessibility(a.content, a.title); return issues.length ? <ul className="ai-list">{issues.map((i, k) => <li key={k}><span className={`badge ${i.level === 'error' ? 'badge-red' : 'badge-gray'}`}>{i.level === 'error' ? 'da correggere' : 'consiglio'}</span> {i.text}</li>)}</ul> : <p className="help">Nessun problema di accessibilità rilevato nel testo.</p>; })()}</div>
 
           <div className="panel"><div className="panel-title">Domande e risposte (FAQ) <button className="btn btn-outline btn-sm" onClick={() => set('faq', [...(a.faq ?? []), { q: '', a: '' }])}>+ Aggiungi</button></div>
