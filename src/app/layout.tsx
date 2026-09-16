@@ -10,7 +10,7 @@ import { siteUrl } from '@/lib/site-url';
 import { DEFAULT_ADS } from '@/lib/models';
 
 const inter = Inter({ subsets: ['latin'], weight: ['400', '700'], variable: '--font-inter', display: 'swap' });
-const serif = Source_Serif_4({ subsets: ['latin'], weight: ['400', '700'], variable: '--font-serif-src', display: 'swap', preload: false });
+const serif = Source_Serif_4({ subsets: ['latin'], weight: ['400', '700'], variable: '--font-serif-src', display: 'swap' });
 const playfair = Playfair_Display({ subsets: ['latin'], weight: ['700', '900'], variable: '--font-playfair', display: 'swap', preload: false });
 const oswald = Oswald({ subsets: ['latin'], weight: ['500', '700'], variable: '--font-oswald', display: 'swap', preload: false });
 const slab = Roboto_Slab({ subsets: ['latin'], weight: ['700', '900'], variable: '--font-slab', display: 'swap', preload: false });
