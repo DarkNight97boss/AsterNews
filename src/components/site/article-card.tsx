@@ -31,7 +31,7 @@ export function ArticleCardView({ article: a, cat, author, variant = 'md', index
   if (variant === 'opinion') {
     return (
       <article className={cls}>
-        {author && <div className="op-head"><img src={author.avatar} alt={author.name} /><div><Link className="op-name" href={`/autore/${author.id}`}>{author.name}</Link><div className="op-role">{ROLE_LABELS[author.role]}</div></div></div>}
+        {author && <div className="op-head"><img src={author.avatar} alt={author.name} loading="lazy" decoding="async" width={48} height={48} /><div><Link className="op-name" href={`/autore/${author.id}`}>{author.name}</Link><div className="op-role">{ROLE_LABELS[author.role]}</div></div></div>}
         <h3 className="card-title"><Link href={link}>{a.title}</Link></h3>
         {showExcerpt && <p className="card-excerpt">{a.excerpt}</p>}
       </article>
@@ -40,7 +40,7 @@ export function ArticleCardView({ article: a, cat, author, variant = 'md', index
   if (variant === 'overlay' || variant === 'overlay-sm') {
     return (
       <article className={`card card-overlay ${variant === 'overlay-sm' ? 'card-overlay-sm' : ''}`}>
-        <Link className="card-img" href={link} aria-label={a.title}><SmartImage src={a.coverImage} alt={a.title} priority={priority} sizes={variant === 'overlay' ? '(max-width: 768px) 100vw, 800px' : '(max-width: 768px) 100vw, 400px'} />{a.format === 'video' && <span className="card-format">▶</span>}</Link>
+        <Link className="card-img" href={link} aria-label={a.title}><SmartImage src={a.coverImage} alt={a.title} priority={priority} sizes={variant === 'overlay' ? '(max-width: 768px) 100vw, 800px' : '(max-width: 520px) 100vw, (max-width: 768px) 50vw, 400px'} />{a.format === 'video' && <span className="card-format">▶</span>}</Link>
         <div className="card-body"><KickerView article={a} cat={cat} /><h3 className="card-title"><Link href={link}>{a.title}</Link></h3>{showExcerpt && variant === 'overlay' && <p className="card-excerpt">{a.excerpt}</p>}{showMeta && <div className="meta"><span>{relativeDate(a.publishedAt)}</span></div>}</div>
       </article>
     );
@@ -49,7 +49,7 @@ export function ArticleCardView({ article: a, cat, author, variant = 'md', index
     <article className={cls}>
       {showImage && variant !== 'compact' && (
         <Link className="card-img" href={link} aria-label={a.title}>
-          <SmartImage src={a.coverImage} alt={a.title} priority={priority} sizes={variant === 'horizontal-sm' ? '130px' : '(max-width: 768px) 100vw, 600px'} />
+          <SmartImage src={a.coverImage} alt={a.title} priority={priority} sizes={variant === 'horizontal-sm' ? '130px' : variant === 'horizontal' ? '(max-width: 520px) 100vw, 280px' : '(max-width: 520px) 100vw, (max-width: 768px) 50vw, 600px'} />
           {a.format === 'video' && <span className="card-format">▶</span>}{a.format === 'gallery' && <span className="card-format">▦</span>}
         </Link>
       )}

@@ -130,7 +130,7 @@ export function SiteHeader({ logoUrl = '', customMenu, extraLinks = [], categori
             {opinions.length > 0 && (
               <div className="opinion-strip">
                 {opinions.slice(0, 2).map((o) => (
-                  <div key={o.url} className="opinion-box"><div><h4><Link href={o.url}>{o.title}</Link></h4><Link className="op-author" href={o.url}>{o.author}</Link></div><img src={o.avatar} alt={o.author} /></div>
+                  <div key={o.url} className="opinion-box"><div><h4><Link href={o.url}>{o.title}</Link></h4><Link className="op-author" href={o.url}>{o.author}</Link></div><img loading="lazy" decoding="async" src={o.avatar} alt={o.author} /></div>
                 ))}
               </div>
             )}

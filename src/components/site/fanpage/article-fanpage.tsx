@@ -22,7 +22,7 @@ export async function ArticleFanpage({ a, cat, author, tags, rel, comments, zone
         <div className="fp-crumbs">{cat && <Link href={`/${cat.slug}`}>{cat.name}</Link>}{zone && <> › <Link href={`/zone/${zone.slug}`}>{zone.name}</Link></>}{a.kicker && <> › <span>{a.kicker}</span></>}</div>
         <h1>{a.title}</h1>
         <div className="fp-date">{formatDate(a.publishedAt)}{a.updatedAt > (a.publishedAt || '') && <> · aggiornato {relativeDate(a.updatedAt)}</>}</div>
-        <div className="fp-author-row">{author && <><img src={author.avatar} alt={author.name} /><span>A cura di <b><Link href={`/autore/${author.id}`}>{author.name}</Link></b></span></>}<div className="fp-share"><ShareBar title={a.title} withMail /></div></div>
+        <div className="fp-author-row">{author && <><img src={author.avatar} alt={author.name} loading="lazy" decoding="async" width={48} height={48} /><span>A cura di <b><Link href={`/autore/${author.id}`}>{author.name}</Link></b></span></>}<div className="fp-share"><ShareBar title={a.title} withMail /></div></div>
         {a.format === 'video' && a.videoUrl ? <iframe className="video-embed" src={a.videoUrl} allowFullScreen loading="lazy" title="Video" /> : a.coverImage ? <figure className="article-cover"><div className="cover-frame"><SmartImage src={a.coverImage} alt={a.title} priority sizes="(max-width: 768px) 100vw, 800px" /></div>{a.coverCaption && <figcaption>{a.coverCaption}</figcaption>}</figure> : null}
         <p className="fp-lead">{a.subtitle}</p>
         {a.format === 'live' && liveUpdates.length > 0 && <section className="live-feed"><div className="live-head"><span className="badge badge-live">Live</span> Aggiornamenti in tempo reale</div>{liveUpdates.map((u) => <div key={u.id} className="live-item"><time>{shortTime(u.time)}</time><div><h4>{u.title}</h4><p>{u.body}</p></div></div>)}</section>}
@@ -32,7 +32,7 @@ export async function ArticleFanpage({ a, cat, author, tags, rel, comments, zone
         {tags.length > 0 && <div className="article-tags">{tags.map((t) => <Link key={t.id} href={`/tag/${t.slug}`}>#{t.name}</Link>)}</div>}
         {googleNewsUrl && <p className="fp-gnews">Scegli <a href={googleNewsUrl} target="_blank" rel="noopener">{siteName}</a> come fonte preferita su Google News</p>}
         <div className="fp-foot"><span>© Riproduzione riservata</span><ShareBar title={a.title} withMail /></div>
-        {author && <div className="author-box"><img src={author.avatar} alt={author.name} /><div><div className="role">{ROLE_LABELS[author.role]}</div><h3><Link href={`/autore/${author.id}`}>{author.name}</Link></h3><p>{author.bio}</p></div></div>}
+        {author && <div className="author-box"><img src={author.avatar} alt={author.name} loading="lazy" decoding="async" width={48} height={48} /><div><div className="role">{ROLE_LABELS[author.role]}</div><h3><Link href={`/autore/${author.id}`}>{author.name}</Link></h3><p>{author.bio}</p></div></div>}
         {a.allowComments && <section className="comments"><h3>Commenti ({comments.length})</h3>{comments.length === 0 && <p style={{ color: 'var(--muted)' }}>Nessun commento. Sii il primo a commentare.</p>}{comments.map((c) => <div key={c.id} className="comment"><div className="c-head"><b>{c.authorName}</b><span>{relativeDate(c.createdAt)}</span></div><p>{c.body}</p></div>)}<CommentForm articleId={a.id} moderated={moderated} /></section>}
       </div>
       <aside className="fp-article-side">
