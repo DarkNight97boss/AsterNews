@@ -124,3 +124,6 @@ export function suggestAlt(filename: string, context = ''): string {
   if (fromName.length > 6 && /[a-zà-ú]{3,}/i.test(fromName)) return fromName.charAt(0).toUpperCase() + fromName.slice(1);
   return context.slice(0, 120);
 }
+
+/** Salva un file qualsiasi (audio, PDF…) nello storage configurato e restituisce l'URL pubblico. */
+export async function uploadRaw(buf: Buffer, key: string, mime: string): Promise<string> { const provider = await resolveProvider(); return putObject(provider, key, buf, mime); }

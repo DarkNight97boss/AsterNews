@@ -28,6 +28,7 @@ export async function startDonationAction(input: { amount: number; name: string;
   return { ok: true, url: data.url };
 }
 export async function completeDonation(id: string): Promise<void> {
+  import('./webhooks').then(async (w) => { const x3 = await import('./repo-extra3'); const d = (await x3.listDonations(50)).find((y) => y.id === id); if (d) w.dispatchWebhook('donation.paid', { id, amount: d.amount, name: d.name }); }).catch(() => {});
   const d = await x3.markDonationPaid(id); if (!d || !d.email || !(await mailConfigured())) return;
   const s = await getSettings(); const cfg = { ...DEFAULT_DONATIONS, ...(s.donations ?? {}) };
   sendMail({ to: d.email, subject: `Grazie per il tuo sostegno · ${s.siteName}`, html: mailLayout(s.siteName, 'Grazie!', `<p>${esc(cfg.thanks)}</p><p>Contributo ricevuto: <b>${d.amount.toFixed(2).replace('.', ',')} €</b>.</p>`) }).catch(() => {});

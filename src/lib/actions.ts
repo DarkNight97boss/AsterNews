@@ -72,8 +72,10 @@ export async function saveArticleAction(input: Article, status: ArticleStatus): 
   await x.deleteAutosave(a.id); await x.releaseLock(a.id, u.id);
   await log(u.id, a.status === 'published' ? 'ha pubblicato' : 'ha salvato', a.title, a.id);
   if (a.status === 'review' && existing?.status !== 'review') { const x3 = await import('./repo-extra-notify'); await x3.notifyPublishers(u, `${u.name} ha inviato in revisione «${a.title}»`, `/admin/articoli/${a.id}`); }
+  { const { dispatchWebhook } = await import('./webhooks'); const cats = await getCategories(); const url = `${siteUrl()}/${cats.find((c) => c.id === a.categoryId)?.slug ?? 'notizie'}/${a.slug}`; if (a.status === 'published') dispatchWebhook(existing?.status === 'published' ? 'article.updated' : 'article.published', { id: a.id, title: a.title, url, excerpt: a.excerpt, image: a.coverImage, category: cats.find((c) => c.id === a.categoryId)?.name ?? '', author: u.name }).catch(() => {}); }
   if (a.status === 'published' && existing?.status !== 'published') {
     (await import('./extensions')).runAfterPublish(a, { user: u, isNew: !existing, wasPublished: false }).catch(() => {});
+    { const ai = (await getSettings()).ai; if (ai?.ttsAuto && ai.ttsProvider && ai.ttsProvider !== 'none' && !a.extra?.audioUrl) (async () => { const { audioForArticle } = await import('./tts'); const r = await audioForArticle(a); const cur = await repo.findArticle(a.id); await repo.patchArticle(a.id, { extra: JSON.stringify({ ...(cur?.extra ?? {}), audioUrl: r.url, audioDuration: r.duration }) }); })().catch((e) => console.error('[tts]', (e as Error).message)); }
     const auto = await getSettings().then((s) => s.social?.autoNetworks ?? []); const soc = [...new Set([...auto, ...(((a as Article & { _ruleSocial?: string[] })._ruleSocial ?? []) as typeof auto)])];
     if (soc.length) { const { enqueue, processQueue, configuredNetworks, socialSettings } = await import('./social'); const cfg = await socialSettings(); const nets = soc.filter((n) => configuredNetworks(cfg).includes(n)); const when = a.extra?.slots?.socialAt && a.extra.slots.socialAt > now ? a.extra.slots.socialAt : null; if (nets.length) { await enqueue(a, nets, u.id, when); if (!when) processQueue(nets.length).catch(() => {}); } }
   }
@@ -230,7 +232,7 @@ export async function exportJsonAction(): Promise<string> {
   const [categories, tags, users, zones, settings, articles] = await Promise.all([repo.listCategories(), repo.listTags(100000), repo.listUsers(), repo.listZones(), getSettings(), repo.listArticles({}, 'updated', 1000)]);
   return JSON.stringify({ exportedAt: new Date().toISOString(), note: 'Esportazione parziale: ultimi 1000 articoli. Per l\'intero archivio copia il file SQLite.', categories, tags, users, zones, settings, articles }, null, 1);
 }
-export async function subscribeAction(email: string): Promise<ActionResult> { const { subscribe } = await import('./newsletter'); const r = await subscribe(email, 'sito'); return r.ok ? ok(r.message) : fail(r.message); }
+export async function subscribeAction(email: string): Promise<ActionResult> { import('./webhooks').then((w) => w.dispatchWebhook('subscriber.created', { email })).catch(() => {}); const { subscribe } = await import('./newsletter'); const r = await subscribe(email, 'sito'); return r.ok ? ok(r.message) : fail(r.message); }
 export async function removeSubscriberAction(id: string): Promise<ActionResult> { await requirePermission('comment.moderate'); await repo.deleteSubscriberRow(id); refresh(); return ok('Iscritto rimosso.'); }
 
 // ---------------- Eventi ----------------

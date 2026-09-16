@@ -20,7 +20,7 @@ const fail = (message: string): ActionResult => ({ ok: false, message });
 const EMAIL = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 
 // ---------------- Newsletter (doppio opt-in) ----------------
-export async function subscribeAction(email: string): Promise<ActionResult> { const r = await newsletterSubscribe(email, 'sito'); return r.ok ? ok(r.message) : fail(r.message); }
+export async function subscribeAction(email: string): Promise<ActionResult> { import('./webhooks').then((w) => w.dispatchWebhook('subscriber.created', { email })).catch(() => {}); const r = await newsletterSubscribe(email, 'sito'); return r.ok ? ok(r.message) : fail(r.message); }
 
 // ---------------- Account lettore ----------------
 export async function registerReaderAction(input: { name: string; email: string; password: string; newsletter: boolean }): Promise<ActionResult> {
@@ -30,7 +30,7 @@ export async function registerReaderAction(input: { name: string; email: string;
   if (await x.findReaderByEmail(email)) return fail('Esiste già un account con questa email: accedi o recupera la password.');
   const mail = await mailConfigured();
   const r: Reader = { id: uid('rd'), email, name: input.name.trim().slice(0, 80), verified: !mail, premium: false, premiumUntil: null, stripeCustomer: '', banned: false, createdAt: new Date().toISOString(), lastLogin: null };
-  await x.insertReader(r, hashPassword(input.password));
+  await x.insertReader(r, hashPassword(input.password)); import('./webhooks').then((w) => w.dispatchWebhook('reader.registered', { email: input.email, name: input.name })).catch(() => {});
   if (input.newsletter) await newsletterSubscribe(email, 'account');
   if (mail) {
     const token = randomToken(24); await x.insertToken(token, 'reader-verify', r.id, 48 * 3600_000);
@@ -92,6 +92,7 @@ export async function addCommentAction(input: { articleId: string; authorName: s
   if (!staffUser && status !== 'spam') { const { moderateComment } = await import('./moderation'); const m = await moderateComment(body, a.title + '. ' + a.excerpt); if (m) { priority = m.score; aiNote = m.note; if (m.verdict === 'spam') status = 'spam'; else if (m.verdict === 'review' && status === 'approved') status = 'pending'; } }
   const c: Comment = { id: uid('cm'), articleId: a.id, authorName: authorName.slice(0, 60), email, body, status, createdAt: new Date().toISOString(), readerId: reader?.id ?? '', parentId: input.parentId ?? '', flags: 0, votes: 0, staff: !!staffUser, priority, aiNote };
   await repo.insertComment(c);
+  import('./webhooks').then((w) => w.dispatchWebhook('comment.created', { id: c.id, articleId: a.id, articleTitle: a.title, author: c.authorName, body: c.body, status: c.status })).catch(() => {});
   (revalidateTag('articles', 'max'), revalidatePath('/', 'layout'));
   if (status === 'spam') return ok('Il commento è stato inviato alla moderazione.');
   return ok(status === 'pending' ? 'Grazie! Il commento sarà pubblicato dopo la moderazione.' : 'Commento pubblicato.');

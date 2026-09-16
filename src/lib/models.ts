@@ -111,6 +111,7 @@ export interface Desk { id: string; name: string; categoryIds: string[]; userIds
 export interface WorkflowRule { id: string; name: string; enabled: boolean; if: { categoryId?: string; format?: ArticleFormat; tagId?: string; zoneId?: string; hasVideo?: boolean; titleContains?: string }; then: { featured?: boolean; breaking?: boolean; premium?: boolean; tagId?: string; kicker?: string; social?: string[] } }
 export interface WorkflowSettings { desks: Desk[]; steps: string[]; rules: WorkflowRule[] }
 export const DEFAULT_WORKFLOW: WorkflowSettings = { desks: [], steps: [], rules: [] };
+export interface WebhookConfig { id: string; url: string; secret: string; events: string[]; enabled: boolean }
 export interface Contact { id: string; name: string; role: string; org: string; phone: string; email: string; notes: string; tags: string; createdBy: string; updatedAt: string }
 export interface Comment {
   id: string;
@@ -218,7 +219,7 @@ export interface SocialSettings { facebookPageId: string; facebookToken: string;
 export interface AuthSettings { googleClientId: string; googleClientSecret: string; facebookAppId: string; facebookAppSecret: string; magicLink: boolean }
 export interface AdsSettings { enabled: boolean; adsenseClient: string; autoAds: boolean; label: string; houseAdsOnly: boolean }
 export interface ListingsSettings { enabled: boolean; priceAnnuncio: number; priceNecrologio: number; days: number; moderation: boolean; freeForReaders: boolean }
-export interface AiSettings { enabled: boolean; apiKey: string; model: string; style: string; autoAltText: boolean; autoSummary: boolean; transcribeProvider?: 'none' | 'openai' | 'deepgram'; transcribeKey?: string; moderation?: boolean; ttsProvider?: 'none' | 'openai' | 'elevenlabs'; ttsKey?: string; ttsVoice?: string; embeddingsProvider?: 'none' | 'openai' | 'voyage'; embeddingsKey?: string }
+export interface AiSettings { enabled: boolean; apiKey: string; model: string; style: string; autoAltText: boolean; autoSummary: boolean; transcribeProvider?: 'none' | 'openai' | 'deepgram'; transcribeKey?: string; moderation?: boolean; ttsProvider?: 'none' | 'openai' | 'elevenlabs'; ttsKey?: string; ttsVoice?: string; ttsAuto?: boolean; embeddingsProvider?: 'none' | 'openai' | 'voyage'; embeddingsKey?: string }
 export interface UpdatesSettings { repo: string; channel: 'stable' | 'beta'; deployHookUrl: string }
 export interface ExtensionsSettings { enabled: string[]; config: Record<string, Record<string, string>> }
 
@@ -270,6 +271,7 @@ export interface SiteSettings {
   customFields?: Record<string, CustomField[]>;
   workflow?: WorkflowSettings;
   video?: VideoSettings;
+  webhooks?: WebhookConfig[];
 }
 
 export const DEFAULT_NEWSLETTER: NewsletterSettings = { provider: 'none', apiKey: '', fromEmail: '', fromName: '', digestEnabled: false, digestHour: 7, doubleOptIn: true };

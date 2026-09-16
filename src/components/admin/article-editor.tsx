@@ -18,6 +18,7 @@ import { AiAssistant } from './ai-assistant';
 import { TemplatePicker } from './template-picker';
 import { TranscribePanel } from './transcribe-panel';
 import { SeoIntel } from './seo-intel';
+import { generateAudioAction, setPodcastMetaAction } from '@/lib/actions-channels';
 import { customFieldsAction } from '@/lib/actions-pages';
 import { advanceStageAction } from '@/lib/actions-workflow';
 import { workflowInfoAction } from '@/lib/actions-workflow';
@@ -129,6 +130,12 @@ export function ArticleEditor({ initial, isNew, isPublic, categories, zones, tag
             {!isNew && <div style={{ display: 'flex', gap: 6, marginTop: 8 }}><a className="btn btn-outline btn-sm" href={`/api/export/article/${a.id}?format=print`} target="_blank" rel="noreferrer">🖨 Stampa / PDF</a><a className="btn btn-outline btn-sm" href={`/api/export/article/${a.id}?format=doc`}>📝 Word</a></div>}
           </div>
           <SeoIntel article={a} isNew={isNew} onInsertLink={(url, label) => set('content', a.content + `\n<aside class="read-also"><span>Leggi anche</span><a href="${url}">${label.replace(/</g, '&lt;')}</a></aside>`)} onTitleB={(t) => setExtra({ titleB: t || undefined })} />
+          {!isNew && <div className="panel"><div className="panel-title">Audio e podcast</div>
+            {extra.audioUrl ? <audio controls preload="none" src={extra.audioUrl} style={{ width: '100%' }} /> : <p className="help">Nessun audio: genera la voce sintetica oppure incolla l&apos;URL di un mp3 (intervista, puntata registrata).</p>}
+            <div style={{ display: 'flex', gap: 6, marginTop: 8 }}><input className="input" placeholder="URL mp3 (facoltativo)" value={extra.audioUrl ?? ''} onChange={(e) => setExtra({ audioUrl: e.target.value || undefined })} /><button type="button" className="btn btn-outline btn-sm" onClick={async () => { const r = await generateAudioAction(a.id); (r.ok ? toast.success : toast.error)(r.message ?? ''); if (r.ok && r.url) setExtra({ audioUrl: r.url }); }}>🔊 Genera voce</button></div>
+            <div className="field" style={{ marginTop: 8 }}><label>Capitoli (mm:ss | titolo, uno per riga) e numero puntata</label><textarea className="textarea" style={{ minHeight: 56, fontFamily: 'monospace', fontSize: 12 }} defaultValue={(extra.podcast?.chapters ?? []).map((c) => `${c.time} | ${c.title}`).join('\n')} onBlur={(e) => setPodcastMetaAction(a.id, { chapters: e.target.value, audioUrl: extra.audioUrl ?? '' }).then((r) => r.ok && toast.info('Capitoli salvati'))} /><input className="input" type="number" placeholder="N. puntata" value={extra.podcast?.episode ?? ''} onChange={(e) => setExtra({ podcast: { ...(extra.podcast ?? {}), episode: Number(e.target.value) || undefined } })} /></div>
+            <p className="help">Con un audio l&apos;articolo entra nel feed podcast (/feed/podcast.xml) e nella pagina /podcast.</p>
+          </div>}
           <div className="panel"><div className="panel-title">Correzioni e cronologia</div>
             <label className="switch" style={{ marginBottom: 8 }}><input type="checkbox" checked={!!extra.showHistory} onChange={(e) => setExtra({ showHistory: e.target.checked })} /> Mostra ai lettori la cronologia degli aggiornamenti</label>
             {(extra.corrections ?? []).map((c, i) => <div key={i} className="corr-item"><span className="help">{formatDate(c.date)}</span> {c.text} <button type="button" className="icon-btn danger" onClick={() => setExtra({ corrections: (extra.corrections ?? []).filter((_, j) => j !== i) })}>✕</button></div>)}

@@ -37,9 +37,10 @@
     "**/*.mts"
   ],
   "exclude": [
-    "node_modules",
-    ".next/types/**/* ?.ts",
     ".next/dev/types/**/* ?.ts",
+    ".next/types/**/* ?.ts",
+    "mobile",
+    "node_modules",
     "scripts"
   ]
 }
