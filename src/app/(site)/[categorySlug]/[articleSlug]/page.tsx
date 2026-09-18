@@ -14,6 +14,7 @@ import { siteUrl } from '@/lib/site-url';
 import { ArticleBody } from '@/components/site/article-body';
 import { LiveFeed } from '@/components/site/live-feed';
 import { RecommendStrip } from '@/components/site/recommend-strip';
+import { ArticleTools } from '@/components/site/article-tools';
 import { buildToc, wordCount } from '@/lib/content-render';
 import { listRevisions } from '@/lib/repo-extra';
 import { AdSlot } from '@/components/site/ad-slot';
@@ -149,6 +150,7 @@ export default async function ArticlePage({ params }: PageProps<'/[categorySlug]
           ) : a.coverImage ? (
             <figure className="article-cover"><div className="cover-frame"><SmartImage src={a.coverImage} alt={a.title} priority slot="cover" /></div>{a.coverCaption && <figcaption>{a.coverCaption}</figcaption>}</figure>
           ) : null}
+          <ArticleTools articleId={a.id} title={a.title} url={articleUrl(a)} audioUrl={a.extra?.audioUrl} />
           {a.extra?.audioUrl && <div className="audio-article"><span>🎧 Ascolta l&apos;articolo{a.extra.audioDuration ? ` · ${Math.max(1, Math.round(a.extra.audioDuration / 60))} min` : ''}</span><audio controls preload="none" src={a.extra.audioUrl} /></div>}
           {a.format === 'live' && <LiveFeed articleId={a.id} initial={liveUpdates} active={a.liveActive} />}
           {fieldDefs.length > 0 && <dl className="article-fields">{fieldDefs.map((f) => { const v = a.extra?.fields?.[f.key]; if (!v) return null; return <div key={f.key}><dt>{f.label}</dt><dd>{f.type === 'rating' ? <span className="stars" aria-label={`${v} su 5`}>{'★'.repeat(Number(v))}{'☆'.repeat(5 - Number(v))}</span> : f.type === 'url' ? <a href={v} target="_blank" rel="noopener">{v.replace(/^https?:\/\//, '')}</a> : v}</dd></div>; })}</dl>}

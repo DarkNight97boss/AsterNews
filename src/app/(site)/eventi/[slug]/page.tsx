@@ -1,3 +1,4 @@
+import { TicketBox } from '@/components/site/ticket-box';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
@@ -13,7 +14,8 @@ export async function generateMetadata({ params }: PageProps<'/eventi/[slug]'>):
   return e ? { title: e.title, description: stripHtml(e.description).slice(0, 160), openGraph: { images: e.image ? [{ url: e.image }] : [] } } : {};
 }
 
-export default async function EventPage({ params }: PageProps<'/eventi/[slug]'>) {
+export default async function EventPage({ params, searchParams }: PageProps<'/eventi/[slug]'>) {
+  const sp = await searchParams; const ticketNotice = typeof sp.biglietto === 'string' ? sp.biglietto : '';
   const { slug } = await params;
   const e = await eventBySlug(slug);
   if (!e) notFound();
@@ -39,6 +41,7 @@ export default async function EventPage({ params }: PageProps<'/eventi/[slug]'>)
             <dt>Dove</dt><dd>{e.place}{e.address && <><br />{e.address}</>}{z && <><br /><Link href={`/zone/${z.slug}`}>{z.name}</Link></>}</dd>
             <dt>Prezzo</dt><dd>{e.free ? <span className="badge badge-gray">Gratis</span> : e.price || 'Non indicato'}</dd>
           </dl>
+          {!!e.ticketPrice && <TicketBox eventId={e.id} price={e.ticketPrice} left={e.ticketsTotal ? e.ticketsTotal - (e.ticketsSold ?? 0) : null} notice={ticketNotice} />}
           {e.address && <a className="btn btn-blue btn-sm" href={`https://www.google.com/maps/search/${encodeURIComponent(`${e.place} ${e.address}`)}`} target="_blank" rel="noopener">Apri in Google Maps</a>}
           <Link href="/eventi" className="btn btn-ghost btn-sm" style={{ marginLeft: 6 }}>← Tutti gli eventi</Link>
         </aside>

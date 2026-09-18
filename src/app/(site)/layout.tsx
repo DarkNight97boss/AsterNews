@@ -1,6 +1,7 @@
 import { SiteHeader } from '@/components/site/header';
 import { Ticker } from '@/components/site/ticker';
 import { Footer } from '@/components/site/footer';
+import { AudioDock } from '@/components/site/audio-dock';
 import { CookieBanner } from '@/components/site/cookie-banner';
 import { cookies } from 'next/headers';
 import { getCurrentUser } from '@/lib/auth';
@@ -41,6 +42,7 @@ export default async function SiteLayout({ children }: LayoutProps<'/'>) {
       <A11yBar />
       <main className="page"><div className="container">{children}</div></main>
       <Footer />
+      <AudioDock />
       {!(cookieStore.get('cookie_consent')?.value ?? '').endsWith(`:v${s.privacy?.policyVersion ?? 1}`) && <CookieBanner />}
       {{ ...DEFAULT_ANALYTICS, ...(s.analytics ?? {}) }.enabled && <Analytics vercel={!!s.analytics?.vercelAnalytics} />}
       {{ ...DEFAULT_PUSH, ...(s.push ?? {}) }.enabled && <PushPrompt siteName={s.siteName} />}

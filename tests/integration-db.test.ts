@@ -74,3 +74,23 @@ describe('repo-extra3: funzioni nuove', () => {
     const c = (await repo.listComments('pending')).find((x) => x.id === 'cm1'); expect(c?.priority).toBeCloseTo(0.8); expect(c?.aiNote).toBe('insulto');
   });
 });
+
+describe('lettori: argomenti seguiti e biglietti', () => {
+  it('segui un argomento una sola volta e smetti dal link', async () => {
+    const f = (id: string, token: string) => ({ id, tagId: 't1', email: 'a@b.it', readerId: '', token, createdAt: now() });
+    await x3.upsertFollow(f('f1', 'tok1')); await x3.upsertFollow(f('f2', 'tok2'));
+    expect(await x3.followersOfTags(['t1'])).toHaveLength(1); expect(await x3.deleteFollowByToken('tok1')).toBe(true); expect(await x3.followersOfTags(['t1'])).toHaveLength(0); expect(await x3.deleteFollowByToken('tok1')).toBe(false);
+  });
+  it('biglietti: pagamento una sola volta, venduti aggiornati, ingresso', async () => {
+    await repo.upsertEvent({ id: 'e1', slug: 'serata', title: 'Serata', description: '', type: 'concerti', dateFrom: '2026-12-01', dateTo: null, timeInfo: '', place: 'Teatro', address: '', zoneId: '', price: '10', free: false, image: '', rating: 4, status: 'published', submittedBy: '', createdAt: now(), ticketPrice: 10, ticketsTotal: 50 });
+    expect((await repo.findEvent('e1'))?.ticketPrice).toBe(10);
+    await x3.insertTicket({ id: 'k1', eventId: 'e1', name: 'Anna', email: 'a@b.it', qty: 2, code: 'TKT-AAAA', status: 'pending', amount: 20, createdAt: now(), usedAt: null });
+    expect((await x3.markTicketPaid('k1'))?.status).toBe('paid'); expect(await x3.markTicketPaid('k1')).toBeNull();
+    await repo.addTicketsSold('e1', 2); expect((await repo.findEvent('e1'))?.ticketsSold).toBe(2);
+    await x3.useTicket('k1'); expect((await x3.findTicketByCode('TKT-AAAA'))?.usedAt).toBeTruthy();
+  });
+  it('note con frase citata e segnalazioni dei lettori', async () => {
+    const x = await import('../src/lib/repo-extra'); await x.insertNote({ id: 'n1', articleId: 'a1', userId: '', kind: 'reader', body: 'Nome sbagliato', resolved: false, createdAt: now(), quote: 'il sindaco Rossi' });
+    const n = (await x.listNotes('a1'))[0]; expect(n.kind).toBe('reader'); expect(n.quote).toBe('il sindaco Rossi');
+  });
+});

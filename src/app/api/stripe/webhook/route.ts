@@ -27,6 +27,8 @@ export async function POST(req: Request) {
       const { completeDonation } = await import('@/lib/actions-donations'); await completeDonation(String((o.metadata as { donation_id: string }).donation_id));
     } else if (ev.type === 'checkout.session.completed' && (o.metadata as { listing_id?: string })?.listing_id) {
       const { markListingPaid } = await import('@/lib/actions-listings'); await markListingPaid(String((o.metadata as { listing_id: string }).listing_id));
+    } else if (ev.type === 'checkout.session.completed' && (o.metadata as { ticket_id?: string })?.ticket_id) {
+      const { completeTicket } = await import('@/lib/actions-engage'); await completeTicket(String((o.metadata as { ticket_id: string }).ticket_id));
     } else if (ev.type === 'checkout.session.completed' && (o.metadata as { gift_email?: string })?.gift_email) {
       const m = o.metadata as { gift_email: string; gift_months?: string; gift_message?: string; reader_id?: string }; const { createGiftCode } = await import('@/lib/actions-community'); await createGiftCode(m.gift_email, Number(m.gift_months) || 1, m.gift_message ?? '', m.reader_id ?? '');
     } else if (ev.type === 'checkout.session.completed') {

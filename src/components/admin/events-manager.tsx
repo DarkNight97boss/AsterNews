@@ -74,6 +74,8 @@ export function EventsManager({ events, zones, media, canDelete }: { events: Eve
             </div>
             <div className="form-row">
               <div className="field"><label>Prezzo</label><input className="input" value={E.price} disabled={E.free} onChange={(e) => setEditing({ ...E, price: e.target.value })} /></div>
+              <div className="field"><label>Biglietto online (€, 0 = non in vendita)</label><input className="input" type="number" min={0} step="0.5" value={E.ticketPrice ?? 0} onChange={(e) => setEditing({ ...E, ticketPrice: Number(e.target.value) || undefined })} /></div>
+              <div className="field"><label>Posti disponibili (0 = illimitati)</label><input className="input" type="number" min={0} value={E.ticketsTotal ?? 0} onChange={(e) => setEditing({ ...E, ticketsTotal: Number(e.target.value) || undefined })} /></div>
               <div className="field"><label>&nbsp;</label><label className="checkbox"><input type="checkbox" checked={E.free} onChange={(e) => setEditing({ ...E, free: e.target.checked })} /> Ingresso gratuito</label></div>
             </div>
             <div className="field"><label>Descrizione (HTML consentito)</label><textarea className="textarea" value={E.description} onChange={(e) => setEditing({ ...E, description: e.target.value })} /></div>

@@ -114,6 +114,8 @@ export const DEFAULT_WORKFLOW: WorkflowSettings = { desks: [], steps: [], rules:
 export interface HomeBlock { id: string; type: 'latest' | 'category' | 'tag' | 'zone' | 'format' | 'events' | 'mostread' | 'newsletter' | 'html'; title: string; sourceId: string; layout: 'grid4' | 'grid3' | 'grid2' | 'list' | 'band'; count: number; html?: string }
 export interface ThemeVersion { id: string; at: string; label: string; theme: ThemeSettings }
 export interface PageExtra { brand?: string; countdownAt?: string; countdownLabel?: string; feedTagId?: string; feedCount?: number; ctaLabel?: string; ctaUrl?: string }
+export interface TagFollow { id: string; tagId: string; email: string; readerId: string; token: string; createdAt: string }
+export interface Ticket { id: string; eventId: string; name: string; email: string; qty: number; code: string; status: 'pending' | 'paid'; amount: number; createdAt: string; usedAt: string | null }
 export interface WebhookConfig { id: string; url: string; secret: string; events: string[]; enabled: boolean }
 export interface Contact { id: string; name: string; role: string; org: string; phone: string; email: string; notes: string; tags: string; createdBy: string; updatedAt: string }
 export interface Comment {
@@ -337,6 +339,9 @@ export interface Event {
   zoneId: string;
   price: string;
   free: boolean;
+  ticketPrice?: number;
+  ticketsTotal?: number;
+  ticketsSold?: number;
   image: string;
   rating: number;
   status: EventStatus;
