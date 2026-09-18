@@ -18,8 +18,8 @@ export function LoginForm({ users, demo, redirectTo }: { users: { email: string;
         <p className="lead">Area riservata alla redazione</p>
         <form action={action}>
           <input type="hidden" name="redirect" value={redirectTo} />
-          <div className="field"><label>Email</label><input className="input" type="email" name="email" value={email} onChange={(e) => setEmail(e.target.value)} required autoComplete="username" /></div>
-          <div className="field"><label>Password</label><input className="input" type="password" name="password" value={password} onChange={(e) => setPassword(e.target.value)} required autoComplete="current-password" /></div>
+          <div className="field"><label htmlFor="login-email">Email</label><input id="login-email" className="input" type="email" name="email" value={email} onChange={(e) => setEmail(e.target.value)} required autoComplete="username" /></div>
+          <div className="field"><label htmlFor="login-password">Password</label><input id="login-password" className="input" type="password" name="password" value={password} onChange={(e) => setPassword(e.target.value)} required autoComplete="current-password" /></div>
           {state && !state.ok && <p className="error-text">{state.message}</p>}
           <button className="btn btn-primary btn-lg" type="submit" style={{ width: '100%' }} disabled={pending}>{pending ? 'Accesso...' : 'Accedi'}</button>
         </form>

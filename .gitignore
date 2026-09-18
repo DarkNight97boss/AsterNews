@@ -66,3 +66,7 @@ next-env.d.ts
 /data/pg*
 /data/imports
 /data/*.db*
+
+# Playwright
+/test-results
+/playwright-report

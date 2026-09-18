@@ -24,7 +24,9 @@ const nextConfig: NextConfig = {
       { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=(self), payment=(self)' },
       { key: 'Content-Security-Policy', value: "frame-ancestors 'self'; base-uri 'self'; object-src 'none'" },
     ];
-    return [{ source: '/(.*)', headers: security }];
+    // I widget (/widget/…) devono poter essere incorporati in siti terzi: niente X-Frame-Options né frame-ancestors per loro.
+    const framing = new Set(['X-Frame-Options', 'Content-Security-Policy', 'Cross-Origin-Opener-Policy']);
+    return [{ source: '/((?!widget/).*)', headers: security }, { source: '/widget/:path*', headers: security.filter((h) => !framing.has(h.key)) }];
   },
 };
 
