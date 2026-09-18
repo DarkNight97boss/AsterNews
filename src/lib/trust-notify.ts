@@ -38,3 +38,9 @@ export async function remindExpiredSentences(): Promise<number> {
   }
   return n;
 }
+/** Firma degli articoli usciti prima che la firma esistesse: qualche decina al giorno, finché l'archivio non è tutto firmato. */
+export async function signBacklog(max = 150): Promise<number> {
+  const { listArticles, patchArticle } = await import('./repo'); const { signArticle } = await import('./signing'); let n = 0;
+  for (const a of await listArticles({ status: 'published', includeCircles: true }, 'published', 3000)) { if (a.extra?.signature) continue; await patchArticle(a.id, { extra: JSON.stringify({ ...(a.extra ?? {}), signature: await signArticle(a.title, a.content) }) }); if (++n >= max) break; }
+  return n;
+}

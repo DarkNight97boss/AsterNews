@@ -73,3 +73,4 @@ next-env.d.ts
 
 # Esito dei controlli pre-rilascio (locale)
 /data/release-check.json
+.next-old-*/

@@ -40,7 +40,7 @@ export async function runDailyJobs(): Promise<JobReport> {
   try { const { runDailyExtensions } = await import('./extensions'); Object.assign(steps, await runDailyExtensions()); } catch { /* ignore */ }
   try { const { ensureIndex } = await import('./embeddings'); steps.embedding = await ensureIndex(300); } catch (e) { steps.embedding = 'errore: ' + (e as Error).message; }
   try { const { scheduledAudit } = await import('./pagespeed'); steps.pagespeed = await scheduledAudit(); } catch (e) { steps.pagespeed = 'errore: ' + (e as Error).message; }
-  try { const { remindDueCommitments } = await import('./trust-notify'); const n = await remindDueCommitments(); if (n) steps.promesse = `${n} promemoria inviati`; const { remindExpiredSentences } = await import('./trust-notify'); const k = await remindExpiredSentences(); if (k) steps.frasi = `${k} frasi scadute segnalate`; } catch { /* ignore */ }
+  try { const { remindDueCommitments } = await import('./trust-notify'); const n = await remindDueCommitments(); if (n) steps.promesse = `${n} promemoria inviati`; const { remindExpiredSentences } = await import('./trust-notify'); const k = await remindExpiredSentences(); if (k) steps.frasi = `${k} frasi scadute segnalate`; const { signBacklog } = await import('./trust-notify'); const sg = await signBacklog(); if (sg) steps.firme = `${sg} articoli d'archivio firmati`; } catch { /* ignore */ }
   try { const { runLegacyCheck } = await import('./legacy'); const r = await runLegacyCheck(); if (r) steps.eredita = r; } catch (e) { steps.eredita = 'errore: ' + (e as Error).message; }
   steps.salute = await healthCheck();
   return { job: 'daily', steps };

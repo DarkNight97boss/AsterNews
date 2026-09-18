@@ -7,6 +7,9 @@ export async function Footer() {
   const [s, cats, pages] = await Promise.all([getSettings(), getCategories(), listPages(true)]);
   const menus = { ...DEFAULT_MENUS, ...(s.menus ?? {}) };
   const footerLinks = menus.footer.length ? menus.footer.map((m) => ({ id: m.id, label: m.label, url: m.url })) : pages.map((p) => ({ id: p.id, label: p.title, url: `/${p.slug}` }));
+  // Le pagine «di relazione» cambiano con il profilo del sito: un quotidiano mostra fiducia e comunità, un blog personale le sue pagine in prima persona
+  const personal = ['blog', 'diario', 'portfolio'].includes(s.adapt?.profile ?? 'quotidiano');
+  const relation: [string, string][] = personal ? [['/adesso', 'Adesso'], ['/uso', 'Usa questo'], ['/raccolte', 'Raccolte'], ['/quaderno', 'Quaderno'], ['/lettere-al-futuro', 'Lettere al futuro'], ['/corrispondenze', 'Corrispondenze'], ['/ospiti', 'Libro degli ospiti'], ['/correzioni', 'Correzioni']] : [['/trasparenza', 'Trasparenza'], ['/correzioni', 'Correzioni'], ['/domande-aperte', 'Domande aperte'], ['/previsioni', 'Previsioni'], ['/comunita', 'Comunità'], ['/percorsi', 'Percorsi di lettura'], ['/colazione', 'Modalità colazione'], ['/mappa', 'Mappa del giornale'], ['/riprendi', 'Riprendi la lettura'], ['/attenzione', 'Il tuo tempo']];
   return (
     <footer className="site-footer">
       <div className="container">
@@ -26,6 +29,7 @@ export async function Footer() {
             <li><a href={s.socials.telegram} target="_blank" rel="noopener">Telegram</a></li>
           </ul></div>
         </div>
+        <nav className="footer-relation" aria-label={personal ? 'Pagine personali' : 'Fiducia e comunità'}>{relation.map(([href, label]) => <Link key={href} href={href}>{label}</Link>)}</nav>
         <div className="footer-bottom">
           <span>© {new Date().getFullYear()} {s.siteName}. Tutti i diritti riservati.</span>
           <span>{footerLinks.length ? footerLinks.map((l, i) => <span key={l.id}>{i > 0 && ' · '}<Link href={l.url}>{l.label}</Link></span>) : 'Privacy · Cookie policy · Contatti · Pubblicità'}</span>
