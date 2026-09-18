@@ -70,3 +70,6 @@ next-env.d.ts
 # Playwright
 /test-results
 /playwright-report
+
+# Esito dei controlli pre-rilascio (locale)
+/data/release-check.json
