@@ -138,3 +138,19 @@ export async function syndicateArticleAction(articleId: string, editionId: strin
   await repo.insertActivity({ id: uid('ac'), userId: me.id, action: `ha condiviso con l'edizione ${ed.name}`, target: a.title, articleId: id, createdAt: now });
   revalidateTag('articles', 'max'); return { ok: true, message: `Articolo pubblicato anche su «${ed.name}».`, id };
 }
+
+// ---------------- Privacy, staging ----------------
+export async function savePrivacyAction(p: { policyVersion: number; geoLookup: boolean; dpaNote: string }): Promise<ActionResult> { await requirePermission('settings.manage'); const s = await getSettings(); await repo.saveSettingsRow({ ...s, privacy: { policyVersion: Math.max(1, Math.round(p.policyVersion) || 1), geoLookup: !!p.geoLookup, dpaNote: p.dpaNote.slice(0, 4000) } }); revalidateTag('settings', 'max'); revalidatePath('/', 'layout'); return { ok: true, message: 'Impostazioni privacy salvate.' }; }
+export async function deployStagingAction(): Promise<ActionResult> {
+  const me = await requirePermission('settings.manage'); const s = await getSettings(); const url = s.updates?.stagingHookUrl; if (!url) return { ok: false, message: 'Deploy Hook di staging non impostato.' };
+  try { const r = await fetch(url, { method: 'POST' }); await repo.insertActivity({ id: uid('ac'), userId: me.id, action: 'ha avviato un\'anteprima di', target: 'staging', createdAt: new Date().toISOString() }); return { ok: r.ok, message: r.ok ? 'Anteprima staging avviata: tra qualche minuto sarà sul dominio di anteprima Vercel.' : `Vercel ha risposto ${r.status}` }; } catch (e) { return { ok: false, message: (e as Error).message }; }
+}
+export async function promoteStagingAction(): Promise<ActionResult> {
+  const me = await requirePermission('settings.manage'); const s = await getSettings(); const token = s.updates?.vercelToken || process.env.VERCEL_TOKEN || ''; const project = s.updates?.vercelProjectId || process.env.VERCEL_PROJECT_ID || ''; if (!token || !project) return { ok: false, message: 'Token o ID progetto Vercel mancanti.' };
+  try {
+    const list = await fetch(`https://api.vercel.com/v6/deployments?projectId=${project}&target=preview&state=READY&limit=5`, { headers: { Authorization: `Bearer ${token}` } }).then((r) => r.json()) as { deployments?: { uid: string; url: string; meta?: Record<string, string>; createdAt: number }[]; error?: { message: string } };
+    if (list.error) return { ok: false, message: list.error.message }; const d = (list.deployments ?? []).find((x) => (x.meta?.githubCommitRef ?? '') === 'staging') ?? list.deployments?.[0]; if (!d) return { ok: false, message: 'Nessuna anteprima pronta da promuovere.' };
+    const r = await fetch(`https://api.vercel.com/v10/projects/${project}/promote/${d.uid}`, { method: 'POST', headers: { Authorization: `Bearer ${token}` } }); if (!r.ok) return { ok: false, message: `Promozione rifiutata (${r.status}): ${(await r.text()).slice(0, 120)}` };
+    await repo.insertActivity({ id: uid('ac'), userId: me.id, action: 'ha promosso in produzione', target: d.url, createdAt: new Date().toISOString() }); return { ok: true, message: `Promossa in produzione: ${d.url}` };
+  } catch (e) { return { ok: false, message: (e as Error).message }; }
+}

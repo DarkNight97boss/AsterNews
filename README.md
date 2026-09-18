@@ -60,6 +60,16 @@ Su Vercel: collega l'integrazione Supabase (crea `POSTGRES_URL`), fai il deploy 
 - **Monitor PageSpeed** (`/admin/prestazioni`): misura home, ultimo articolo e prima categoria (o le pagine indicate) su smartphone e computer, salva lo storico, spiega in italiano cosa fare nel CMS per ogni segnalazione e avvisa (notifica, email, webhook) se il punteggio scende sotto la soglia o perde 10 punti. Serve una chiave API gratuita di PageSpeed Insights (impostazioni del pannello o `PAGESPEED_API_KEY`). Frequenza: ogni lunedì, ogni giorno o a mano.
 - **Da terminale / CI**: `npm run pagespeed -- --url https://tuosito.it --pages /,/cronaca --min 90 [--desktop]`; il workflow `.github/workflows/pagespeed.yml` lo esegue ogni lunedì e su richiesta (segreto `PAGESPEED_API_KEY`).
 
+### Quarta tornata: le idee rimanenti delle 110
+- **Editor e contenuti**: blocchi riutilizzabili sincronizzati, modelli di articolo, campi personalizzati per categoria, incolla pulito da Word/Docs, note a piè di pagina `[^testo]`, riquadro «cosa sappiamo/non sappiamo», timeline, prima/dopo, tabelle da CSV, grafici SVG, PDF e audio, quiz con classifica, trascrizione audio/video con verbale, diretta in tempo reale (SSE), correzioni pubbliche e cronologia, indice dei paragrafi, modalità Focus.
+- **Redazione**: desk con code di revisione, approvazione a più fasi, menzioni `@nome`, rubrica contatti, pianificazione per canale, regole automatiche «se… allora…», esportazione PDF/Word, rilevazione di articoli duplicati.
+- **Media**: ritagli per formato dal punto focale, ritocchi e testo sovrapposto, cartelle/tag/cestino, banca immagini (Unsplash, Pexels), duplicati e compressione di massa, video hosting (Cloudflare Stream, Mux), credit/licenze/scadenza diritti, filigrana, invio dal telefono con posizione.
+- **SEO e distribuzione**: pagine `/lite`, feed per Google News, Flipboard, Apple News e podcast, Web Stories AMP, tendenze Google e titoli della concorrenza, test A/B dei titoli, Search Console e Discover, traduzioni AI con hreflang, ricerca semantica (embedding).
+- **Lettori e ricavi**: moderazione assistita da Claude, profili pubblici con badge, piani multipli e abbonamento regalo, metodi di pagamento Stripe, muro di registrazione, consigliati per te senza profilazione.
+- **Canali**: webhook in uscita firmati, audio-articolo con voce sintetica, edizione digitale del giorno, widget incorporabili, bot Telegram, Flash Briefing Alexa, lettura offline nella PWA, scaffold app Capacitor (`mobile/`).
+- **Multi-sito e temi**: builder della home a blocchi, libreria di layout con import/export JSON, CSS personalizzato con anteprima e versioni, redazioni per edizione, syndication, landing e microsit.
+- **Piattaforma**: registro estensioni, staging con promozione, log di sicurezza con avvisi, SSO Google Workspace e Microsoft 365, test end-to-end Playwright (`npm run e2e`), monitoraggio sintetico, Core Web Vitals reali, registro consensi GDPR, guida in-app.
+
 ## Dati e infrastruttura
 
 - Postgres via `POSTGRES_URL` / `DATABASE_URL` (driver `pg`, pooler Supabase in transaction mode); senza variabili, PGlite in `data/pg`. Schema e migrazioni idempotenti in `src/lib/db.ts`.

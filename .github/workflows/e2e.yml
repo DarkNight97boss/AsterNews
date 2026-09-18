@@ -1,0 +1,34 @@
+name: E2E
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - name: Dati demo su PGlite
+        run: npm run seed:demo
+        env:
+          SETUP_DISABLED: '1'
+      - name: Test end-to-end
+        run: npx playwright test
+        env:
+          CI: 'true'
+          SETUP_DISABLED: '1'
+          DEMO_MODE: '1'
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: test-results

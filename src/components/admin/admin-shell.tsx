@@ -7,6 +7,7 @@ import { logoutAction } from '@/lib/actions-auth';
 import { ROLE_LABELS, User } from '@/lib/models';
 import { Permission } from '@/lib/permissions';
 import { NotificationsBell } from './notifications-bell';
+import { guideFor } from '@/lib/guide';
 
 interface Props { user: User; permissions: Permission[]; unread: number; reviewCount: number; pendingComments: number; pendingEvents: number; newReports: number; children: ReactNode }
 
@@ -73,11 +74,14 @@ export function AdminShell({ user, permissions, unread, reviewCount, pendingComm
               {can('settings.manage') && <A href="/admin/backup"><span className="ico">💾</span> Backup</A>}
               {can('settings.manage') && <A href="/admin/errori"><span className="ico">🩺</span> Errori e salute</A>}
               {can('settings.manage') && <A href="/admin/prestazioni"><span className="ico">🚀</span> Prestazioni</A>}
+              {can('settings.manage') && <A href="/admin/sicurezza"><span className="ico">🔐</span> Log di sicurezza</A>}
+              {can('settings.manage') && <A href="/admin/privacy"><span className="ico">🛡</span> Privacy e consensi</A>}
               {can('audit.view') && <A href="/admin/attivita"><span className="ico">🗒</span> Registro attività</A>}
             </>
           )}
           <div className="nav-group">Account</div>
           <A href="/admin/profilo"><span className="ico">👤</span> Il mio profilo</A>
+          <A href="/admin/guida"><span className="ico">❓</span> Guida</A>
           <div className="nav-group">Sito</div>
           <Link href="/"><span className="ico">↗</span> Vai al sito</Link>
         </nav>
@@ -93,6 +97,7 @@ export function AdminShell({ user, permissions, unread, reviewCount, pendingComm
           <button className="btn btn-ghost btn-icon burger-admin" onClick={() => setOpen(true)}>☰</button>
           <span className="crumb">ASTER News / <b>Redazione</b></span>
           <span className="spacer" />
+          <Link href={`/admin/guida#${guideFor(pathname).id}`} className="btn btn-ghost btn-icon" title={`Guida: ${guideFor(pathname).title}`}>?</Link>
           <NotificationsBell initialUnread={unread} />
           <Link href="/admin/scrivi" className="btn btn-primary btn-sm">✨ Scrivi un articolo</Link>
         </div>

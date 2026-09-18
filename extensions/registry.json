@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "extensions": [
+    { "id": "firma-automatica", "name": "Firma automatica", "description": "Aggiunge la firma redazionale in coda agli articoli senza firma.", "version": "1.0.0", "author": "ASTER News", "source": "src/extensions/index.ts", "bundled": true },
+    { "id": "parole-vietate", "name": "Parole vietate", "description": "Blocca il salvataggio se il testo contiene termini proibiti.", "version": "1.0.0", "author": "ASTER News", "source": "src/extensions/index.ts", "bundled": true },
+    { "id": "webhook-pubblicazione", "name": "Webhook alla pubblicazione", "description": "Invia un POST a Zapier/Make quando un articolo viene pubblicato.", "version": "1.0.0", "author": "ASTER News", "source": "src/extensions/index.ts", "bundled": true },
+    { "id": "articoli-vecchi", "name": "Avviso articoli datati", "description": "Avvisa quando un articolo in evidenza è troppo vecchio.", "version": "1.0.0", "author": "ASTER News", "source": "src/extensions/index.ts", "bundled": true },
+    { "id": "slack-redazione", "name": "Slack redazione", "description": "Messaggio su Slack a ogni articolo inviato in revisione o pubblicato (Incoming Webhook).", "version": "0.9.0", "author": "Community", "source": "https://github.com/DarkNight97boss/AsterNews/tree/main/extensions/examples/slack-redazione.ts", "homepage": "https://github.com/DarkNight97boss/AsterNews" },
+    { "id": "mastodon-auto", "name": "Mastodon automatico", "description": "Pubblica su un'istanza Mastodon alla messa online.", "version": "0.9.0", "author": "Community", "source": "https://github.com/DarkNight97boss/AsterNews/tree/main/extensions/examples/mastodon-auto.ts", "homepage": "https://github.com/DarkNight97boss/AsterNews" }
+  ]
+}

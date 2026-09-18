@@ -219,11 +219,12 @@ export interface CacheSettings { enabled: boolean; seconds: number }
 export interface SearchSettings { synonyms: string }
 export interface BackupSettings { enabled: boolean; keep: number }
 export interface SocialSettings { facebookPageId: string; facebookToken: string; telegramBotToken: string; telegramChatId: string; xApiKey: string; xApiSecret: string; xAccessToken: string; xAccessSecret: string; webhookUrl: string; autoNetworks: SocialNetwork[]; template: string; hashtagsFromTags: boolean }
-export interface AuthSettings { googleClientId: string; googleClientSecret: string; facebookAppId: string; facebookAppSecret: string; magicLink: boolean }
+export interface AuthSettings { googleClientId: string; googleClientSecret: string; facebookAppId: string; facebookAppSecret: string; magicLink: boolean; staffGoogleDomains?: string; microsoftTenantId?: string; microsoftClientId?: string; microsoftClientSecret?: string }
 export interface AdsSettings { enabled: boolean; adsenseClient: string; autoAds: boolean; label: string; houseAdsOnly: boolean }
 export interface ListingsSettings { enabled: boolean; priceAnnuncio: number; priceNecrologio: number; days: number; moderation: boolean; freeForReaders: boolean }
 export interface AiSettings { enabled: boolean; apiKey: string; model: string; style: string; autoAltText: boolean; autoSummary: boolean; transcribeProvider?: 'none' | 'openai' | 'deepgram'; transcribeKey?: string; moderation?: boolean; ttsProvider?: 'none' | 'openai' | 'elevenlabs'; ttsKey?: string; ttsVoice?: string; ttsAuto?: boolean; embeddingsProvider?: 'none' | 'openai' | 'voyage'; embeddingsKey?: string }
-export interface UpdatesSettings { repo: string; channel: 'stable' | 'beta'; deployHookUrl: string }
+export interface UpdatesSettings { repo: string; channel: 'stable' | 'beta'; deployHookUrl: string; stagingHookUrl?: string; vercelToken?: string; vercelProjectId?: string }
+export interface PrivacySettings { policyVersion: number; geoLookup: boolean; dpaNote: string }
 export interface ExtensionsSettings { enabled: string[]; config: Record<string, Record<string, string>> }
 
 import type { ThemeSettings } from './themes';
@@ -276,6 +277,7 @@ export interface SiteSettings {
   video?: VideoSettings;
   webhooks?: WebhookConfig[];
   homeBlocks?: HomeBlock[];
+  privacy?: PrivacySettings;
   themeVersions?: ThemeVersion[];
   editionUsers?: Record<string, string[]>;
 }

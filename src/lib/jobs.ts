@@ -20,6 +20,7 @@ export async function runMinuteJobs(): Promise<JobReport> {
   const hour = Number(new Date().toLocaleString('it-IT', { hour: 'numeric', hour12: false, timeZone: 'Europe/Rome' }));
   const today = new Date().toISOString().slice(0, 10);
   if (nl.digestEnabled && hour >= nl.digestHour && (await x.lastDigestDay()) !== today) { const r = await sendDigest('digest'); steps.rassegna = r.message; }
+  if (Math.floor(Date.now() / 60000) % 15 === 0) { try { const { runSynthetic } = await import('./synthetic'); const r = await runSynthetic(); steps.monitor = `${r.results.filter((x) => x.ok).length}/${r.results.length} ok`; if (r.alerts.length) { const mon = { ...DEFAULT_MONITORING, ...(s.monitoring ?? {}) }; const text = `${s.siteName}: ${r.alerts.join('; ')}`; if (mon.webhookUrl) fetch(mon.webhookUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text }) }).catch(() => {}); if (mon.alertEmail && (await mailConfigured())) sendMail({ to: mon.alertEmail, subject: `⚠️ Monitoraggio ${s.siteName}`, html: mailLayout(s.siteName, 'Pagine non raggiungibili', `<ul>${r.alerts.map((a) => `<li>${a}</li>`).join('')}</ul>`) }).catch(() => {}); } } catch (e) { steps.monitor = 'errore: ' + (e as Error).message; } }
   return { job: 'minute', steps };
 }
 
@@ -36,6 +37,7 @@ export async function runDailyJobs(): Promise<JobReport> {
   try { const { checkBrokenLinks } = await import('./broken-links'); steps.link = await checkBrokenLinks(); } catch (e) { steps.link = 'errore: ' + (e as Error).message; }
   try { const { expireListings } = await import('./repo-extra2'); await expireListings(); steps.annunci = 'scadenze aggiornate'; } catch { /* ignore */ }
   try { const { runDailyExtensions } = await import('./extensions'); Object.assign(steps, await runDailyExtensions()); } catch { /* ignore */ }
+  try { const { ensureIndex } = await import('./embeddings'); steps.embedding = await ensureIndex(300); } catch (e) { steps.embedding = 'errore: ' + (e as Error).message; }
   try { const { scheduledAudit } = await import('./pagespeed'); steps.pagespeed = await scheduledAudit(); } catch (e) { steps.pagespeed = 'errore: ' + (e as Error).message; }
   steps.salute = await healthCheck();
   return { job: 'daily', steps };

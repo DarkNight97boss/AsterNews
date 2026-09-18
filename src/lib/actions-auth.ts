@@ -29,7 +29,8 @@ export async function loginAction(_prev: ActionResult | null, formData: FormData
   const redirectTo = String(formData.get('redirect') ?? '') || '/admin';
   const wait = throttled(email); if (wait) return fail(`Troppi tentativi. Riprova tra ${wait} secondi.`);
   const u = await repo.findUserByEmail(email);
-  if (!u) { noteFailure(email); return fail('Email o password errati.'); }
+  const secLog = async (kind: 'login_ok' | 'login_failed', userId: string) => { try { const { logSecurity } = await import('./security-log'); const h = await (await import('next/headers')).headers(); await logSecurity(kind, email, userId, (h.get('x-forwarded-for') ?? '').split(',')[0].trim() || (await clientIp()), h.get('user-agent') ?? ''); } catch { /* ignora */ } };
+  if (!u) { noteFailure(email); await secLog('login_failed', ''); return fail('Email o password errati.'); }
   if (!u.active) return fail('Account disattivato. Contatta un amministratore.');
   const hash = await x.passwordHashOf(u.id);
   const demoAllowed = !hash && process.env.DEMO_MODE === '1';
@@ -37,7 +38,7 @@ export async function loginAction(_prev: ActionResult | null, formData: FormData
   if (!valid) { noteFailure(email); await audit(u.id, 'accesso fallito per', u.email); return fail(hash ? 'Email o password errati.' : 'Questo account non ha ancora una password: chiedi a un amministratore di impostarla o usa "Password dimenticata".'); }
   attempts.delete(email);
   if (u.totpEnabled) { await setTwoFactorPending(u.id, redirectTo); redirect('/login/verifica'); }
-  await startSession(u.id, 'staff');
+  await startSession(u.id, 'staff'); await secLog('login_ok', u.id);
   await x.touchLogin(u.id);
   await audit(u.id, 'ha effettuato l\'accesso', u.email);
   redirect(u.mustChangePassword ? '/admin/profilo?cambia=1' : redirectTo.startsWith('/') ? redirectTo : '/admin');

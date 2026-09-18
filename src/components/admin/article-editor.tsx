@@ -20,6 +20,7 @@ import { TranscribePanel } from './transcribe-panel';
 import { SeoIntel } from './seo-intel';
 import { generateAudioAction, setPodcastMetaAction } from '@/lib/actions-channels';
 import { editionsListAction, syndicateArticleAction } from '@/lib/actions-system';
+import { similarTitlesAction } from '@/lib/actions-seo';
 import { customFieldsAction } from '@/lib/actions-pages';
 import { advanceStageAction } from '@/lib/actions-workflow';
 import { workflowInfoAction } from '@/lib/actions-workflow';
@@ -50,6 +51,7 @@ export function ArticleEditor({ initial, isNew, isPublic, categories, zones, tag
   const [focus, setFocus] = useState(false); const [fieldDefs, setFieldDefs] = useState<Record<string, CustomField[]>>({}); const [corrText, setCorrText] = useState('');
   useEffect(() => { customFieldsAction().then(setFieldDefs).catch(() => {}); workflowInfoAction().then(setWf).catch(() => {}); }, []);
   const [wf, setWf] = useState<{ steps: string[]; desks: { id: string; name: string }[] }>({ steps: [], desks: [] });
+  const [dupes, setDupes] = useState<{ id: string; title: string; status: string; updatedAt: string }[]>([]);
   const [editions, setEditions] = useState<{ id: string; name: string }[]>([]); useEffect(() => { editionsListAction().then(setEditions).catch(() => {}); }, []);
   const extra = a.extra ?? {}; const setExtra = (patch: Partial<NonNullable<Article['extra']>>) => set('extra', { ...extra, ...patch });
   const catFields = fieldDefs[a.categoryId] ?? [];
@@ -96,13 +98,14 @@ export function ArticleEditor({ initial, isNew, isPublic, categories, zones, tag
         </div>
       </div>
 
+      {dupes.length > 0 && <div className="lock-banner">⚠ Esiste già un articolo simile: {dupes.map((d) => <a key={d.id} href={`/admin/articoli/${d.id}`} style={{ marginRight: 10, fontWeight: 700 }}>{d.title} ({d.status})</a>)} — valuta se aggiornarlo invece di crearne uno nuovo.</div>}
       <div className="editor-tools"><button type="button" className={`btn btn-sm ${focus ? 'btn-dark' : 'btn-ghost'}`} onClick={() => setFocus(!focus)} title="Schermo pulito, solo testo">{focus ? '✕ Esci da Focus' : '◎ Modalità Focus'}</button><span className="help">{words} parole{extra.wordsTarget ? ` / obiettivo ${extra.wordsTarget}` : ''} · {Math.max(1, Math.round(words / 200))} min di lettura</span>{focus && <input className="input" style={{ width: 120 }} type="number" placeholder="Obiettivo parole" value={extra.wordsTarget ?? ''} onChange={(e) => setExtra({ wordsTarget: Number(e.target.value) || undefined })} />}</div>
       {isNew && !a.content && !a.title && <TemplatePicker onPick={(t) => { setA((x) => ({ ...x, kicker: t.kicker, format: t.format, content: t.content, extra: { ...(x.extra ?? {}), template: t.id, fields: { ...(x.extra?.fields ?? {}), ...(t.fields ?? {}) } } })); setDirty(true); setEditorMode('blocks'); }} />}
       <div className={`editor-grid ${focus ? 'focus-mode' : ''}`}>
         <div>
           <div className="panel">
             <input className="input" style={{ textTransform: 'uppercase', fontWeight: 800, fontSize: 13, letterSpacing: '.08em', color: 'var(--red)', border: 0, paddingLeft: 0 }} placeholder="OCCHIELLO (es. MALTEMPO)" value={a.kicker} onChange={(e) => set('kicker', e.target.value)} />
-            <textarea className="title-input" rows={2} style={{ resize: 'none', lineHeight: 1.2 }} placeholder="Titolo dell'articolo" value={a.title} onChange={(e) => { set('title', e.target.value); if (!slugTouched) set('slug', slugify(e.target.value)); }} />
+            <textarea className="title-input" rows={2} style={{ resize: 'none', lineHeight: 1.2 }} placeholder="Titolo dell'articolo" onBlur={() => similarTitlesAction(a.title, a.id).then(setDupes).catch(() => {})} value={a.title} onChange={(e) => { set('title', e.target.value); if (!slugTouched) set('slug', slugify(e.target.value)); }} />
             <textarea className="subtitle-input" rows={2} placeholder="Sommario / sottotitolo" value={a.subtitle} onChange={(e) => set('subtitle', e.target.value)} />
             <div className="editor-mode"><span className="help">Editor:</span><button type="button" className={editorMode === 'blocks' ? 'on' : ''} onClick={() => switchMode('blocks')}>Blocchi</button><button type="button" className={editorMode === 'classic' ? 'on' : ''} onClick={() => switchMode('classic')}>Classico</button></div>
             <div style={{ marginTop: 10 }}>{editorMode === 'blocks' ? <BlockEditor value={a.content} articleId={a.id} onChange={(v) => set('content', v)} onPickImage={(cb) => { inlineCb.cb = cb; setPicker('inline'); }} /> : <RichEditor value={a.content} articleId={a.id} onChange={(v) => set('content', v)} onPickImage={(cb) => { inlineCb.cb = cb; setPicker('inline'); }} />}</div>

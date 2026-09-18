@@ -30,6 +30,13 @@ export async function ask(prompt: string, opts: { json?: boolean; maxTokens?: nu
   const text = res.content.filter((b) => b.type === 'text').map((b) => (b as { text: string }).text).join('').trim();
   return opts.json ? text.replace(/^```(?:json)?\s*|\s*```$/g, '').trim() : text;
 }
+/** Come ask(), ma con lo strumento di ricerca web di Claude: usato dalla verifica fatti per collegare fonti. */
+export async function askWithSearch(prompt: string, opts: { maxTokens?: number; maxUses?: number } = {}): Promise<string> {
+  const s = await aiSettings(); if (!s.enabled || !s.apiKey) throw new Error('Assistente AI non configurato.');
+  const client = new Anthropic({ apiKey: s.apiKey });
+  const res = await client.beta.messages.create({ model: s.model, max_tokens: opts.maxTokens ?? 3000, system: `${SYSTEM_BASE}\nRispondi esclusivamente con JSON valido, senza testo attorno e senza blocchi di codice.`, betas: ['server-side-fallback-2026-07-01'], fallbacks: 'default', thinking: { type: 'adaptive' }, output_config: { effort: 'medium' }, tools: [{ type: 'web_search_20260209', name: 'web_search', max_uses: opts.maxUses ?? 6 } as never], messages: [{ role: 'user', content: prompt }] });
+  return res.content.filter((b) => b.type === 'text').map((b) => (b as { text: string }).text).join('').replace(/^```(?:json)?\s*|\s*```$/g, '').trim();
+}
 export async function askJson<T>(prompt: string, opts: { maxTokens?: number; effort?: 'low' | 'medium' | 'high' } = {}): Promise<T> {
   const raw = await ask(prompt, { ...opts, json: true });
   try { return JSON.parse(raw) as T; } catch { const m = raw.match(/[[{][\s\S]*[\]}]/); if (m) return JSON.parse(m[0]) as T; throw new Error('Risposta AI non interpretabile.'); }

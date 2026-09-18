@@ -11,7 +11,7 @@ export function AiAssistant({ article: a, onPatch, onAddTag, categories }: Props
   const [enabled, setEnabled] = useState<boolean | null>(null);
   const [pending, start] = useTransition();
   const [titles, setTitles] = useState<{ label: string; title: string }[]>([]);
-  const [facts, setFacts] = useState<{ claim: string; note: string; severity: string }[]>([]);
+  const [facts, setFacts] = useState<{ claim: string; note: string; severity: string; sources?: string[] }[]>([]);
   const [raw, setRaw] = useState(''); const [mode, setMode] = useState<'testata' | 'breve' | 'lungo' | 'semplice' | 'traduci'>('testata'); const [rewritten, setRewritten] = useState('');
   useEffect(() => { aiStatusAction().then(setEnabled); }, []);
   if (enabled === null) return null;
@@ -27,7 +27,7 @@ export function AiAssistant({ article: a, onPatch, onAddTag, categories }: Props
         <button className="btn btn-outline btn-sm" disabled={pending || !a.content} onClick={() => run(() => aiFactCheckAction(a.content), setFacts)}>Da verificare</button>
       </div>
       {titles.length > 0 && <ul className="ai-list">{titles.map((t) => <li key={t.label}><span className="badge badge-gray">{t.label}</span> {t.title} <button className="btn btn-ghost btn-sm" onClick={() => { onPatch({ title: t.title }); setTitles([]); }}>Usa</button></li>)}</ul>}
-      {facts.length > 0 && <ul className="ai-list">{facts.map((f, i) => <li key={i}><span className={`badge ${f.severity === 'warn' ? 'badge-red' : 'badge-gray'}`}>{f.severity === 'warn' ? 'attenzione' : 'info'}</span> <b>«{f.claim}»</b> — {f.note}</li>)}</ul>}
+      {facts.length > 0 && <ul className="ai-list">{facts.map((f, i) => <li key={i}><span className={`badge ${f.severity === 'warn' ? 'badge-red' : 'badge-gray'}`}>{f.severity === 'warn' ? 'attenzione' : 'info'}</span> <b>«{f.claim}»</b> — {f.note}{f.sources && f.sources.length > 0 && <div className="help">Fonti: {f.sources.slice(0, 3).map((u, k) => <a key={k} href={u} target="_blank" rel="noreferrer" style={{ marginRight: 6 }}>{(() => { try { return new URL(u).hostname; } catch { return u; } })()}</a>)}</div>}</li>)}</ul>}
       <details style={{ marginTop: 10 }}><summary className="help" style={{ cursor: 'pointer' }}>Riscrivi un comunicato o un testo grezzo nello stile della testata</summary>
         <textarea className="textarea" style={{ minHeight: 100, marginTop: 8 }} value={raw} onChange={(e) => setRaw(e.target.value)} placeholder="Incolla qui il comunicato stampa, gli appunti o il testo in altra lingua…" />
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 6, flexWrap: 'wrap' }}>

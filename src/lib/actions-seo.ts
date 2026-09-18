@@ -54,3 +54,9 @@ export async function setTitleBAction(id: string, titleB: string): Promise<Actio
   revalidateTag('articles', 'max'); revalidatePath('/', 'layout'); return { ok: true, message: titleB.trim() ? 'Test A/B avviato: la home alterna i due titoli.' : 'Test A/B rimosso.' };
 }
 export async function languagesAction(): Promise<string[]> { if (!(await getCurrentUser())) return []; const s = await getSettings(); return ((s.seo as { languages?: string } | undefined)?.languages ?? '').split(',').map((x) => x.trim()).filter(Boolean); }
+
+/** Rilevazione notizie duplicate: articoli già esistenti con titolo simile → «aggiorna invece di creare». */
+export async function similarTitlesAction(title: string, excludeId: string): Promise<{ id: string; title: string; status: string; updatedAt: string }[]> {
+  if (!(await getCurrentUser()) || title.trim().length < 12) return [];
+  try { const r = await repo.searchArticles(title.trim(), 6, 0, {}); const words = new Set(title.toLowerCase().split(/\W+/).filter((w) => w.length > 3)); return r.items.filter((a) => a.id !== excludeId).map((a) => ({ a, score: a.title.toLowerCase().split(/\W+/).filter((w) => words.has(w)).length / Math.max(1, words.size) })).filter((x) => x.score >= 0.5).slice(0, 3).map(({ a }) => ({ id: a.id, title: a.title, status: a.status, updatedAt: a.updatedAt })); } catch { return []; }
+}

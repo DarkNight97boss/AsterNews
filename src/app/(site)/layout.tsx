@@ -40,7 +40,7 @@ export default async function SiteLayout({ children }: LayoutProps<'/'>) {
       <A11yBar />
       <main className="page"><div className="container">{children}</div></main>
       <Footer />
-      {!cookieStore.get('cookie_consent') && <CookieBanner />}
+      {!(cookieStore.get('cookie_consent')?.value ?? '').endsWith(`:v${s.privacy?.policyVersion ?? 1}`) && <CookieBanner />}
       {{ ...DEFAULT_ANALYTICS, ...(s.analytics ?? {}) }.enabled && <Analytics vercel={!!s.analytics?.vercelAnalytics} />}
       {{ ...DEFAULT_PUSH, ...(s.push ?? {}) }.enabled && <PushPrompt siteName={s.siteName} />}
     </div>

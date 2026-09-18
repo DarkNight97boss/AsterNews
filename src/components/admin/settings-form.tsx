@@ -104,7 +104,11 @@ export function SettingsForm({ initial, categories, env }: { initial: SiteSettin
         </div>
       </div>}
 
-      {tab === 'lettori' && <div className="admin-grid-2"><div className="panel"><div className="panel-title">Muro di registrazione</div><div className="field"><label>Chiedi la registrazione gratuita dopo N articoli al mese (0 = mai; agisce prima del paywall)</label><input className="input" type="number" min={0} value={s.community?.registrationWallAfter ?? 0} onChange={(e) => up('community', { registrationWallAfter: Number(e.target.value) })} /></div><p className="help">Chi non è registrato vede un invito a creare l&apos;account (email o social) per continuare a leggere: aumenta iscritti e newsletter senza chiedere soldi.</p></div>
+      {tab === 'lettori' && <div className="admin-grid-2"><div className="panel"><div className="panel-title">SSO per la redazione (Google Workspace, Microsoft 365)</div>
+            <div className="field"><label>Domini Google autorizzati per la redazione (separati da virgola; vuoto = SSO Google disattivo)</label><input className="input" value={s.auth?.staffGoogleDomains ?? ''} onChange={(e) => up('auth', { staffGoogleDomains: e.target.value })} placeholder="miogiornale.it" /><div className="help">Usa le stesse credenziali Google del login lettori. L&apos;utente deve già esistere in Utenti e ruoli con la stessa email.</div></div>
+            <div className="form-row"><div className="field"><label>Microsoft Tenant ID</label><input className="input" value={s.auth?.microsoftTenantId ?? ''} onChange={(e) => up('auth', { microsoftTenantId: e.target.value })} placeholder="common oppure l'ID del tenant" /></div><div className="field"><label>Microsoft Client ID</label><input className="input" value={s.auth?.microsoftClientId ?? ''} onChange={(e) => up('auth', { microsoftClientId: e.target.value })} /></div><div className="field"><label>Microsoft Client Secret</label><input className="input" type="password" value={s.auth?.microsoftClientSecret ?? ''} onChange={(e) => up('auth', { microsoftClientSecret: e.target.value })} /></div></div>
+            <p className="help">Redirect da autorizzare: <code>/api/auth/microsoft/callback</code>. SAML generico: non incluso; per Okta/Entra usare OIDC (Microsoft) o Google.</p>
+          </div><div className="panel"><div className="panel-title">Muro di registrazione</div><div className="field"><label>Chiedi la registrazione gratuita dopo N articoli al mese (0 = mai; agisce prima del paywall)</label><input className="input" type="number" min={0} value={s.community?.registrationWallAfter ?? 0} onChange={(e) => up('community', { registrationWallAfter: Number(e.target.value) })} /></div><p className="help">Chi non è registrato vede un invito a creare l&apos;account (email o social) per continuare a leggere: aumenta iscritti e newsletter senza chiedere soldi.</p></div>
         <div>
           <div className="panel"><div className="panel-title">Commenti</div>
             <Switch on={s.commentsModeration} set={(v) => setS({ ...s, commentsModeration: v })} label="Modera i commenti prima della pubblicazione" /><br />
@@ -229,7 +233,10 @@ export function SettingsForm({ initial, categories, env }: { initial: SiteSettin
         </div>
       </div>}
 
-      {tab === 'sistema' && <div className="admin-grid-2">
+      {tab === 'sistema' && <div className="admin-grid-2"><div className="panel"><div className="panel-title">Staging e promozione</div>
+            <div className="field"><label>Deploy Hook del ramo staging</label><input className="input" type="password" value={s.updates?.stagingHookUrl ?? ''} onChange={(e) => up('updates', { stagingHookUrl: e.target.value })} placeholder="https://api.vercel.com/v1/integrations/deploy/…" /></div>
+            <div className="form-row"><div className="field"><label>Token Vercel (per promuovere in produzione)</label><input className="input" type="password" value={s.updates?.vercelToken ?? ''} onChange={(e) => up('updates', { vercelToken: e.target.value })} /></div><div className="field"><label>ID progetto Vercel</label><input className="input" value={s.updates?.vercelProjectId ?? ''} onChange={(e) => up('updates', { vercelProjectId: e.target.value })} placeholder="prj_…" /></div></div>
+          </div>
         <div>
           <div className="panel"><div className="panel-title">Monitoraggio e avvisi</div>
             <div className="form-row"><div className="field"><label>Email per gli avvisi</label><input className="input" value={mon.alertEmail} onChange={(e) => up('monitoring', { alertEmail: e.target.value })} placeholder="tecnico@tuatestata.it" /></div><div className="field"><label>Webhook (Slack, Discord, Teams…)</label><input className="input" value={mon.webhookUrl} onChange={(e) => up('monitoring', { webhookUrl: e.target.value })} placeholder="https://hooks.slack.com/..." /></div></div>

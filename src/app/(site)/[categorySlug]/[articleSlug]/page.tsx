@@ -13,6 +13,7 @@ import { ArticleFanpage } from '@/components/site/fanpage/article-fanpage';
 import { siteUrl } from '@/lib/site-url';
 import { ArticleBody } from '@/components/site/article-body';
 import { LiveFeed } from '@/components/site/live-feed';
+import { RecommendStrip } from '@/components/site/recommend-strip';
 import { buildToc, wordCount } from '@/lib/content-render';
 import { listRevisions } from '@/lib/repo-extra';
 import { AdSlot } from '@/components/site/ad-slot';
@@ -163,6 +164,7 @@ export default async function ArticlePage({ params }: PageProps<'/[categorySlug]
           {author && (
             <div className="author-box"><img src={author.avatar} alt={author.name} /><div><div className="role">{ROLE_LABELS[author.role]}</div><h3><Link href={`/autore/${author.id}`}>{author.name}</Link></h3><p>{author.bio}</p></div></div>
           )}
+          <RecommendStrip categorySlug={categorySlug} currentId={a.id} />
           <section className="section">
             <div className="section-title"><h2>Leggi anche</h2></div>
             <div className="grid grid-2">{rel.slice(0, 4).map((r) => <ArticleCard key={r.id} article={r} variant="horizontal-sm" showMeta />)}</div>

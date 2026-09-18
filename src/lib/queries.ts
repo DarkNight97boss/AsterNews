@@ -60,8 +60,8 @@ export const articlesByTag = (tagId: string, limit = 50, offset = 0) => listPubl
 export const articlesByAuthor = (userId: string, limit = 50, offset = 0) => listPublished({ authorId: userId }, limit, offset);
 export const articlesByZone = (zoneId: string, limit = 50, offset = 0) => listPublished({ zoneId }, limit, offset);
 export const approvedComments = (articleId: string) => repo.commentsForArticle(articleId);
-export const related = (a: Article, n = 4) => repo.relatedArticles(a, n);
-export const search = async (q: string, limit = 50, offset = 0, opts: { categoryId?: string; from?: string; to?: string } = {}) => repo.searchArticles(q, limit, offset, { ...opts, synonyms: await synonyms() });
+export const related = async (a: Article, n = 4) => { const base = await repo.relatedArticles(a, n); if (base.length >= n) return base; try { const { similarTo } = await import('./embeddings'); const extra = (await similarTo(a, n)).filter((x) => !base.some((b) => b.id === x.id)); return [...base, ...extra].slice(0, n); } catch { return base; } };
+export const search = async (q: string, limit = 50, offset = 0, opts: { categoryId?: string; from?: string; to?: string } = {}) => { const r = await repo.searchArticles(q, limit, offset, { ...opts, synonyms: await synonyms() }); if (r.items.length >= 5 || offset > 0 || opts.categoryId) return r; try { const { semanticSearch } = await import('./embeddings'); const extra = await semanticSearch(q, limit - r.items.length, r.items.map((a) => a.id)); return extra.length ? { ...r, items: [...r.items, ...extra], total: r.total + extra.length } : r; } catch { return r; } };
 export const suggest = (q: string) => repo.suggestTerms(q);
 export const countByStatus = (f: { authorId?: string } = {}) => repo.countByStatus(f);
 export const zoneCounts = cache(() => cZoneCounts());

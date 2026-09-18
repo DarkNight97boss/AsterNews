@@ -188,6 +188,12 @@ CREATE TABLE IF NOT EXISTS donations (id TEXT PRIMARY KEY, amount REAL NOT NULL,
 CREATE TABLE IF NOT EXISTS api_keys (id TEXT PRIMARY KEY, name TEXT NOT NULL, prefix TEXT NOT NULL, key_hash TEXT NOT NULL, scopes TEXT DEFAULT '["read"]', active INTEGER DEFAULT 1, calls INTEGER DEFAULT 0, last_used TEXT, created_by TEXT DEFAULT '', created_at TEXT);
 CREATE TABLE IF NOT EXISTS broken_links (id TEXT PRIMARY KEY, article_id TEXT NOT NULL, url TEXT NOT NULL, status INTEGER DEFAULT 0, error TEXT DEFAULT '', checked_at TEXT, fixed INTEGER DEFAULT 0);
 CREATE INDEX IF NOT EXISTS idx_broken_article ON broken_links(article_id);
+CREATE TABLE IF NOT EXISTS security_log (id TEXT PRIMARY KEY, kind TEXT NOT NULL, email TEXT DEFAULT '', user_id TEXT DEFAULT '', ip TEXT DEFAULT '', ua TEXT DEFAULT '', country TEXT DEFAULT '', created_at TEXT);
+CREATE INDEX IF NOT EXISTS idx_security_created ON security_log(created_at DESC);
+CREATE TABLE IF NOT EXISTS vitals (id TEXT PRIMARY KEY, path TEXT NOT NULL, metric TEXT NOT NULL, value REAL NOT NULL, device TEXT DEFAULT 'desktop', created_at TEXT);
+CREATE INDEX IF NOT EXISTS idx_vitals_created ON vitals(created_at DESC);
+CREATE TABLE IF NOT EXISTS consents (id TEXT PRIMARY KEY, choice TEXT NOT NULL, version INTEGER DEFAULT 1, ip_hash TEXT DEFAULT '', ua TEXT DEFAULT '', created_at TEXT);
+CREATE TABLE IF NOT EXISTS article_embeddings (article_id TEXT PRIMARY KEY, vector TEXT NOT NULL, updated_at TEXT);
 CREATE TABLE IF NOT EXISTS gift_codes (id TEXT PRIMARY KEY, code TEXT UNIQUE NOT NULL, email TEXT NOT NULL, months INTEGER DEFAULT 1, message TEXT DEFAULT '', from_reader TEXT DEFAULT '', redeemed_by TEXT DEFAULT '', created_at TEXT, redeemed_at TEXT);
 CREATE TABLE IF NOT EXISTS quiz_results (id TEXT PRIMARY KEY, quiz_id TEXT NOT NULL, article_id TEXT DEFAULT '', who TEXT NOT NULL, name TEXT DEFAULT '', score INTEGER DEFAULT 0, total INTEGER DEFAULT 0, created_at TEXT, UNIQUE (quiz_id, who));
 CREATE TABLE IF NOT EXISTS contacts (id TEXT PRIMARY KEY, name TEXT NOT NULL, role TEXT DEFAULT '', org TEXT DEFAULT '', phone TEXT DEFAULT '', email TEXT DEFAULT '', notes TEXT DEFAULT '', tags TEXT DEFAULT '', created_by TEXT, updated_at TEXT);
