@@ -1,0 +1,44 @@
+# Avvio completo con un comando:  docker compose up -d   →  http://localhost:3000/setup
+# Cambia le password qui sotto prima di andare online. Per il cron: chiama ogni minuto
+#   http://app:3000/api/cron/tick?job=minute&secret=$CRON_SECRET  (servizio "cron" incluso).
+services:
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: aster
+      POSTGRES_PASSWORD: cambia-questa-password
+      POSTGRES_DB: aster
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U aster -d aster"]
+      interval: 10s
+      retries: 6
+  app:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "3000:3000"
+    environment:
+      DATABASE_URL: postgres://aster:cambia-questa-password@db:5432/aster
+      NEXT_PUBLIC_SITE_URL: http://localhost:3000
+      AUTH_SECRET: cambia-questo-segreto-con-64-caratteri-casuali
+      CRON_SECRET: cambia-questo-segreto-del-cron
+    volumes:
+      - uploads:/app/public/uploads
+      - app-data:/app/data
+  cron:
+    image: curlimages/curl:8.10.1
+    restart: unless-stopped
+    depends_on: [app]
+    entrypoint: ["/bin/sh", "-c", "while true; do curl -fsS \"http://app:3000/api/cron/tick?job=minute&secret=$$CRON_SECRET\" >/dev/null || true; if [ \"$$(date +%H%M)\" = \"0300\" ]; then curl -fsS \"http://app:3000/api/cron/tick?job=daily&secret=$$CRON_SECRET\" >/dev/null || true; fi; sleep 60; done"]
+    environment:
+      CRON_SECRET: cambia-questo-segreto-del-cron
+volumes:
+  db-data:
+  uploads:
+  app-data:

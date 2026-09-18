@@ -308,7 +308,7 @@ export async function submitRawArticleAction(input: { title: string; text: strin
 
 // ---------------- Importazione WordPress (job in background) ----------------
 export type { ImportJob } from './repo';
-export interface WpImportOptions { source: 'wxr' | 'rest' | 'feed'; file?: string; url?: string; maxPosts?: number; optimize: boolean; statusMode: 'keep' | 'draft' | 'review'; categoryMap: Record<string, string>; overwrite: boolean; downloadMedia: boolean }
+export interface WpImportOptions { source: 'wxr' | 'rest' | 'feed' | 'drupal' | 'joomla'; file?: string; url?: string; token?: string; maxPosts?: number; optimize: boolean; statusMode: 'keep' | 'draft' | 'review'; categoryMap: Record<string, string>; overwrite: boolean; downloadMedia: boolean }
 
 export async function startImportJobAction(opts: WpImportOptions): Promise<ActionResult> {
   const me = await requirePermission('settings.manage');

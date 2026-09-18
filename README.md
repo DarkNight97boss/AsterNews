@@ -70,6 +70,15 @@ Su Vercel: collega l'integrazione Supabase (crea `POSTGRES_URL`), fai il deploy 
 - **Multi-sito e temi**: builder della home a blocchi, libreria di layout con import/export JSON, CSS personalizzato con anteprima e versioni, redazioni per edizione, syndication, landing e microsit.
 - **Piattaforma**: registro estensioni, staging con promozione, log di sicurezza con avvisi, SSO Google Workspace e Microsoft 365, test end-to-end Playwright (`npm run e2e`), monitoraggio sintetico, Core Web Vitals reali, registro consensi GDPR, guida in-app.
 
+### Quinta tornata: affidabilità, redazione, lettori, ricavi
+- **Rilascio controllato** (`/admin/rilascio`): commit in attesa, `npm run release:check` (tipi, test, end-to-end isolati), pulsante «Rilascia» attivo solo a condizioni verdi, ripristino con un clic, registro delle migrazioni, modalità manutenzione. **Uso dell'AI** registrato con tetto di spesa mensile.
+- **Redazione**: commenti a margine sulla frase selezionata, scaletta del giorno stampabile, embargo, fonti riservate, rassegna mattutina automatica dai feed, dettatura vocale.
+- **Lettori**: notifiche push per zona e sezione (`/notifiche`), «segui l'argomento» via email, lettura senza distrazioni, coda di ascolto, segnalazione errori, biglietti per gli eventi con controllo all'ingresso.
+- **Ricavi**: report per l'inserzionista, pubblicità self-service (`/pubblicita`), abbonamenti aziendali, prova gratuita e codici sconto, abbonati a rischio con email di recupero.
+- **Dati e SEO**: cruscotto per autore, contenuti sempreverdi in calo, controllo dei dati strutturati nell'editor, archivio storico (`/archivio/2026/09/18`).
+- **Piattaforma**: importatori Drupal (JSON:API) e Joomla (Web Services), `Dockerfile` e `docker-compose.yml` (app, Postgres e cron con `docker compose up -d`).
+- **Test**: `npm test` (unitari e di integrazione su database in memoria), `npm run e2e:isolated` (Playwright su ambiente usa e getta: login, tutte le pagine di redazione, flussi chiave).
+
 ## Dati e infrastruttura
 
 - Postgres via `POSTGRES_URL` / `DATABASE_URL` (driver `pg`, pooler Supabase in transaction mode); senza variabili, PGlite in `data/pg`. Schema e migrazioni idempotenti in `src/lib/db.ts`.

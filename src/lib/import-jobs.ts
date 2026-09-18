@@ -121,12 +121,50 @@ async function* feedPosts(url: string, max: number, onTotal?: (t: number) => Pro
   }
   void i;
 }
+
+/** Drupal 8+ con JSON:API attiva (default): /jsonapi/node/article, 50 per pagina, con autore, immagine e tag inclusi. */
+async function* drupalPosts(url: string, max: number, onTotal?: (t: number) => Promise<void>): AsyncGenerator<WpPost> {
+  const base = url.replace(/\/+$/, ''); let next: string | null = `${base}/jsonapi/node/article?page[limit]=50&sort=-created&include=uid,field_image,field_tags`; let n = 0; let first = true;
+  while (next && n < max) {
+    const res: Response = await fetch(next, { headers: { Accept: 'application/vnd.api+json', 'User-Agent': 'ASTERNews-import' }, signal: AbortSignal.timeout(30000) });
+    if (!res.ok) throw new Error(`Drupal JSON:API non raggiungibile (${res.status}): verifica che il modulo JSON:API sia attivo e i contenuti pubblici.`);
+    const j = await res.json() as { data: { id: string; attributes: Record<string, unknown>; relationships?: Record<string, { data?: { id: string } | { id: string }[] | null }> }[]; included?: { id: string; type: string; attributes: Record<string, unknown> }[]; links?: { next?: { href: string } }; meta?: { count?: number } };
+    if (first) { first = false; await onTotal?.(Math.min(max, Number(j.meta?.count) || max)); }
+    const inc = new Map((j.included ?? []).map((x) => [x.id, x]));
+    for (const d of j.data ?? []) {
+      if (n >= max) return; n++; const a = d.attributes; const body = (a.body as { processed?: string; value?: string; summary?: string } | null) ?? {};
+      const rel = (k: string) => { const r = d.relationships?.[k]?.data; return Array.isArray(r) ? r : r ? [r] : []; };
+      const author = String(inc.get(rel('uid')[0]?.id ?? '')?.attributes?.display_name ?? inc.get(rel('uid')[0]?.id ?? '')?.attributes?.name ?? '');
+      const file = inc.get(rel('field_image')[0]?.id ?? '')?.attributes as { uri?: { url?: string } } | undefined; const image = file?.uri?.url ? (file.uri.url.startsWith('http') ? file.uri.url : base + file.uri.url) : '';
+      const tags = rel('field_tags').map((t) => String(inc.get(t.id)?.attributes?.name ?? '')).filter(Boolean); const alias = (a.path as { alias?: string } | null)?.alias ?? '';
+      yield { wpId: 'drupal-' + d.id, title: String(a.title ?? ''), slug: alias.split('/').filter(Boolean).pop() ?? '', link: alias ? base + alias : '', date: new Date(String(a.created ?? Date.now())).toISOString(), status: a.status === false ? 'draft' : 'publish', author, content: cleanWpContent(String(body.processed ?? body.value ?? '')), excerpt: String(body.summary ?? ''), categories: tags.slice(0, 1), tags: tags.slice(1, 8), image, type: 'post' };
+    }
+    next = j.links?.next?.href ?? null;
+  }
+}
+/** Joomla 4/5 con Web Services: /api/index.php/v1/content/articles (serve un token API: Utenti → Token API Joomla). */
+async function* joomlaPosts(url: string, max: number, token: string, onTotal?: (t: number) => Promise<void>): AsyncGenerator<WpPost> {
+  const base = url.replace(/\/+$/, ''); let offset = 0; let n = 0; let first = true;
+  while (n < max) {
+    const res = await fetch(`${base}/api/index.php/v1/content/articles?page[limit]=50&page[offset]=${offset}&list[ordering]=a.created&list[direction]=DESC`, { headers: { Accept: 'application/vnd.api+json', 'User-Agent': 'ASTERNews-import', ...(token ? { 'X-Joomla-Token': token, Authorization: `Bearer ${token}` } : {}) }, signal: AbortSignal.timeout(30000) });
+    if (res.status === 401 || res.status === 403) throw new Error('Joomla richiede un token API: crealo in Utenti → il tuo utente → Token API Joomla e incollalo qui.');
+    if (!res.ok) throw new Error(`API Joomla non raggiungibile (${res.status}): servono Joomla 4 o 5 con il plugin «Web Services - Content» attivo.`);
+    const j = await res.json() as { data?: { id: string; attributes: Record<string, unknown> }[]; meta?: { 'total-pages'?: number } };
+    const rows = j.data ?? []; if (first) { first = false; await onTotal?.(Math.min(max, (Number(j.meta?.['total-pages']) || 1) * 50)); } if (!rows.length) break;
+    for (const d of rows) {
+      if (n >= max) return; n++; const a = d.attributes; let image = ''; try { const im = typeof a.images === 'string' ? JSON.parse(a.images) : (a.images as Record<string, string> | undefined); const raw = String(im?.image_fulltext || im?.image_intro || '').split('#')[0]; image = raw ? (raw.startsWith('http') ? raw : `${base}/${raw.replace(/^\//, '')}`) : ''; } catch { image = ''; }
+      const tags = Object.values((a.tags as Record<string, string> | undefined) ?? {}).map(String);
+      yield { wpId: 'joomla-' + d.id, title: String(a.title ?? ''), slug: String(a.alias ?? ''), link: '', date: new Date(String(a.created ?? Date.now()).replace(' ', 'T') + (String(a.created ?? '').includes('Z') ? '' : 'Z')).toISOString(), status: Number(a.state) === 1 ? 'publish' : 'draft', author: String(a.created_by_alias || a.author || ''), content: cleanWpContent(String(a.text ?? `${a.introtext ?? ''}${a.fulltext ?? ''}`)), excerpt: String(a.metadesc ?? ''), categories: [String(a.category_title ?? '')].filter(Boolean), tags: tags.slice(0, 8), image, type: 'post' };
+    }
+    if (rows.length < 50) break; offset += 50;
+  }
+}
 async function countWxr(file: string): Promise<number> { let n = 0; for await (const it of wxrItems(file)) if (it.includes('<wp:post_type><![CDATA[post]]>') || it.includes('<wp:post_type>post</wp:post_type>')) n++; return n; }
 
 export async function previewImport(opts: WpImportOptions): Promise<ImportPreview> {
   const cats = new Map<string, number>(); const authors = new Set<string>(); const sample: string[] = [];
   let total = 0, publishable = 0, existing = 0;
-  const gen = opts.source === 'wxr' ? wxrPosts(path.join(IMPORT_DIR, path.basename(opts.file ?? ''))) : opts.source === 'feed' ? feedPosts(opts.url!, Math.min(opts.maxPosts ?? 200, 300)) : restPosts(opts.url!, Math.min(opts.maxPosts ?? 200, 300));
+  const gen = opts.source === 'wxr' ? wxrPosts(path.join(IMPORT_DIR, path.basename(opts.file ?? ''))) : opts.source === 'drupal' ? drupalPosts(opts.url!, 200) : opts.source === 'joomla' ? joomlaPosts(opts.url!, 200, opts.token ?? '') : opts.source === 'feed' ? feedPosts(opts.url!, Math.min(opts.maxPosts ?? 200, 300)) : restPosts(opts.url!, Math.min(opts.maxPosts ?? 200, 300));
   for await (const p of gen) {
     total++; if (p.status === 'publish') publishable++;
     p.categories.forEach((c) => cats.set(c, (cats.get(c) ?? 0) + 1)); if (p.author) authors.add(p.author);
@@ -190,7 +228,7 @@ async function runJob(id: string, budgetMs: number): Promise<boolean> {
 
   let pending: { a: Article; wpId?: string }[] = [];
   const flush = async () => { if (pending.length) { await repo.bulkUpsertArticles(pending); pending = []; } await repo.updateJob(id, { processed, imported, skipped, total: Math.max(total, processed), errors, cursor: String(index), message: `Importati ${imported} su ${processed}` }); };
-  const gen = opts.source === 'wxr' ? wxrPosts(file) : opts.source === 'feed' ? feedPosts(opts.url!, opts.maxPosts ?? 1000, async (t) => { total = t; await repo.updateJob(id, { total: t }); }) : restPosts(opts.url!, opts.maxPosts ?? 100000, async (t) => { total = t; await repo.updateJob(id, { total: t }); }, resumeFrom);
+  const gen = opts.source === 'wxr' ? wxrPosts(file) : opts.source === 'drupal' ? drupalPosts(opts.url!, opts.maxPosts ?? 100000, async (t) => { total = t; await repo.updateJob(id, { total }); }) : opts.source === 'joomla' ? joomlaPosts(opts.url!, opts.maxPosts ?? 100000, opts.token ?? '', async (t) => { total = t; await repo.updateJob(id, { total }); }) : opts.source === 'feed' ? feedPosts(opts.url!, opts.maxPosts ?? 1000, async (t) => { total = t; await repo.updateJob(id, { total: t }); }) : restPosts(opts.url!, opts.maxPosts ?? 100000, async (t) => { total = t; await repo.updateJob(id, { total: t }); }, resumeFrom);
   let ctxCache: { at: number; ctx: Awaited<ReturnType<typeof seoContext>> } | null = null;
   const ctxFor = async () => { if (!ctxCache || Date.now() - ctxCache.at > 60000) ctxCache = { at: Date.now(), ctx: await seoContext('') }; return ctxCache.ctx; };
 

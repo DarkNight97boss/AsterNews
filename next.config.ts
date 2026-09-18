@@ -1,6 +1,8 @@
 import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
+  // Immagine Docker: build autonoma (DOCKER_BUILD=1). Su Vercel non cambia nulla.
+  ...(process.env.DOCKER_BUILD ? { output: 'standalone' as const } : {}),
   serverExternalPackages: ['pg', '@electric-sql/pglite', 'sharp', 'web-push'],
   outputFileTracingIncludes: { '/**': ['./node_modules/@electric-sql/pglite/dist/**'] },
   images: {
