@@ -4,12 +4,11 @@ import { HomeMagazine } from '@/components/site/home/home-magazine';
 import { HomeToday } from '@/components/site/home/home-today';
 import { getHomeData } from '@/components/site/home/home-data';
 import { getActiveTheme } from '@/lib/theme-server';
+import { MissedBox } from '@/components/site/missed-box';
 
 export default async function HomePage() {
   const { theme } = await getActiveTheme();
   const data = await getHomeData();
-  if (theme.homeLayout === 'fanpage') return <HomeFanpage d={data} />;
-  if (theme.homeLayout === 'grid') return <HomeGrid d={data} />;
-  if (theme.homeLayout === 'magazine') return <HomeMagazine d={data} />;
-  return <HomeToday d={data} />;
+  const home = theme.homeLayout === 'fanpage' ? <HomeFanpage d={data} /> : theme.homeLayout === 'grid' ? <HomeGrid d={data} /> : theme.homeLayout === 'magazine' ? <HomeMagazine d={data} /> : <HomeToday d={data} />;
+  return <><MissedBox />{home}</>;
 }

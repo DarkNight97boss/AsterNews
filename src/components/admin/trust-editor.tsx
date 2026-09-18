@@ -4,9 +4,21 @@ import { toast } from '@/components/ui/toaster';
 import type { Article, ArticleKindLabel, VerificationState } from '@/lib/models';
 import { KIND_LABELS, VERIFY_LABELS } from '@/lib/trust';
 import { addCommitmentAction } from '@/lib/actions-trust';
+import { altVersionAction } from '@/lib/actions-reading';
 
 type Extra = NonNullable<Article['extra']>;
 /** Pannello «Fiducia» dell'editor: etichetta dell'articolo, stato di verifica, domande aperte, conflitti, promesse e previsioni. */
+export function ReaderEditor({ title, content, extra, setExtra }: { title: string; content: string; extra: Extra; setExtra: (p: Partial<Extra>) => void }) {
+  const [busy, setBusy] = useState(''); const [, start] = useTransition();
+  const gen = (kind: 'kids' | 'easy') => { setBusy(kind); start(async () => { const r = await altVersionAction(kind, title, content); setBusy(''); if (r.ok && r.data) { setExtra({ versions: { ...(extra.versions ?? {}), [kind]: r.data } }); toast.success('Versione pronta: rileggila prima di pubblicare.'); } else toast.error(r.message ?? 'Errore'); }); };
+  return (
+    <div className="panel"><div className="panel-title">Per chi legge</div>
+      <div className="field"><label htmlFor="rd-mind">«Ho cambiato idea»: la domanda a cui il lettore risponde prima e dopo</label><input id="rd-mind" className="input" placeholder="es. La tangenziale va costruita?" value={extra.mindQuestion ?? ''} onChange={(e) => setExtra({ mindQuestion: e.target.value || undefined })} /></div>
+      <div className="field"><label htmlFor="rd-amb">Suono d&apos;ambiente (URL di un mp3 registrato sul posto)</label><input id="rd-amb" className="input" placeholder="https://…/mercato.mp3" value={extra.ambientUrl ?? ''} onChange={(e) => setExtra({ ambientUrl: e.target.value || undefined })} /></div>
+      {(['kids', 'easy'] as const).map((k) => { const v = extra.versions?.[k]; return <div className="field" key={k}><label htmlFor={`rd-${k}`}>{k === 'kids' ? 'Versione per bambini' : 'Versione in lingua facile'} <button type="button" className="btn btn-outline btn-sm" disabled={!!busy} onClick={() => gen(k)}>{busy === k ? 'Preparo…' : v ? 'Rigenera' : 'Prepara con l\'AI'}</button>{v && <button type="button" className="btn btn-ghost btn-sm" onClick={() => setExtra({ versions: { ...(extra.versions ?? {}), [k]: undefined } })}>Rimuovi</button>}</label>{v && <><textarea id={`rd-${k}`} className="textarea" style={{ minHeight: 120, fontSize: 13 }} value={v.html} onChange={(e) => setExtra({ versions: { ...(extra.versions ?? {}), [k]: { ...v, html: e.target.value } } })} /><p className="help">Glossario: {v.glossary.map((g) => g.term).join(', ') || 'nessuna parola'}. Rileggi e correggi: esce con la firma della redazione.</p></>}</div>; })}
+    </div>
+  );
+}
 export function TrustEditor({ articleId, isNew, extra, setExtra }: { articleId: string; isNew: boolean; extra: Extra; setExtra: (p: Partial<Extra>) => void }) {
   const [c, setC] = useState({ kind: 'promise' as 'promise' | 'prediction', text: '', who: '', due: '' }); const [pending, start] = useTransition();
   return (

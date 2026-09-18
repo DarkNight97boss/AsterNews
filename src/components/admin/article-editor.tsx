@@ -13,7 +13,7 @@ import { MediaPicker } from './media-picker';
 import { RichEditor } from './rich-editor';
 import { SeoAssistant } from './seo-assistant';
 import { EditorExtras } from './editor-extras';
-import { TrustEditor } from './trust-editor';
+import { ReaderEditor, TrustEditor } from './trust-editor';
 import { RehearsalPanel } from './rehearsal-panel';
 import { BlockEditor } from './block-editor';
 import { AiAssistant } from './ai-assistant';
@@ -151,6 +151,7 @@ export function ArticleEditor({ initial, isNew, isPublic, categories, zones, tag
           </div>}
           {!isNew && editions.length > 0 && a.status === 'published' && <div className="panel"><div className="panel-title">Condividi con un'altra edizione</div><select className="select" defaultValue="" onChange={async (e) => { const id = e.target.value; if (!id) return; if (!confirm('Pubblicare una copia di questo articolo nell\'edizione scelta (con canonical sull\'originale)?')) { e.target.value = ''; return; } const r = await syndicateArticleAction(a.id, id); (r.ok ? toast.success : toast.error)(r.message ?? ''); e.target.value = ''; }}><option value="">Scegli l&apos;edizione…</option>{editions.filter((e) => e.id !== a.editionId).map((e) => <option key={e.id} value={e.id}>{e.name}</option>)}</select></div>}
           <TrustEditor articleId={a.id} isNew={isNew} extra={extra} setExtra={setExtra} />
+          <ReaderEditor title={a.title} content={a.content} extra={extra} setExtra={setExtra} />
           <div className="panel"><div className="panel-title">Fonti (solo redazione) <button type="button" className="btn btn-outline btn-sm" onClick={() => setExtra({ sources: [...(extra.sources ?? []), { name: '', contact: '', note: '', verified: false }] })}>+ Fonte</button></div>
             {(extra.sources ?? []).length === 0 && <p className="help">Chi ha detto cosa e come l&apos;abbiamo verificato. Non viene mai pubblicato.</p>}
             {(extra.sources ?? []).map((src, i) => { const upd = (p: Partial<typeof src>) => setExtra({ sources: (extra.sources ?? []).map((x, j) => (j === i ? { ...x, ...p } : x)) }); return <div key={i} className="source-row"><input className="input" placeholder="Fonte (persona, ente, documento)" value={src.name} onChange={(e) => upd({ name: e.target.value })} /><input className="input" placeholder="Contatto o link" value={src.contact} onChange={(e) => upd({ contact: e.target.value })} /><input className="input" placeholder="Cosa conferma" value={src.note} onChange={(e) => upd({ note: e.target.value })} /><label className="switch"><input type="checkbox" checked={src.verified} onChange={(e) => upd({ verified: e.target.checked })} /> verificata</label><button type="button" className="icon-btn danger" onClick={() => setExtra({ sources: (extra.sources ?? []).filter((_, j) => j !== i) })}>✕</button></div>; })}
