@@ -18,6 +18,7 @@ import { A11yBar } from '@/components/site/a11y-bar';
 import { DEFAULT_MENUS } from '@/lib/models';
 import { listPages } from '@/lib/repo-extra3';
 import { SiteBanners } from '@/components/site/site-banners';
+import { EcoBadge } from '@/components/site/eco';
 import { activeSeason } from '@/lib/personal';
 
 export default async function SiteLayout({ children }: LayoutProps<'/'>) {
@@ -45,6 +46,7 @@ export default async function SiteLayout({ children }: LayoutProps<'/'>) {
       <A11yBar />
       <main className="page"><div className="container">{children}</div></main>
       <Footer />
+      <EcoBadge />
       <AudioDock />
       {!(cookieStore.get('cookie_consent')?.value ?? '').endsWith(`:v${s.privacy?.policyVersion ?? 1}`) && <CookieBanner />}
       {{ ...DEFAULT_ANALYTICS, ...(s.analytics ?? {}) }.enabled && <Analytics vercel={!!s.analytics?.vercelAnalytics} />}

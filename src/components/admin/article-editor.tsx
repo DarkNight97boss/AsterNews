@@ -13,8 +13,10 @@ import { MediaPicker } from './media-picker';
 import { RichEditor } from './rich-editor';
 import { SeoAssistant } from './seo-assistant';
 import { EditorExtras } from './editor-extras';
-import { ReaderEditor, TrustEditor } from './trust-editor';
+import { CostEditor, ReaderEditor, TrustEditor } from './trust-editor';
 import { RehearsalPanel } from './rehearsal-panel';
+import { OutputsPanel } from './outputs-panel';
+import { canonicalHashClient } from '@/lib/text-hash-client';
 import { BlockEditor } from './block-editor';
 import { AiAssistant } from './ai-assistant';
 import { TemplatePicker } from './template-picker';
@@ -58,6 +60,7 @@ export function ArticleEditor({ initial, isNew, isPublic, categories, zones, tag
   const [circleList, setCircleList] = useState<{ id: string; name: string }[]>([]); useEffect(() => { import('@/lib/actions-circles').then((m) => m.circlesAction()).then(setCircleList).catch(() => {}); }, []);
   const [dupes, setDupes] = useState<{ id: string; title: string; status: string; updatedAt: string }[]>([]);
   const [editions, setEditions] = useState<{ id: string; name: string }[]>([]); useEffect(() => { editionsListAction().then(setEditions).catch(() => {}); }, []);
+  const [outputsHash, setOutputsHash] = useState(''); useEffect(() => { if (!a.extra?.outputs?.hash) return; const t = setTimeout(() => { canonicalHashClient(a.title, a.content).then(setOutputsHash).catch(() => {}); }, 800); return () => clearTimeout(t); }, [a.title, a.content, a.extra?.outputs?.hash]);
   const extra = a.extra ?? {}; const setExtra = (patch: Partial<NonNullable<Article['extra']>>) => set('extra', { ...extra, ...patch });
   const catFields = fieldDefs[a.categoryId] ?? [];
   useEffect(() => { try { const m = localStorage.getItem('editor_mode'); if (m === 'blocks' || m === 'classic') setEditorMode(m); } catch { /* ignore */ } }, []);
@@ -151,6 +154,7 @@ export function ArticleEditor({ initial, isNew, isPublic, categories, zones, tag
           </div>}
           {!isNew && editions.length > 0 && a.status === 'published' && <div className="panel"><div className="panel-title">Condividi con un'altra edizione</div><select className="select" defaultValue="" onChange={async (e) => { const id = e.target.value; if (!id) return; if (!confirm('Pubblicare una copia di questo articolo nell\'edizione scelta (con canonical sull\'originale)?')) { e.target.value = ''; return; } const r = await syndicateArticleAction(a.id, id); (r.ok ? toast.success : toast.error)(r.message ?? ''); e.target.value = ''; }}><option value="">Scegli l&apos;edizione…</option>{editions.filter((e) => e.id !== a.editionId).map((e) => <option key={e.id} value={e.id}>{e.name}</option>)}</select></div>}
           <TrustEditor articleId={a.id} isNew={isNew} extra={extra} setExtra={setExtra} />
+          <CostEditor extra={extra} setExtra={setExtra} />
           <ReaderEditor title={a.title} content={a.content} extra={extra} setExtra={setExtra} />
           <div className="panel"><div className="panel-title">Fonti (solo redazione) <button type="button" className="btn btn-outline btn-sm" onClick={() => setExtra({ sources: [...(extra.sources ?? []), { name: '', contact: '', note: '', verified: false }] })}>+ Fonte</button></div>
             {(extra.sources ?? []).length === 0 && <p className="help">Chi ha detto cosa e come l&apos;abbiamo verificato. Non viene mai pubblicato.</p>}
@@ -163,6 +167,7 @@ export function ArticleEditor({ initial, isNew, isPublic, categories, zones, tag
             <p className="help" style={{ marginTop: 6 }}>Le correzioni compaiono datate in fondo all&apos;articolo e nei dati strutturati.</p>
           </div>
           <RehearsalPanel article={a} isNew={isNew} users={users.map((u) => ({ id: u.id, name: u.name }))} meId={meId} extra={extra} setExtra={setExtra} onInsert={(html) => set('content', a.content + '\n' + html)} onTitle={(t) => set('title', t)} />
+          <OutputsPanel article={a} isNew={isNew} siteUrl={siteUrl} stale={!!extra.outputs?.hash && outputsHash !== '' && outputsHash !== extra.outputs.hash} extra={extra} setExtra={setExtra} />
           <TranscribePanel onInsert={(html) => set('content', a.content + '\n' + html)} />
           <div className="panel"><div className="panel-title">Dati strutturati (Google)</div><ul className="schema-list">{checkArticleSchema(a, { authorName: users.find((u) => u.id === a.authorId)?.name ?? '', siteLogo: true }).map((i, k) => <li key={k} className={i.level}>{i.level === 'ok' ? '✔' : i.level === 'warn' ? '⚠' : '✖'} {i.text}</li>)}</ul>{a.sponsored && !isNew && <a className="btn btn-outline btn-sm" href={`/api/export/sponsor/${a.id}`} target="_blank" rel="noreferrer">📊 Report per l&apos;inserzionista</a>}</div>
           <div className="panel"><div className="panel-title">Accessibilità</div>{(() => { const issues = checkAccessibility(a.content, a.title); return issues.length ? <ul className="ai-list">{issues.map((i, k) => <li key={k}><span className={`badge ${i.level === 'error' ? 'badge-red' : 'badge-gray'}`}>{i.level === 'error' ? 'da correggere' : 'consiglio'}</span> {i.text}</li>)}</ul> : <p className="help">Nessun problema di accessibilità rilevato nel testo.</p>; })()}</div>

@@ -5,6 +5,7 @@ import { listArticles } from '@/lib/repo';
 import { listRecords } from '@/lib/records';
 import { dueSentences, ripeThemes, streak, type LiveDatum } from '@/lib/writing';
 import { LiveDataManager, SeedBox, SessionTimer } from '@/components/admin/workshop';
+import { NewsletterFromNotes } from '@/components/admin/ai-policy-form';
 
 export const dynamic = 'force-dynamic';
 export default async function WorkshopPage({ searchParams }: PageProps<'/admin/officina'>) {
@@ -20,6 +21,7 @@ export default async function WorkshopPage({ searchParams }: PageProps<'/admin/o
       <div className="page-title"><div><h1>Officina</h1><p>Il retrobottega di chi scrive: appunti che maturano, sessioni, numeri vivi, frasi scadute e bozze messe da parte.</p></div></div>
       {expired.length > 0 && <div className="panel panel-warn"><div className="panel-title">Frasi scadute ({expired.length})</div><p className="help">Erano vere quando le hai scritte. Lo sono ancora?</p><ul className="due-list">{expired.map((s, i) => <li key={i}><div>«{s.text}» <span className="help">vera fino al {new Date(s.date).toLocaleDateString('it-IT', { day: 'numeric', month: 'long', year: 'numeric' })}</span><br /><Link href={`/admin/articoli/${s.id}`}>{s.title}</Link></div></li>)}</ul></div>}
       <div className="admin-grid-2"><SeedBox seeds={seeds} themes={themes} /><SessionTimer current={st.current} best={st.best} weekWords={week.reduce((n, s) => n + s.data.words, 0)} weekMinutes={week.reduce((n, s) => n + s.data.minutes, 0)} /></div>
+      <NewsletterFromNotes />
       {can(me, 'article.publish') && <LiveDataManager data={data.map((d) => d.data)} usage={usage} />}
       <div className="panel"><div className="panel-title">Cimitero delle bozze ({graveyard.length})</div>
         <form method="get" style={{ display: 'flex', gap: 6, marginBottom: 8 }}><input className="input" name="q" defaultValue={q} placeholder="Cerca per tema tra le idee lasciate" aria-label="Cerca nel cimitero delle bozze" /><button className="btn btn-outline btn-sm">Cerca</button></form>

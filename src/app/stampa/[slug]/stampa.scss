@@ -1,0 +1,8 @@
+@page { size: A4; margin: 12mm; }
+.print-edition { max-width: 190mm; margin: 0 auto; padding: 16px; font-family: Georgia, serif; color: #000; background: #fff; font-size: 10.5pt; line-height: 1.4;
+  .pe-hint { font-family: Arial, sans-serif; font-size: 13px; background: #fff7e8; padding: 8px 12px; .pe-print { margin-left: 8px; padding: 4px 12px; cursor: pointer; } @media print { display: none; } }
+  header { text-align: center; border-bottom: 3px double #000; margin-bottom: 10px; h1 { font-size: 34pt; margin: 0; font-weight: 900; letter-spacing: -1px; } p { font: 9pt Arial, sans-serif; text-transform: uppercase; letter-spacing: .08em; margin: 2px 0 6px; } }
+  .pe-lead { border-bottom: 1px solid #000; padding-bottom: 8px; margin-bottom: 10px; h2 { font-size: 22pt; line-height: 1.1; margin: 0 0 4px; } .pe-sub { font-style: italic; margin: 0 0 6px; } p { margin: 0; column-count: 2; column-gap: 8mm; text-align: justify; } .pe-sub { column-count: 1; } }
+  .pe-cols { column-count: 3; column-gap: 6mm; column-rule: .5pt solid #999; article { break-inside: avoid; margin-bottom: 10px; } h3 { font-size: 12.5pt; line-height: 1.15; margin: 0 0 3px; } p { margin: 0; text-align: justify; font-size: 9.5pt; } .pe-kicker { font: 700 7.5pt Arial, sans-serif; text-transform: uppercase; letter-spacing: .06em; } .pe-url { font: 7pt Arial, sans-serif; color: #444; word-break: break-all; margin-top: 2px; } @media screen and (max-width: 700px) { column-count: 1; } }
+  footer { display: flex; gap: 12px; align-items: center; border-top: 3px double #000; margin-top: 10px; padding-top: 8px; font: 9.5pt Arial, sans-serif; p { margin: 2px 0 0; } }
+}

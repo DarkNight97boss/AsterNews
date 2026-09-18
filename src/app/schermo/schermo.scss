@@ -1,0 +1,8 @@
+.screen { position: fixed; inset: 0; background: #0b0f1a; color: #fff; font-family: Georgia, serif; display: grid; grid-template-rows: auto 1fr auto; overflow: hidden; cursor: none;
+  .sc-top, .sc-bottom { display: flex; justify-content: space-between; align-items: center; padding: 2.2vh 3vw; font: 700 2.6vh Arial, sans-serif; } .sc-top b { font-size: 4vh; font-weight: 900; letter-spacing: -.03em; } .sc-clock { font-variant-numeric: tabular-nums; }
+  .sc-slide { position: relative; display: grid; grid-template-columns: 1fr auto; gap: 3vw; align-items: end; padding: 0 3vw 4vh; animation: sc-in .8s ease; img.sc-bg { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: .38; } > div, > figure { position: relative; } }
+  .sc-kicker { font: 800 2.6vh Arial, sans-serif; text-transform: uppercase; letter-spacing: .12em; color: #ffb400; margin: 0 0 1.5vh; &.breaking { background: #d7262d; color: #fff; display: inline-block; padding: .6vh 1.2vw; } } h1 { font-size: 7.4vh; line-height: 1.08; margin: 0 0 2vh; max-width: 70vw; text-wrap: balance; } .sc-sub { font-size: 3.2vh; line-height: 1.3; max-width: 66vw; margin: 0; opacity: .92; }
+  figure { margin: 0; text-align: center; font: 1.9vh Arial, sans-serif; img { width: 18vh; height: 18vh; border-radius: 1vh; background: #fff; padding: .8vh; display: block; margin-bottom: 1vh; } }
+  .sc-dots { display: flex; gap: .6vw; i { width: 2.4vw; height: .5vh; background: #ffffff44; &.on { background: #fff; } } }
+  @keyframes sc-in { from { opacity: 0; transform: translateY(1.5vh); } to { opacity: 1; transform: none; } } @media (prefers-reduced-motion: reduce) { .sc-slide { animation: none; } }
+}

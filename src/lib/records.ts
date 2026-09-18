@@ -37,3 +37,8 @@ export async function countRecords(kind: string, f: { ref?: string; status?: Rec
 }
 /** Conteggi per riferimento (es. quanti «grazie» per ogni paragrafo di un articolo). */
 export async function countByRef(kind: string, refPrefix: string): Promise<Record<string, number>> { const rows = (await all("SELECT ref, COUNT(*) c FROM records WHERE kind = ? AND ref LIKE ? AND status IN ('open','approved','done') GROUP BY ref", [kind, `${refPrefix}%`])) as Row[]; return Object.fromEntries(rows.map((r) => [String(r.ref), Number(r.c)])); }
+/** Contatore aggregato (una riga per chiave, non una per evento): per misure che non devono riempire il database. */
+export async function bumpCounter(kind: string, key: string, ref = '', extra: Record<string, string> = {}): Promise<number> {
+  const id = `${kind}_${key}`.slice(0, 160); const cur = await findRecord<{ n: number }>(id); const n = (cur?.data.n ?? 0) + 1;
+  if (cur) await updateRecord(id, { data: { ...cur.data, ...extra, n } }); else await addRecord(kind, { id, ref, data: { ...extra, n } }); return n;
+}

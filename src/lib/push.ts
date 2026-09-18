@@ -24,11 +24,14 @@ export async function sendPush(msg: PushMessage, topic?: string): Promise<{ sent
   const keys = await vapidKeys();
   const s = await getSettings();
   webpush.setVapidDetails(`mailto:${s.newsletter?.fromEmail || 'redazione@example.com'}`, keys.publicKey, keys.privateKey);
-  const subs = (await x.listPushSubscriptions()).filter((sub) => !topic || sub.topics.length === 0 || sub.topics.includes(topic));
+  // Tetto di notifiche: ogni lettore decide quante al giorno, e il giornale non può superarlo (nemmeno per le ultim'ora)
+  const { realTopics, underCap, pushCap } = await import('./distribution'); const { findRecord, bumpCounter } = await import('./records'); const { createHash } = await import('node:crypto'); const day = new Date().toISOString().slice(0, 10); const keyOf = (endpoint: string) => `${day}_${createHash('sha1').update(endpoint).digest('hex').slice(0, 20)}`;
+  const all = (await x.listPushSubscriptions()).filter((sub) => !topic || realTopics(sub.topics).length === 0 || sub.topics.includes(topic)); const subs: typeof all = [];
+  for (const sub of all) { if (pushCap(sub.topics) === null) { subs.push(sub); continue; } const sentToday = (await findRecord<{ n: number }>(`pushcap_${keyOf(sub.endpoint)}`))?.data.n ?? 0; if (underCap(sub.topics, sentToday)) subs.push(sub); }
   const payload = JSON.stringify({ ...msg, icon: msg.icon ?? '/icon.png' });
   let sent = 0, failed = 0;
   await Promise.all(subs.map(async (sub) => {
-    try { await webpush.sendNotification({ endpoint: sub.endpoint, keys: sub.keys }, payload, { TTL: 3600, urgency: 'high' }); sent++; }
+    try { await webpush.sendNotification({ endpoint: sub.endpoint, keys: sub.keys }, payload, { TTL: 3600, urgency: 'high' }); sent++; if (pushCap(sub.topics) !== null) await bumpCounter('pushcap', keyOf(sub.endpoint)); }
     catch (e) { failed++; const code = (e as { statusCode?: number }).statusCode; if (code === 404 || code === 410) await x.deletePushSubscription(sub.endpoint); else await x.markPushFailure(sub.endpoint); }
   }));
   return { sent, failed };

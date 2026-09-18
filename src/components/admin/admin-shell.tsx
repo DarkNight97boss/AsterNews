@@ -12,14 +12,17 @@ import { NAV, arrangeNav, vocabularyOf, type AdaptSettings, type NavItem } from 
 import { trackNavAction } from '@/lib/actions-system';
 import { useEffect } from 'react';
 
-interface Props { adapt: AdaptSettings; solo: boolean; used: string[]; mature: boolean; user: User; permissions: Permission[]; unread: number; reviewCount: number; pendingComments: number; pendingEvents: number; newReports: number; children: ReactNode }
+interface Props { adapt: AdaptSettings; solo: boolean; used: string[]; mature: boolean; user: User; permissions: Permission[]; unread: number; quiet?: { from?: string; to?: string }; reviewCount: number; pendingComments: number; pendingEvents: number; newReports: number; children: ReactNode }
 
-export function AdminShell({ adapt, solo, used, mature, user, permissions, unread, reviewCount, pendingComments, pendingEvents, newReports, children }: Props) {
+const NOMETRICS_KEY = 'aster_nometrics_until';
+export function AdminShell({ adapt, solo, used, mature, user, permissions, unread, quiet, reviewCount, pendingComments, pendingEvents, newReports, children }: Props) {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
   const can = (p: Permission) => permissions.includes(p);
   const [showMore, setShowMore] = useState(false);
   useEffect(() => { trackNavAction(pathname).catch(() => {}); }, [pathname]);
+  // Niente metriche per una settimana: chi scrive può velare i numeri (visite, classifiche) su questo dispositivo
+  useEffect(() => { const apply = () => { let on = false; try { on = (localStorage.getItem(NOMETRICS_KEY) ?? '') > new Date().toISOString(); } catch { /* */ } document.body.classList.toggle('no-metrics', on); }; apply(); window.addEventListener('aster-nometrics', apply); return () => window.removeEventListener('aster-nometrics', apply); }, [pathname]);
   const allowed = NAV.filter((n) => (!n.perm || can(n.perm)) && (!n.editorOnly || user.role === 'admin' || user.role === 'editor'));
   const { main, more } = arrangeNav(allowed, adapt, { solo, used, mature }); const voc = vocabularyOf(adapt);
   const pills: Record<string, number> = { review: reviewCount, comments: pendingComments, events: pendingEvents, reports: newReports };
@@ -51,7 +54,7 @@ export function AdminShell({ adapt, solo, used, mature, user, permissions, unrea
           <span className="crumb">ASTER News / <b>Redazione</b></span>
           <span className="spacer" />
           <Link href={`/admin/guida#${guideFor(pathname).id}`} className="btn btn-ghost btn-icon" title={`Guida: ${guideFor(pathname).title}`}>?</Link>
-          <NotificationsBell initialUnread={unread} />
+          <NotificationsBell initialUnread={unread} quiet={quiet} />
           <Link href="/admin/scrivi" className="btn btn-primary btn-sm">✨ {voc.write}</Link>
         </div>
         <div className="admin-content">{children}</div>

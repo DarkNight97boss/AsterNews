@@ -17,6 +17,7 @@ export async function enhanceContent(html: string): Promise<string> {
   }
   // numeri collegati alla fonte: {{dato:chiave}} → valore corrente; annotazioni dell'autore [[nota: …]]
   if (out.includes('{{dato:')) { const { listRecords } = await import('./records'); out = renderLiveData(out, (await listRecords<LiveDatum>('datum', { limit: 500 })).map((r) => r.data)); }
+  if (/href="https?:\/\//.test(out)) { try { const { listRecords } = await import('./records'); const dead = await listRecords<{ url: string; archived: string }>('archive', { status: 'done', limit: 1000 }); if (dead.length) { const { healLinks } = await import('./distribution'); out = healLinks(out, dead.map((d) => d.data)); } } catch { /* l'archivio dei link non blocca la pagina */ } }
   out = renderAuthorNotes(out);
   out = renderFootnotes(out);
   out = addHeadingIds(out);

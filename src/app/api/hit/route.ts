@@ -30,6 +30,8 @@ export async function POST(req: Request) {
     const ref = b.ref ?? req.headers.get('referer') ?? '';
     const source = b.internal ? 'interno' : sourceOf(ref, b.path ?? '/');
     await recordHit(path, b.articleId ?? '', source, Math.max(0, Number(b.readMs) || 0));
+    // Quanto ci citano gli assistenti AI: una riga per mese, assistente e pagina
+    if (!b.internal && !b.readMs) { const { aiSourceOf } = await import('@/lib/distribution'); const ai = aiSourceOf(ref, b.path ?? '/'); if (ai) { const { bumpCounter } = await import('@/lib/records'); const { createHash } = await import('node:crypto'); await bumpCounter('ai-visit', `${new Date().toISOString().slice(0, 7)}_${ai}_${createHash('sha1').update(path).digest('hex').slice(0, 16)}`, ai, { path, month: new Date().toISOString().slice(0, 7), articleId: b.articleId ?? '' }); } }
     return NextResponse.json({ ok: true });
   } catch (e) { console.error('[hit]', e); return NextResponse.json({ ok: false }); }
 }

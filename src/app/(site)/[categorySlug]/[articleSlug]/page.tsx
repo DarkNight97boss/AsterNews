@@ -28,6 +28,7 @@ import { highlightsFor, mindStats } from '@/lib/reading-data';
 import { listRecords } from '@/lib/records';
 import { normalizeCode, placeSlug } from '@/lib/reading';
 import { aiAvailable } from '@/lib/ai';
+import { ReadEnd } from '@/components/site/eco';
 import { approvedOf } from '@/lib/commons-data';
 import { ContributionForm } from '@/components/site/contribution-form';
 import { recordRead } from '@/lib/trust-notify';
@@ -82,6 +83,7 @@ export default async function ArticlePage({ params, searchParams }: PageProps<'/
   const viewer = { staff: !!staffUser, circles: viewerReader?.prefs?.circles ?? [] }; const circleName = (settings.circles ?? []).find((c) => c.id === a.extra?.circle)?.name ?? '';
   const locked = !canSeeArticle(a.extra?.circle, viewer);
   if (viewerReader && !locked) void recordRead(viewerReader.id, a.id);
+  { const ua = (await (await import('next/headers')).headers()).get('user-agent') ?? ''; const { aiCrawlerOf } = await import('@/lib/distribution'); const bot = aiCrawlerOf(ua); if (bot) void (await import('@/lib/records')).bumpCounter('ai-crawl', `${new Date().toISOString().slice(0, 7)}_${bot}_${a.id}`, bot, { articleId: a.id, month: new Date().toISOString().slice(0, 7) }).catch(() => {}); }
   // Un anno fa oggi: il post che risponde a uno vecchio lo dichiara, e quello vecchio rimanda alla rilettura
   const repliedTo = a.extra?.replyTo ? await (await import('@/lib/repo')).findArticle(a.extra.replyTo) : null; const rereads = (await (await import('@/lib/repo')).listArticles({ status: 'published', extraHas: 'replyTo' }, 'published', 200)).filter((x) => x.extra?.replyTo === a.id);
   const allCats = await getCategories(); const pastLinks = <>{repliedTo && repliedTo.status === 'published' && <p className="past-link">↩︎ Risposta a quello che scrivevo il {formatDate(repliedTo.publishedAt)}: <Link href={articleUrlWith(repliedTo, allCats)}>{repliedTo.title}</Link></p>}{rereads.map((r) => <p key={r.id} className="past-link">↪︎ Riletto il {formatDate(r.publishedAt)}: <Link href={articleUrlWith(r, allCats)}>{r.title}</Link></p>)}</>;
@@ -201,6 +203,7 @@ export default async function ArticlePage({ params, searchParams }: PageProps<'/
           {!locked && <TrustPanel a={a} author={author ?? undefined} settings={settings} revisions={box?.revisions ?? 0} />}
           {box && !locked && <details className="black-box"><summary>Come è nato questo articolo</summary><dl><div><dt>Lavorazione</dt><dd>iniziato il {new Date(box.started).toLocaleDateString('it-IT', { day: 'numeric', month: 'long' })}, {box.revisions} {box.revisions === 1 ? 'versione salvata' : 'versioni salvate'}</dd></div><div><dt>Lunghezza</dt><dd>{box.words} parole</dd></div>{box.sources > 0 && <div><dt>Fonti</dt><dd>{box.sources} consultate, {box.verified} verificate direttamente</dd></div>}<div><dt>Intelligenza artificiale</dt><dd>{box.ai.length ? `l'assistente ha proposto: ${box.ai.map((k) => ({ title: 'titolo', subtitle: 'sommario', excerpt: 'estratto', seo: 'descrizione per i motori', tagIds: 'tag', kicker: 'occhiello', content: 'parti del testo', coverCaption: 'didascalia' }[k] ?? k)).join(', ')}; un giornalista ha rivisto e approvato tutto` : 'nessun uso per questo articolo'}</dd></div>{box.corrections > 0 && <div><dt>Correzioni</dt><dd>{box.corrections}, elencate sopra</dd></div>}</dl></details>}
           {history.length > 0 && <details className="update-history"><summary>Cronologia degli aggiornamenti ({history.length})</summary><ul>{history.map((h) => <li key={h.id}><time dateTime={h.createdAt}>{new Date(h.createdAt).toLocaleString('it-IT', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</time>{h.note ? ` · ${h.note}` : ''}</li>)}</ul></details>}
+          {!locked && <ReadEnd articleId={a.id} />}
           <AdSlot slot="article_bottom" size="728×90" className="ad-inline" />
           {settings.googleNewsUrl && <p className="gnews" style={{ fontFamily: 'var(--font-serif)', textAlign: 'center', marginTop: 24 }}>Scegli <a href={settings.googleNewsUrl} target="_blank" rel="noopener" style={{ color: 'var(--red)', textDecoration: 'underline' }}>{settings.siteName}</a> come fonte preferita su Google News</p>}
           <div className="article-foot"><span className="copy">© Riproduzione riservata{storyOk && <> · <a href={`/storie/${a.slug}`} className="story-link">📱 Guarda la Web Story</a></>}</span><ShareBar title={a.title} withMail /></div>

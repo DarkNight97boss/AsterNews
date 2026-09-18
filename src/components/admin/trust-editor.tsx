@@ -21,6 +21,15 @@ export function ReaderEditor({ title, content, extra, setExtra }: { title: strin
     </div>
   );
 }
+export function CostEditor({ extra, setExtra }: { extra: Extra; setExtra: (p: Partial<Extra>) => void }) {
+  const c = extra.cost ?? {}; const upd = (p: Partial<NonNullable<Extra['cost']>>) => { const next = { ...c, ...p }; setExtra({ cost: Object.values(next).some((v) => v !== undefined && v !== '' && v !== 0) ? next : undefined }); };
+  return (
+    <div className="panel"><div className="panel-title">Quanto è costato</div><p className="help">Solo per la redazione: serve a «Ritmi di lavoro» per il costo reale dei pezzi.</p>
+      <div className="form-row"><div className="field"><label htmlFor="cs-h">Ore di lavoro</label><input id="cs-h" className="input" type="number" min={0} step={0.5} value={c.hours ?? ''} onChange={(e) => upd({ hours: e.target.value ? Number(e.target.value) : undefined })} /></div><div className="field"><label htmlFor="cs-e">Spese vive (€)</label><input id="cs-e" className="input" type="number" min={0} value={c.expenses ?? ''} onChange={(e) => upd({ expenses: e.target.value ? Number(e.target.value) : undefined })} /></div></div>
+      <div className="form-row"><div className="field"><label htmlFor="cs-s">Nato dal contributo di (lettore o fonte della comunità)</label><input id="cs-s" className="input" value={c.sourceName ?? ''} onChange={(e) => upd({ sourceName: e.target.value || undefined })} /></div><div className="field"><label htmlFor="cs-p">Quota dei ricavi condivisa (%)</label><input id="cs-p" className="input" type="number" min={0} max={50} value={c.sourceShare ?? ''} onChange={(e) => upd({ sourceShare: e.target.value ? Math.min(50, Number(e.target.value)) : undefined })} /></div></div>
+    </div>
+  );
+}
 export function TrustEditor({ articleId, isNew, extra, setExtra }: { articleId: string; isNew: boolean; extra: Extra; setExtra: (p: Partial<Extra>) => void }) {
   const [c, setC] = useState({ kind: 'promise' as 'promise' | 'prediction', text: '', who: '', due: '' }); const [pending, start] = useTransition();
   return (
