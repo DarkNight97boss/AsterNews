@@ -29,7 +29,7 @@ async function detectAnomaly(e: SecurityEntry): Promise<void> {
   const mon = s.monitoring; if (mon?.alertEmail) { const { mailConfigured, mailLayout, sendMail } = await import('./mailer'); if (await mailConfigured()) sendMail({ to: mon.alertEmail, subject: `🔐 Avviso sicurezza ${s.siteName}`, html: mailLayout(s.siteName, 'Accesso anomalo', `<ul>${problems.map((p) => `<li>${p}</li>`).join('')}</ul>`) }).catch(() => {}); }
   if (mon?.webhookUrl) fetch(mon.webhookUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text: problems.join('; ') }) }).catch(() => {});
 }
-export const listSecurity = async (limit = 200): Promise<SecurityEntry[]> => (await all('SELECT * FROM security_log ORDER BY created_at DESC LIMIT ?', [limit])) as SecurityEntry[] extends infer T ? (T extends unknown[] ? SecurityEntry[] : never) : never;
+export const listSecurity = async (limit = 200): Promise<SecurityEntry[]> => ((await all('SELECT * FROM security_log ORDER BY created_at DESC LIMIT ?', [limit])) as Record<string, unknown>[]).map((r) => ({ id: String(r.id), kind: r.kind as SecurityEntry['kind'], email: String(r.email ?? ''), userId: String(r.user_id ?? ''), ip: String(r.ip ?? ''), ua: String(r.ua ?? ''), country: String(r.country ?? ''), createdAt: String(r.created_at ?? '') }));
 export async function securityStats(): Promise<{ ok: number; failed: number; countries: { country: string; n: number }[] }> {
   const since = new Date(Date.now() - 30 * 86400000).toISOString();
   const ok = Number(((await get("SELECT COUNT(*) c FROM security_log WHERE kind IN ('login_ok','sso_ok') AND created_at > ?", [since])) as { c: number }).c);

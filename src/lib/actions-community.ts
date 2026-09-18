@@ -43,6 +43,7 @@ export async function createGiftCode(email: string, months: number, message: str
   return code;
 }
 export async function redeemGiftAction(code: string): Promise<ActionResult> {
+  const limited = await (await import('./ratelimit')).guardRate('gift', 6, 600_000); if (limited) return fail(limited);
   const reader = await getCurrentReader(); if (!reader) return fail('Accedi o registrati per usare il codice.');
   const g = await x3.findGift(code.trim().toUpperCase()); if (!g) return fail('Codice non valido.'); if (g.redeemedAt) return fail('Codice già usato.');
   const from = reader.premiumUntil && reader.premiumUntil > new Date().toISOString() ? new Date(reader.premiumUntil) : new Date(); from.setMonth(from.getMonth() + g.months);
@@ -52,6 +53,8 @@ export async function redeemGiftAction(code: string): Promise<ActionResult> {
 export async function setProfilePublicAction(pub: boolean): Promise<ActionResult> { const reader = await getCurrentReader(); if (!reader) return fail('Non autorizzato.'); await x3.savePrefs(reader.id, { ...(reader.prefs ?? {}), public: pub }); revalidatePath('/account'); return { ok: true, message: pub ? 'Profilo pubblico attivo.' : 'Profilo nascosto.' }; }
 // ---------------- Quiz ----------------
 export async function submitQuizAction(quizId: string, articleId: string, score: number, total: number, name: string): Promise<ActionResult & { rank?: number; players?: number }> {
+  const limited = await (await import('./ratelimit')).guardRate('quiz', 10, 60_000); if (limited) return { ok: false, message: limited };
+  if (!/^qz[a-z0-9]{4,12}$/.test(quizId) || total < 1 || total > 50) return { ok: false, message: 'Quiz non valido.' };
   const reader = await getCurrentReader(); const store = await cookies(); let anon = store.get('aster_vid')?.value; if (!anon) { anon = randomToken(12); store.set('aster_vid', anon, { path: '/', maxAge: 31536000, sameSite: 'lax', httpOnly: true }); }
   const who = reader?.id || `anon:${anon}`; const display = (reader?.name || name || 'Anonimo').slice(0, 40);
   await x3.upsertQuizResult({ id: uid('qr'), quizId, articleId, who, name: display, score: Math.max(0, Math.min(total, Math.round(score))), total, createdAt: new Date().toISOString() });
