@@ -22,6 +22,7 @@ export default async function SiteLayout({ children }: LayoutProps<'/'>) {
   const [s0, edition] = await Promise.all([getSettings(), currentEdition()]);
   const s = edition ? { ...s0, siteName: edition.name, tagline: edition.tagline || s0.tagline } : s0;
   const [me, weather, cookieStore, { theme, preview }, categories, users, zones, counts, live] = await Promise.all([getCurrentUser(), getWeather(s.weatherCity, s.weatherLat, s.weatherLon), cookies(), getActiveTheme(), getCategories(), getUsers(), getZones(), zoneCounts(), getLiveArticles()]);
+  if (s.maintenance?.enabled && !me) return <div className="maintenance"><div><div className="logo">{s.siteName}</div><h1>Torniamo subito</h1><p>{s.maintenance.message || 'Stiamo aggiornando il sito: torniamo tra pochi minuti.'}</p></div></div>;
   const menus = { ...DEFAULT_MENUS, ...(s.menus ?? {}) };
   const menuPages = (await listPages(true)).filter((p) => p.showInMenu).map((p) => ({ id: p.id, label: p.title, url: `/${p.slug}` }));
   const opinionCat = categories.find((c) => c.kind === 'opinion');

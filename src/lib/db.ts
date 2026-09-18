@@ -188,6 +188,8 @@ CREATE TABLE IF NOT EXISTS donations (id TEXT PRIMARY KEY, amount REAL NOT NULL,
 CREATE TABLE IF NOT EXISTS api_keys (id TEXT PRIMARY KEY, name TEXT NOT NULL, prefix TEXT NOT NULL, key_hash TEXT NOT NULL, scopes TEXT DEFAULT '["read"]', active INTEGER DEFAULT 1, calls INTEGER DEFAULT 0, last_used TEXT, created_by TEXT DEFAULT '', created_at TEXT);
 CREATE TABLE IF NOT EXISTS broken_links (id TEXT PRIMARY KEY, article_id TEXT NOT NULL, url TEXT NOT NULL, status INTEGER DEFAULT 0, error TEXT DEFAULT '', checked_at TEXT, fixed INTEGER DEFAULT 0);
 CREATE INDEX IF NOT EXISTS idx_broken_article ON broken_links(article_id);
+CREATE TABLE IF NOT EXISTS ai_usage (id TEXT PRIMARY KEY, user_id TEXT DEFAULT '', action TEXT DEFAULT '', model TEXT DEFAULT '', input_tokens INTEGER DEFAULT 0, output_tokens INTEGER DEFAULT 0, cost REAL DEFAULT 0, created_at TEXT);
+CREATE INDEX IF NOT EXISTS idx_ai_usage_created ON ai_usage(created_at DESC);
 CREATE TABLE IF NOT EXISTS security_log (id TEXT PRIMARY KEY, kind TEXT NOT NULL, email TEXT DEFAULT '', user_id TEXT DEFAULT '', ip TEXT DEFAULT '', ua TEXT DEFAULT '', country TEXT DEFAULT '', created_at TEXT);
 CREATE INDEX IF NOT EXISTS idx_security_created ON security_log(created_at DESC);
 CREATE TABLE IF NOT EXISTS vitals (id TEXT PRIMARY KEY, path TEXT NOT NULL, metric TEXT NOT NULL, value REAL NOT NULL, device TEXT DEFAULT 'desktop', created_at TEXT);
@@ -287,7 +289,15 @@ export async function ready(): Promise<Driver> {
       // Più istanze serverless possono partire insieme: CREATE ... IF NOT EXISTS concorrenti possono collidere, si riprova una volta.
       try { await d.exec(SCHEMA); } catch (e) { if (!isDuplicate(e)) throw e; await new Promise((r) => setTimeout(r, 500)); await d.exec(SCHEMA); }
       // Le migrazioni si eseguono una per una: se una fallisce (colonna già presente, indice duplicato) le successive devono comunque girare.
-      for (const stmt of MIGRATIONS.split(/;\s*\n/).map((x) => x.trim()).filter(Boolean)) { try { await d.exec(stmt); } catch (e) { if (!isDuplicate(e)) console.error('[db] migrazione saltata:', stmt.slice(0, 80), (e as Error).message); } }
+      // Registro delle migrazioni: ogni istruzione gira una sola volta (impronta del testo) e lascia traccia di data ed esito.
+      await d.exec("CREATE TABLE IF NOT EXISTS schema_migrations (id TEXT PRIMARY KEY, stmt TEXT NOT NULL, ok INTEGER DEFAULT 1, error TEXT DEFAULT '', applied_at TEXT)");
+      const done = new Set((await d.all('SELECT id FROM schema_migrations WHERE ok = 1', [])).map((r) => String(r.id)));
+      const fp = (t: string) => { let h = 5381; for (let i = 0; i < t.length; i++) h = ((h << 5) + h + t.charCodeAt(i)) >>> 0; return 'm' + h.toString(36) + t.length.toString(36); };
+      for (const stmt of MIGRATIONS.split(/;\s*\n/).map((x) => x.trim()).filter(Boolean)) {
+        const id = fp(stmt); if (done.has(id)) continue; let ok = 1; let error = '';
+        try { await d.exec(stmt); } catch (e) { if (!isDuplicate(e)) { ok = 0; error = (e as Error).message.slice(0, 300); console.error('[db] migrazione fallita:', stmt.slice(0, 80), error); } }
+        try { await d.all('INSERT INTO schema_migrations (id, stmt, ok, error, applied_at) VALUES ($1,$2,$3,$4,$5) ON CONFLICT (id) DO UPDATE SET ok = excluded.ok, error = excluded.error, applied_at = excluded.applied_at', [id, stmt.slice(0, 400), ok, error, new Date().toISOString()]); } catch { /* il registro non deve mai bloccare l'avvio */ }
+      }
       if (isRemote()) { try { await d.exec('CREATE EXTENSION IF NOT EXISTS pg_trgm'); } catch { /* estensione non disponibile: la ricerca "forse cercavi" usa il ripiego in JavaScript */ } }
       const su = await d.all("SELECT value FROM meta WHERE key = 'site_url'", []);
       if (su.length) (await import('./site-url')).setSiteUrlOverride(String(su[0].value));

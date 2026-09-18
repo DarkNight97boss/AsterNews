@@ -222,7 +222,7 @@ export interface SocialSettings { facebookPageId: string; facebookToken: string;
 export interface AuthSettings { googleClientId: string; googleClientSecret: string; facebookAppId: string; facebookAppSecret: string; magicLink: boolean; staffGoogleDomains?: string; microsoftTenantId?: string; microsoftClientId?: string; microsoftClientSecret?: string }
 export interface AdsSettings { enabled: boolean; adsenseClient: string; autoAds: boolean; label: string; houseAdsOnly: boolean }
 export interface ListingsSettings { enabled: boolean; priceAnnuncio: number; priceNecrologio: number; days: number; moderation: boolean; freeForReaders: boolean }
-export interface AiSettings { enabled: boolean; apiKey: string; model: string; style: string; autoAltText: boolean; autoSummary: boolean; transcribeProvider?: 'none' | 'openai' | 'deepgram'; transcribeKey?: string; moderation?: boolean; ttsProvider?: 'none' | 'openai' | 'elevenlabs'; ttsKey?: string; ttsVoice?: string; ttsAuto?: boolean; embeddingsProvider?: 'none' | 'openai' | 'voyage'; embeddingsKey?: string }
+export interface AiSettings { enabled: boolean; apiKey: string; model: string; style: string; autoAltText: boolean; autoSummary: boolean; transcribeProvider?: 'none' | 'openai' | 'deepgram'; transcribeKey?: string; moderation?: boolean; ttsProvider?: 'none' | 'openai' | 'elevenlabs'; ttsKey?: string; ttsVoice?: string; ttsAuto?: boolean; embeddingsProvider?: 'none' | 'openai' | 'voyage'; embeddingsKey?: string; monthlyBudget?: number; priceIn?: number; priceOut?: number }
 export interface UpdatesSettings { repo: string; channel: 'stable' | 'beta'; deployHookUrl: string; stagingHookUrl?: string; vercelToken?: string; vercelProjectId?: string }
 export interface PrivacySettings { policyVersion: number; geoLookup: boolean; dpaNote: string }
 export interface ExtensionsSettings { enabled: string[]; config: Record<string, Record<string, string>> }
@@ -278,6 +278,7 @@ export interface SiteSettings {
   webhooks?: WebhookConfig[];
   homeBlocks?: HomeBlock[];
   privacy?: PrivacySettings;
+  maintenance?: { enabled: boolean; message: string };
   themeVersions?: ThemeVersion[];
   editionUsers?: Record<string, string[]>;
 }

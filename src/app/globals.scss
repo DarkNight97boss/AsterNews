@@ -604,3 +604,4 @@ html[data-a11y-motion="reduce"] * { animation: none !important; transition: none
 .home-html { margin: 24px 0; }
 .recommend .rec-card { display: block; text-decoration: none; color: inherit; img { width: 100%; aspect-ratio: 3 / 2; object-fit: cover; margin-bottom: 6px; } b { font-family: var(--font-serif); font-size: 16px; line-height: 1.25; } }
 .sso-box { max-width: 420px; margin: 12px auto 0; display: flex; flex-direction: column; gap: 8px; text-align: center; .btn { width: 100%; } }
+.maintenance { min-height: 100vh; display: flex; align-items: center; justify-content: center; text-align: center; padding: 24px; background: var(--brand, #22418f); color: #fff; .logo { font-family: var(--font-serif); font-weight: 900; font-size: 34px; text-transform: uppercase; margin-bottom: 24px; } h1 { font-family: var(--font-serif); font-size: 40px; margin: 0 0 10px; } p { font-size: 18px; opacity: .9; max-width: 520px; } }

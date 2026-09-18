@@ -70,7 +70,9 @@ export function AdminShell({ user, permissions, unread, reviewCount, pendingComm
               {can('settings.manage') && <A href="/admin/pubblicita"><span className="ico">💶</span> Pubblicità</A>}
               {can('settings.manage') && <A href="/admin/edizioni"><span className="ico">🏙</span> Edizioni</A>}
               {can('settings.manage') && <A href="/admin/estensioni"><span className="ico">🧩</span> Estensioni</A>}
+              {can('settings.manage') && <A href="/admin/rilascio"><span className="ico">🚀</span> Rilascio</A>}
               {can('settings.manage') && <A href="/admin/aggiornamenti"><span className="ico">⬆</span> Aggiornamenti</A>}
+              {can('settings.manage') && <A href="/admin/ai-uso"><span className="ico">🧮</span> Uso dell&apos;AI</A>}
               {can('settings.manage') && <A href="/admin/backup"><span className="ico">💾</span> Backup</A>}
               {can('settings.manage') && <A href="/admin/errori"><span className="ico">🩺</span> Errori e salute</A>}
               {can('settings.manage') && <A href="/admin/prestazioni"><span className="ico">🚀</span> Prestazioni</A>}

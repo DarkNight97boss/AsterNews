@@ -15,9 +15,15 @@ export async function aiAvailable(): Promise<boolean> { const s = await aiSettin
 const SYSTEM_BASE = `Sei l'assistente redazionale di una testata giornalistica italiana. Rispondi sempre in italiano, senza preamboli né spiegazioni: restituisci solo il risultato richiesto. Non inventare fatti, nomi o cifre che non siano nel testo fornito.`;
 
 /** Una richiesta a Claude: testo semplice o JSON (validato) secondo lo schema indicato. Il "fallback" di sicurezza lato server è attivo di default. */
-export async function ask(prompt: string, opts: { json?: boolean; maxTokens?: number; effort?: 'low' | 'medium' | 'high' } = {}): Promise<string> {
+/** Tetto di spesa mensile e registro d'uso: ogni richiesta lascia traccia (azione, utente, token, costo stimato). */
+async function guardBudget(s: AiSettings): Promise<void> { if (!s.monthlyBudget) return; const { monthCost } = await import('./ai-usage'); if ((await monthCost()) >= s.monthlyBudget) throw new Error(`Tetto di spesa AI del mese raggiunto (${s.monthlyBudget} €): alzalo in Redazione → Uso dell'AI.`); }
+async function track(s: AiSettings, action: string, usage: { input_tokens?: number | null; output_tokens?: number | null } | undefined): Promise<void> {
+  try { const { getCurrentUser } = await import('./auth'); const me = await getCurrentUser().catch(() => null); const { recordAiUsage } = await import('./ai-usage'); await recordAiUsage({ userId: me?.id ?? '', action, model: s.model, input: usage?.input_tokens ?? 0, output: usage?.output_tokens ?? 0, priceIn: s.priceIn ?? 0, priceOut: s.priceOut ?? 0 }); } catch { /* il registro non deve bloccare la risposta */ }
+}
+export async function ask(prompt: string, opts: { json?: boolean; maxTokens?: number; effort?: 'low' | 'medium' | 'high'; action?: string } = {}): Promise<string> {
   const s = await aiSettings();
   if (!s.enabled || !s.apiKey) throw new Error('Assistente AI non configurato (Impostazioni → Assistente AI).');
+  await guardBudget(s);
   const client = new Anthropic({ apiKey: s.apiKey });
   const system = `${SYSTEM_BASE}\nStile della testata: ${s.style}${opts.json ? '\nRispondi esclusivamente con JSON valido, senza testo attorno e senza blocchi di codice.' : ''}`;
   const res = await client.beta.messages.create({
@@ -26,6 +32,7 @@ export async function ask(prompt: string, opts: { json?: boolean; maxTokens?: nu
     thinking: { type: 'adaptive' }, output_config: { effort: opts.effort ?? 'low' },
     messages: [{ role: 'user', content: prompt }],
   });
+  await track(s, opts.action ?? (prompt.slice(0, 40).replace(/\s+/g, ' ') + '…'), res.usage);
   if (res.stop_reason === 'refusal') throw new Error('La richiesta è stata rifiutata dal modello.');
   const text = res.content.filter((b) => b.type === 'text').map((b) => (b as { text: string }).text).join('').trim();
   return opts.json ? text.replace(/^```(?:json)?\s*|\s*```$/g, '').trim() : text;
@@ -33,11 +40,13 @@ export async function ask(prompt: string, opts: { json?: boolean; maxTokens?: nu
 /** Come ask(), ma con lo strumento di ricerca web di Claude: usato dalla verifica fatti per collegare fonti. */
 export async function askWithSearch(prompt: string, opts: { maxTokens?: number; maxUses?: number } = {}): Promise<string> {
   const s = await aiSettings(); if (!s.enabled || !s.apiKey) throw new Error('Assistente AI non configurato.');
+  await guardBudget(s);
   const client = new Anthropic({ apiKey: s.apiKey });
   const res = await client.beta.messages.create({ model: s.model, max_tokens: opts.maxTokens ?? 3000, system: `${SYSTEM_BASE}\nRispondi esclusivamente con JSON valido, senza testo attorno e senza blocchi di codice.`, betas: ['server-side-fallback-2026-07-01'], fallbacks: 'default', thinking: { type: 'adaptive' }, output_config: { effort: 'medium' }, tools: [{ type: 'web_search_20260209', name: 'web_search', max_uses: opts.maxUses ?? 6 } as never], messages: [{ role: 'user', content: prompt }] });
+  await track(s, 'verifica fatti con ricerca web', res.usage);
   return res.content.filter((b) => b.type === 'text').map((b) => (b as { text: string }).text).join('').replace(/^```(?:json)?\s*|\s*```$/g, '').trim();
 }
-export async function askJson<T>(prompt: string, opts: { maxTokens?: number; effort?: 'low' | 'medium' | 'high' } = {}): Promise<T> {
+export async function askJson<T>(prompt: string, opts: { maxTokens?: number; effort?: 'low' | 'medium' | 'high'; action?: string } = {}): Promise<T> {
   const raw = await ask(prompt, { ...opts, json: true });
   try { return JSON.parse(raw) as T; } catch { const m = raw.match(/[[{][\s\S]*[\]}]/); if (m) return JSON.parse(m[0]) as T; throw new Error('Risposta AI non interpretabile.'); }
 }

@@ -21,3 +21,9 @@ jobs:
         run: npx next build
         env:
           NEXT_TELEMETRY_DISABLED: '1'
+      - name: Test end-to-end (obbligatori prima di ogni rilascio)
+        run: |
+          npx playwright install --with-deps chromium
+          npm run e2e:isolated
+        env:
+          CI: 'true'
