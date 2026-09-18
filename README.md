@@ -79,6 +79,13 @@ Su Vercel: collega l'integrazione Supabase (crea `POSTGRES_URL`), fai il deploy 
 - **Piattaforma**: importatori Drupal (JSON:API) e Joomla (Web Services), `Dockerfile` e `docker-compose.yml` (app, Postgres e cron con `docker compose up -d`).
 - **Test**: `npm test` (unitari e di integrazione su database in memoria), `npm run e2e:isolated` (Playwright su ambiente usa e getta: login, tutte le pagine di redazione, flussi chiave).
 
+### Un CMS che cambia forma
+- **Adatta il CMS** (`/admin/adatta`): profilo d'uso (quotidiano, rivista, blog personale, diario, newsletter, portfolio), menu che sposta in «Altro» le voci non usate, modalità solista quando c'è una sola persona, vocabolario su misura («post», «appunti», «ricette»).
+- **Scrittura a strati**: blocco con tre versioni dello stesso passaggio (in breve, normale, completo); il lettore sceglie la profondità con un cursore e la scelta resta per le letture successive. Senza JavaScript si legge la versione normale.
+- **Come è nato questo articolo**: sotto il pezzo, versioni salvate, fonti consultate e verificate, cosa ha proposto l'AI. Disattivabile per articolo o per tutto il sito.
+- **Cerchie di lettori**: post interi o singoli paragrafi riservati a gruppi (famiglia, amici, sostenitori) con chiavi d'invito revocabili; i contenuti riservati non escono mai in feed, API, ricerca e sitemap.
+- **Correzione che si propaga**: una correzione aggiunta a un articolo già uscito sui social fa partire un post di rettifica sugli stessi canali.
+
 ## Dati e infrastruttura
 
 - Postgres via `POSTGRES_URL` / `DATABASE_URL` (driver `pg`, pooler Supabase in transaction mode); senza variabili, PGlite in `data/pg`. Schema e migrazioni idempotenti in `src/lib/db.ts`.

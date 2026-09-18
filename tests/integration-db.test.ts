@@ -112,3 +112,17 @@ describe('ricavi e dati', () => {
     expect((await ins.churnRisk()).map((r) => r.id)).toContain('rd9');
   });
 });
+
+describe('cerchie e menu che si adatta', () => {
+  it('i post riservati a una cerchia non escono nelle liste pubbliche ma restano in redazione', async () => {
+    await repo.upsertArticle(article('priv1', { extra: { circle: 'fam' } })); await repo.upsertArticle(article('pub1'));
+    const pub = await repo.listArticles({ status: 'published' }, 'published', 50); expect(pub.some((a) => a.id === 'priv1')).toBe(false); expect(pub.some((a) => a.id === 'pub1')).toBe(true);
+    expect((await repo.listArticles({ status: 'published', includeCircles: true }, 'published', 50)).some((a) => a.id === 'priv1')).toBe(true);
+    expect((await repo.listArticles({}, 'updated', 50)).some((a) => a.id === 'priv1')).toBe(true);
+  });
+  it('chiavi d\'invito: usi contati e revoca', async () => {
+    await x3.insertCircleInvite({ token: 'k1', circleId: 'fam', maxUses: 2, uses: 0, revoked: false, createdAt: now() }); await x3.useCircleInvite('k1');
+    expect((await x3.findCircleInvite('k1'))?.uses).toBe(1); await x3.revokeCircleInvite('k1'); expect((await x3.findCircleInvite('k1'))?.revoked).toBe(true);
+  });
+  it('uso del menu registrato per utente', async () => { await x3.trackNav('u1', '/admin/media'); await x3.trackNav('u1', '/admin/media'); const u = await x3.navUsage('u1'); expect(u.used).toEqual(['/admin/media']); expect(u.firstDay).toBe(new Date().toISOString().slice(0, 10)); });
+});

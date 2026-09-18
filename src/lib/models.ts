@@ -104,7 +104,7 @@ export interface Article {
 }
 
 /** Dati aggiuntivi dell'articolo (una colonna JSON, così le funzioni nuove non richiedono nuove colonne). */
-export interface ArticleExtra { fields?: Record<string, string>; corrections?: { date: string; text: string }[]; showHistory?: boolean; template?: string; titleB?: string; abStats?: { a: number; b: number; ca: number; cb: number; winner?: 'a' | 'b' }; audioUrl?: string; audioDuration?: number; lang?: string; translationOf?: string; translations?: Record<string, string>; stage?: number; deskId?: string; slots?: { homeFrom?: string; homeTo?: string; socialAt?: string; newsletterAt?: string }; wordsTarget?: number; embargoUntil?: string; sources?: { name: string; contact: string; note: string; verified: boolean }[]; podcast?: { chapters?: { time: string; title: string }[]; episode?: number } }
+export interface ArticleExtra { fields?: Record<string, string>; corrections?: { date: string; text: string }[]; showHistory?: boolean; template?: string; titleB?: string; abStats?: { a: number; b: number; ca: number; cb: number; winner?: 'a' | 'b' }; audioUrl?: string; audioDuration?: number; lang?: string; translationOf?: string; translations?: Record<string, string>; stage?: number; deskId?: string; slots?: { homeFrom?: string; homeTo?: string; socialAt?: string; newsletterAt?: string }; wordsTarget?: number; circle?: string; aiUsed?: string[]; hideBlackBox?: boolean; embargoUntil?: string; sources?: { name: string; contact: string; note: string; verified: boolean }[]; podcast?: { chapters?: { time: string; title: string }[]; episode?: number } }
 export interface CustomField { key: string; label: string; type: 'text' | 'number' | 'date' | 'url' | 'rating' | 'select'; options?: string }
 export interface Snippet { id: string; name: string; html: string; updatedAt: string }
 export interface Desk { id: string; name: string; categoryIds: string[]; userIds: string[] }
@@ -117,6 +117,7 @@ export interface PageExtra { brand?: string; countdownAt?: string; countdownLabe
 export interface TagFollow { id: string; tagId: string; email: string; readerId: string; token: string; createdAt: string }
 export interface Ticket { id: string; eventId: string; name: string; email: string; qty: number; code: string; status: 'pending' | 'paid'; amount: number; createdAt: string; usedAt: string | null }
 export interface AdOrder { id: string; adId: string; company: string; email: string; amount: number; days: number; status: 'pending' | 'paid'; createdAt: string }
+export interface CircleInvite { token: string; circleId: string; maxUses: number; uses: number; revoked: boolean; createdAt: string }
 export interface WebhookConfig { id: string; url: string; secret: string; events: string[]; enabled: boolean }
 export interface Contact { id: string; name: string; role: string; org: string; phone: string; email: string; notes: string; tags: string; createdBy: string; updatedAt: string }
 export interface Comment {
@@ -169,7 +170,7 @@ export interface Session { id: string; userId: string; kind: 'staff' | 'reader';
 export interface Revision { id: string; articleId: string; userId: string; note: string; data: Article; createdAt: string }
 export interface ArticleNote { id: string; articleId: string; userId: string; kind: 'note' | 'changes' | 'system' | 'reader'; body: string; resolved: boolean; createdAt: string; quote?: string }
 export interface Reader { id: string; email: string; name: string; verified: boolean; premium: boolean; premiumUntil: string | null; stripeCustomer: string; banned: boolean; createdAt: string; lastLogin: string | null; provider?: string; avatar?: string; prefs?: ReaderPrefs }
-export interface ReaderPrefs { zones?: string[]; tags?: string[]; categories?: string[]; public?: boolean }
+export interface ReaderPrefs { zones?: string[]; tags?: string[]; categories?: string[]; public?: boolean; circles?: string[] }
 export interface Redirect { id: string; fromPath: string; toPath: string; code: number; hits: number; createdAt: string }
 export interface NotFoundEntry { path: string; hits: number; referer: string; firstSeen: string; lastSeen: string }
 export interface Edition { id: string; slug: string; name: string; domain: string; tagline: string; zoneId: string; categoryIds: string[]; theme: Partial<import('./themes').ThemeSettings>; logo: string; active: boolean; createdAt: string }
@@ -284,6 +285,8 @@ export interface SiteSettings {
   maintenance?: { enabled: boolean; message: string };
   briefing?: { enabled: boolean; hour: number; feeds: string; count: number };
   adSales?: { enabled: boolean; prices: Record<string, number>; note: string };
+  adapt?: import('./admin-nav').AdaptSettings;
+  circles?: { id: string; name: string }[];
   themeVersions?: ThemeVersion[];
   editionUsers?: Record<string, string[]>;
 }

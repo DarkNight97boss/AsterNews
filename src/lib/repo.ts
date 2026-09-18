@@ -30,12 +30,14 @@ const rowToEvent = (r: Row): Event => ({ id: String(r.id), slug: String(r.slug),
 const rowToReport = (r: Row): Report => ({ id: String(r.id), name: String(r.name ?? ''), email: String(r.email ?? ''), zoneId: String(r.zone_id ?? ''), subject: String(r.subject ?? ''), body: String(r.body ?? ''), image: String(r.image ?? ''), status: r.status as Report['status'], reply: String(r.reply ?? ''), createdAt: String(r.created_at ?? '') });
 
 // ---------------- Articoli ----------------
-export interface ArticleFilter { trash?: boolean; includeDeleted?: boolean; status?: ArticleStatus | ArticleStatus[]; categoryId?: string; categoryIds?: string[]; authorId?: string; zoneId?: string; editionId?: string; tagId?: string; format?: Article['format']; featured?: boolean; breaking?: boolean; liveActive?: boolean; q?: string; excludeIds?: string[]; kinds?: string[]; notKinds?: string[]; from?: string; to?: string; premium?: boolean }
+export interface ArticleFilter { includeCircles?: boolean; trash?: boolean; includeDeleted?: boolean; status?: ArticleStatus | ArticleStatus[]; categoryId?: string; categoryIds?: string[]; authorId?: string; zoneId?: string; editionId?: string; tagId?: string; format?: Article['format']; featured?: boolean; breaking?: boolean; liveActive?: boolean; q?: string; excludeIds?: string[]; kinds?: string[]; notKinds?: string[]; from?: string; to?: string; premium?: boolean }
 export type ArticleSort = 'published' | 'updated' | 'views' | 'title' | 'created';
 
 function where(f: ArticleFilter, params: unknown[]): string {
   const w: string[] = [];
   if (f.trash) w.push('a.deleted_at IS NOT NULL'); else if (!f.includeDeleted) w.push('a.deleted_at IS NULL');
+  // I post riservati a una cerchia non compaiono nelle liste pubbliche (home, feed, sitemap, API): si raggiungono solo dal link, con accesso.
+  if (f.status === 'published' && !f.includeCircles) w.push("(a.extra IS NULL OR a.extra NOT LIKE '%\"circle\":\"%')");
   if (f.status) { const arr = Array.isArray(f.status) ? f.status : [f.status]; w.push(`a.status IN (${arr.map(() => '?').join(',')})`); params.push(...arr); }
   if (f.categoryId) { w.push('a.category_id = ?'); params.push(f.categoryId); }
   if (f.categoryIds?.length) { w.push(`a.category_id IN (${f.categoryIds.map(() => '?').join(',')})`); params.push(...f.categoryIds); }
@@ -177,7 +179,7 @@ export async function suggestTerms(q: string, limit = 8): Promise<{ label: strin
 export async function relatedArticles(a: Article, n = 4): Promise<Article[]> {
   const tagIn = a.tagIds.length ? a.tagIds.map(() => '?').join(',') : "''";
   const tagClause = a.tagIds.length ? `(SELECT COUNT(*) FROM article_tags t WHERE t.article_id = x.id AND t.tag_id IN (${tagIn}))` : '0';
-  const rows = await all<Row>(`SELECT x.* FROM articles x WHERE x.status = 'published' AND x.id <> ? AND (x.category_id = ? OR x.id IN (SELECT article_id FROM article_tags WHERE tag_id IN (${tagIn}))) ORDER BY (${tagClause} + CASE WHEN x.category_id = ? THEN 2 ELSE 0 END) DESC, x.published_at DESC LIMIT ?`,
+  const rows = await all<Row>(`SELECT x.* FROM articles x WHERE x.status = 'published' AND (x.extra IS NULL OR x.extra NOT LIKE '%"circle":"%') AND x.id <> ? AND (x.category_id = ? OR x.id IN (SELECT article_id FROM article_tags WHERE tag_id IN (${tagIn}))) ORDER BY (${tagClause} + CASE WHEN x.category_id = ? THEN 2 ELSE 0 END) DESC, x.published_at DESC LIMIT ?`,
     [a.id, a.categoryId, ...a.tagIds, ...a.tagIds, a.categoryId, n]);
   return rows.map(rowToArticle);
 }

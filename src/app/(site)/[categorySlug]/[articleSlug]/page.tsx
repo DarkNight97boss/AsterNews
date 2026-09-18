@@ -15,6 +15,8 @@ import { ArticleBody } from '@/components/site/article-body';
 import { LiveFeed } from '@/components/site/live-feed';
 import { RecommendStrip } from '@/components/site/recommend-strip';
 import { ArticleTools } from '@/components/site/article-tools';
+import { DepthSlider } from '@/components/site/depth-slider';
+import { canSeeArticle } from '@/lib/circles';
 import { buildToc, wordCount } from '@/lib/content-render';
 import { listRevisions } from '@/lib/repo-extra';
 import { AdSlot } from '@/components/site/ad-slot';
@@ -45,7 +47,7 @@ export async function generateMetadata({ params }: PageProps<'/[categorySlug]/[a
     title: a.seo.title || a.title,
     description: a.seo.description || a.excerpt,
     keywords: [a.seo.focusKeyword, ...tags.map((t) => t.name)].filter((k): k is string => !!k),
-    robots: a.seo.noIndex ? { index: false, follow: false } : undefined,
+    robots: a.seo.noIndex || a.extra?.circle ? { index: false, follow: false } : undefined,
     alternates: { canonical: a.seo.canonical || articleUrl(a), ...(await (await import('@/lib/hreflang')).hreflangFor(a)) },
     openGraph: { type: 'article', title: a.title, description: a.excerpt, images: a.coverImage ? [{ url: a.coverImage }, { url: `/api/og/${a.id}.png`, width: 1200, height: 630 }] : [{ url: `/api/og/${a.id}.png`, width: 1200, height: 630 }], publishedTime: a.publishedAt ?? undefined, modifiedTime: a.updatedAt, authors: author ? [author.name] : undefined, section: cats.find((c) => c.id === a.categoryId)?.name },
     twitter: { card: 'summary_large_image', title: a.title, description: a.excerpt },
@@ -62,6 +64,12 @@ export default async function ArticlePage({ params }: PageProps<'/[categorySlug]
   if (cat && cat.slug !== categorySlug) permanentRedirect(articleUrl(a));
   const [author, tags, rel, comments, videos, z, featuredAll, mostAll, settings] = await Promise.all([user(a.authorId), tagsByIds(a.tagIds), related(a, 6), approvedComments(a.id), listPublished({ format: 'video', excludeIds: [a.id] }, 1), zone(a.zoneId), getFeatured(5), getMostRead(7), getSettings()]);
   const liveUpdates = [...a.liveUpdates].sort((x, y) => y.time.localeCompare(x.time));
+  const [viewerReader, staffUser] = await Promise.all([getCurrentReader(), (await import('@/lib/auth')).getCurrentUser()]);
+  const viewer = { staff: !!staffUser, circles: viewerReader?.prefs?.circles ?? [] }; const circleName = (settings.circles ?? []).find((c) => c.id === a.extra?.circle)?.name ?? '';
+  const locked = !canSeeArticle(a.extra?.circle, viewer);
+  const layered = a.content.includes('class="layered"'); const wordsAt = (d: number) => Math.max(1, Math.round(wordCount(a.content.replace(/<div data-depth="(\d)">[\s\S]*?<\/div>/g, (m, n) => (Number(n) === d ? m : ''))) / 200));
+  const revs = a.extra?.hideBlackBox || settings.adapt?.blackBox === false ? [] : await listRevisions(a.id, 50);
+  const box = revs.length || a.extra?.sources?.length || a.extra?.aiUsed?.length ? { revisions: revs.length, started: revs.length ? revs[revs.length - 1].createdAt : a.createdAt, sources: a.extra?.sources?.length ?? 0, verified: (a.extra?.sources ?? []).filter((x) => x.verified).length, ai: a.extra?.aiUsed ?? [], corrections: a.extra?.corrections?.length ?? 0, words: wordCount(a.content) } : null;
   const fieldDefs = (settings.customFields?.[a.categoryId] ?? []).filter((f) => a.extra?.fields?.[f.key]);
   const toc = wordCount(a.content) >= 900 ? buildToc(a.content) : [];
   const langLinks = await (await import('@/lib/hreflang')).languageLinks(a);
@@ -156,8 +164,10 @@ export default async function ArticlePage({ params }: PageProps<'/[categorySlug]
           {fieldDefs.length > 0 && <dl className="article-fields">{fieldDefs.map((f) => { const v = a.extra?.fields?.[f.key]; if (!v) return null; return <div key={f.key}><dt>{f.label}</dt><dd>{f.type === 'rating' ? <span className="stars" aria-label={`${v} su 5`}>{'★'.repeat(Number(v))}{'☆'.repeat(5 - Number(v))}</span> : f.type === 'url' ? <a href={v} target="_blank" rel="noopener">{v.replace(/^https?:\/\//, '')}</a> : v}</dd></div>; })}</dl>}
           {toc.length >= 3 && <nav className="toc-box" aria-label="Indice"><b>In questo articolo</b><ol>{toc.map((t) => <li key={t.id}><a href={`#${t.id}`}>{t.text}</a></li>)}</ol></nav>}
           {a.format === 'gallery' && a.gallery.length > 0 && <Gallery images={a.gallery} />}
-          {gated ? <Paywall articleId={a.id} premiumOnly={!!a.premium} price={paywall.monthlyPrice} free={paywall.freeArticles}><ArticleBody html={a.content} faq={a.faq} articleId={a.id} inlineAd={<AdSlot slot="article_inline" size="728×90" className="ad-inline" />} /></Paywall> : <ArticleBody html={a.content} articleId={a.id} faq={a.faq} inlineAd={<AdSlot slot="article_inline" size="728×90" className="ad-inline" />} />}
+          {layered && !locked && <DepthSlider minutes={[wordsAt(1), wordsAt(2), wordsAt(3)]} />}
+          {locked ? <div className="circle-gate"><h3>🔒 Questo testo è riservato a «{circleName}»</h3><p>L&apos;autore lo condivide solo con un gruppo di persone. Se hai ricevuto una chiave d&apos;invito, aprila dopo aver effettuato l&apos;accesso.</p><Link className="btn btn-primary" href={`/account?redirect=${encodeURIComponent(articleUrl(a))}`}>Accedi</Link></div> : gated ? <Paywall articleId={a.id} premiumOnly={!!a.premium} price={paywall.monthlyPrice} free={paywall.freeArticles}><ArticleBody html={a.content} viewer={viewer} faq={a.faq} articleId={a.id} inlineAd={<AdSlot slot="article_inline" size="728×90" className="ad-inline" />} /></Paywall> : <ArticleBody html={a.content} viewer={viewer} articleId={a.id} faq={a.faq} inlineAd={<AdSlot slot="article_inline" size="728×90" className="ad-inline" />} />}
           {(a.extra?.corrections?.length ?? 0) > 0 && <section className="corrections-box" aria-label="Correzioni"><b>Correzioni</b>{a.extra!.corrections!.map((c, i) => <p key={i}><time dateTime={c.date}>{new Date(c.date).toLocaleDateString('it-IT', { day: 'numeric', month: 'long', year: 'numeric' })}</time> · {c.text}</p>)}</section>}
+          {box && !locked && <details className="black-box"><summary>Come è nato questo articolo</summary><dl><div><dt>Lavorazione</dt><dd>iniziato il {new Date(box.started).toLocaleDateString('it-IT', { day: 'numeric', month: 'long' })}, {box.revisions} {box.revisions === 1 ? 'versione salvata' : 'versioni salvate'}</dd></div><div><dt>Lunghezza</dt><dd>{box.words} parole</dd></div>{box.sources > 0 && <div><dt>Fonti</dt><dd>{box.sources} consultate, {box.verified} verificate direttamente</dd></div>}<div><dt>Intelligenza artificiale</dt><dd>{box.ai.length ? `l'assistente ha proposto: ${box.ai.map((k) => ({ title: 'titolo', subtitle: 'sommario', excerpt: 'estratto', seo: 'descrizione per i motori', tagIds: 'tag', kicker: 'occhiello', content: 'parti del testo', coverCaption: 'didascalia' }[k] ?? k)).join(', ')}; un giornalista ha rivisto e approvato tutto` : 'nessun uso per questo articolo'}</dd></div>{box.corrections > 0 && <div><dt>Correzioni</dt><dd>{box.corrections}, elencate sopra</dd></div>}</dl></details>}
           {history.length > 0 && <details className="update-history"><summary>Cronologia degli aggiornamenti ({history.length})</summary><ul>{history.map((h) => <li key={h.id}><time dateTime={h.createdAt}>{new Date(h.createdAt).toLocaleString('it-IT', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</time>{h.note ? ` · ${h.note}` : ''}</li>)}</ul></details>}
           <AdSlot slot="article_bottom" size="728×90" className="ad-inline" />
           {settings.googleNewsUrl && <p className="gnews" style={{ fontFamily: 'var(--font-serif)', textAlign: 'center', marginTop: 24 }}>Scegli <a href={settings.googleNewsUrl} target="_blank" rel="noopener" style={{ color: 'var(--red)', textDecoration: 'underline' }}>{settings.siteName}</a> come fonte preferita su Google News</p>}

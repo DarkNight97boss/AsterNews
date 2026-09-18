@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPollAction } from '@/lib/actions-editorial';
 import { listSnippetsAction } from '@/lib/actions-pages';
+import { circlesAction } from '@/lib/actions-circles';
 import { cleanPastedHtml, hasBlockElements } from '@/lib/paste-clean';
 import { chartSvg, csvToTable, parseChartData } from '@/lib/chart-svg';
 import { toast } from '@/components/ui/toaster';
@@ -12,10 +13,10 @@ import { toast } from '@/components/ui/toaster';
  * di primo livello riordinabili con trascinamento, ognuno modificabile nel suo tipo. Il classico contentEditable
  * è disponibile come alternativa ("Classico") nello stesso editor.
  */
-type BlockType = 'paragraph' | 'heading2' | 'heading3' | 'quote' | 'list' | 'image' | 'embed' | 'table' | 'box' | 'poll' | 'readalso' | 'divider' | 'html' | 'timeline' | 'beforeafter' | 'chart' | 'snippet' | 'quiz';
+type BlockType = 'paragraph' | 'heading2' | 'heading3' | 'quote' | 'list' | 'image' | 'embed' | 'table' | 'box' | 'poll' | 'readalso' | 'divider' | 'html' | 'timeline' | 'beforeafter' | 'chart' | 'snippet' | 'quiz' | 'layered' | 'circle';
 interface Block { id: string; type: BlockType; html: string }
 const uid = () => 'b' + Math.random().toString(36).slice(2, 9);
-const LABEL: Record<BlockType, string> = { quiz: 'Quiz', timeline: 'Timeline', beforeafter: 'Prima / dopo', chart: 'Grafico', snippet: 'Blocco riutilizzabile', paragraph: 'Paragrafo', heading2: 'Titolo H2', heading3: 'Titolo H3', quote: 'Citazione', list: 'Elenco', image: 'Immagine', embed: 'Embed / video', table: 'Tabella', box: 'Riquadro', poll: 'Sondaggio', readalso: 'Leggi anche', divider: 'Separatore', html: 'HTML' };
+const LABEL: Record<BlockType, string> = { layered: 'Paragrafo a strati', circle: 'Solo per una cerchia', quiz: 'Quiz', timeline: 'Timeline', beforeafter: 'Prima / dopo', chart: 'Grafico', snippet: 'Blocco riutilizzabile', paragraph: 'Paragrafo', heading2: 'Titolo H2', heading3: 'Titolo H3', quote: 'Citazione', list: 'Elenco', image: 'Immagine', embed: 'Embed / video', table: 'Tabella', box: 'Riquadro', poll: 'Sondaggio', readalso: 'Leggi anche', divider: 'Separatore', html: 'HTML' };
 const escapeHtml = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c] as string));
 
 function typeOf(el: Element): BlockType {
@@ -24,7 +25,7 @@ function typeOf(el: Element): BlockType {
   if (t === 'blockquote') return el.classList.contains('twitter-tweet') || el.classList.contains('instagram-media') || el.classList.contains('tiktok-embed') ? 'embed' : 'quote';
   if (t === 'ul' || t === 'ol') return 'list'; if (t === 'figure' || t === 'img') return 'image'; if (t === 'table') return 'table'; if (t === 'hr') return 'divider';
   if (t === 'iframe' || el.classList.contains('embed-video') || el.classList.contains('embed-map') || el.classList.contains('inline-gallery')) return 'embed';
-  if (el.classList.contains('timeline')) return 'timeline'; if (el.classList.contains('before-after')) return 'beforeafter'; if (el.classList.contains('chart-block')) return 'chart'; if (el.hasAttribute('data-snippet')) return 'snippet'; if (el.hasAttribute('data-quiz')) return 'quiz'; if (el.classList.contains('know-box')) return 'box'; if (el.classList.contains('embed-pdf') || el.classList.contains('audio-embed')) return 'embed';
+  if (el.classList.contains('timeline')) return 'timeline'; if (el.classList.contains('before-after')) return 'beforeafter'; if (el.classList.contains('chart-block')) return 'chart'; if (el.hasAttribute('data-snippet')) return 'snippet'; if (el.hasAttribute('data-quiz')) return 'quiz'; if (el.classList.contains('layered')) return 'layered'; if (el.classList.contains('circle-only')) return 'circle'; if (el.classList.contains('know-box')) return 'box'; if (el.classList.contains('embed-pdf') || el.classList.contains('audio-embed')) return 'embed';
   if (el.hasAttribute('data-poll')) return 'poll'; if (el.classList.contains('read-also')) return 'readalso'; if (el.classList.contains('box') || el.classList.contains('pull-quote')) return 'box';
   return 'html';
 }
@@ -86,12 +87,15 @@ export function BlockEditor({ value, onChange, articleId = '', onPickImage }: { 
     { t: 'table' as BlockType, label: '📋 Tabella da CSV / Excel', make: () => { const c = prompt('Incolla i dati (colonne separate da ; , o tab, prima riga = intestazioni)'); return c ? csvToTable(c) : null; } },
     { t: 'embed' as BlockType, label: '📄 PDF', make: () => { const u = prompt('URL del PDF'); return u ? `<div class="embed-pdf"><iframe src="${u}#toolbar=0" loading="lazy" title="Documento PDF"></iframe><a href="${u}" target="_blank" rel="noopener">Apri o scarica il PDF</a></div>` : null; } },
     { t: 'embed' as BlockType, label: '🎧 Audio / podcast', make: () => { const u = prompt('URL del file audio (mp3) oppure link Spotify / Apple Podcasts'); if (!u) return null; if (/spotify\.com/.test(u)) return `<div class="embed-podcast"><iframe src="${u.replace('open.spotify.com/', 'open.spotify.com/embed/')}" loading="lazy" allow="encrypted-media" title="Podcast"></iframe></div>`; if (/podcasts\.apple\.com/.test(u)) return `<div class="embed-podcast"><iframe src="${u.replace('podcasts.apple.com', 'embed.podcasts.apple.com')}" loading="lazy" title="Podcast"></iframe></div>`; return `<figure class="audio-embed"><audio controls preload="none" src="${u}"></audio><figcaption>${escapeHtml(prompt('Didascalia') || '')}</figcaption></figure>`; } },
+    { t: 'layered' as BlockType, label: '🎚 Paragrafo a strati (breve / normale / completo)', make: () => '<div class="layered"><div data-depth="1"><p></p></div><div data-depth="2"><p></p></div><div data-depth="3"><p></p></div></div>' },
+    { t: 'circle' as BlockType, label: '🔒 Solo per una cerchia', make: () => null },
     { t: 'snippet' as BlockType, label: '♻️ Blocco riutilizzabile', make: () => null },
     { t: 'quiz' as BlockType, label: '🧠 Quiz con classifica', make: () => { const title = prompt('Titolo del quiz'); if (!title) return null; const qs: { q: string; options: string[]; answer: number }[] = []; for (let i = 1; i <= 10; i++) { const q = prompt(`Domanda ${i} (vuoto per finire)`); if (!q) break; const opts = (prompt('Risposte separate da ; (la prima è quella giusta)') || '').split(';').map((x) => x.trim()).filter(Boolean); if (opts.length < 2) break; const answer = Math.floor(Math.random() * opts.length); const first = opts[0]; opts.splice(0, 1); opts.splice(answer, 0, first); qs.push({ q, options: opts, answer }); } if (!qs.length) return null; const def = { id: 'qz' + Math.random().toString(36).slice(2, 8), title, questions: qs }; return `<div data-quiz="${escapeHtml(JSON.stringify(def))}" class="quiz-placeholder">🧠 Quiz: ${escapeHtml(title)} (${qs.length} domande)</div>`; } },
     { t: 'poll' as BlockType, label: '📊 Sondaggio', make: () => null }, { t: 'divider' as BlockType, label: '— Separatore', make: () => '<hr />' }, { t: 'html' as BlockType, label: '</> HTML libero', make: () => '<div></div>' },
   ], []);
   const add = async (index: number, item: (typeof menu)[number]) => {
     if (item.t === 'image') { if (onPickImage) { onPickImage((url, alt) => insertAt(index, { id: uid(), type: 'image', html: `<figure><img src="${url}" alt="${escapeHtml(alt)}" /><figcaption>${escapeHtml(alt)}</figcaption></figure>` })); } else { const u = prompt('URL immagine'); if (u) insertAt(index, { id: uid(), type: 'image', html: `<figure><img src="${u}" alt="" /><figcaption></figcaption></figure>` }); } return; }
+    if (item.t === 'circle') { const list = await circlesAction(); if (!list.length) { toast.error('Nessuna cerchia: creale in Lettori e abbonati → Cerchie di lettori.'); return; } const pick = prompt('Per quale cerchia?\n' + list.map((x, i) => `${i + 1}. ${x.name}`).join('\n'), '1'); const sel = list[Number(pick) - 1]; if (!sel) return; const text = prompt(`Testo riservato a «${sel.name}»`) ?? ''; insertAt(index, { id: uid(), type: 'circle', html: `<div class="circle-only" data-circle="${sel.id}"><p>${escapeHtml(text)}</p></div>` }); return; }
     if (item.t === 'snippet') { const list = await listSnippetsAction(); if (!list.length) { toast.error('Nessun blocco riutilizzabile: creane uno in Redazione → Blocchi riutilizzabili.'); return; } const pick = prompt('Quale blocco?\n' + list.map((x, i) => `${i + 1}. ${x.name}`).join('\n'), '1'); const sel = list[Number(pick) - 1]; if (!sel) return; insertAt(index, { id: uid(), type: 'snippet', html: `<div data-snippet="${sel.id}" class="snippet-ref">♻️ ${escapeHtml(sel.name)}</div>` }); return; }
     if (item.t === 'poll') { const q = prompt('Domanda del sondaggio'); if (!q) return; const o = prompt('Risposte separate da virgola'); if (!o) return; const r = await createPollAction(articleId, q, o.split(',')); if (!r.ok || !r.poll) { toast.error(r.message ?? 'Errore'); return; } insertAt(index, { id: uid(), type: 'poll', html: `<div data-poll="${r.poll.id}" class="poll-placeholder">📊 Sondaggio: ${escapeHtml(r.poll.question)}</div>` }); return; }
     const html = item.make(); if (html) insertAt(index, { id: uid(), type: item.t, html });
@@ -116,6 +120,7 @@ export function BlockEditor({ value, onChange, articleId = '', onPickImage }: { 
             </div>
             {['paragraph', 'heading2', 'heading3', 'quote', 'list'].includes(b.type) ? <TextBlock block={b} onChange={(h) => update(b.id, h)} placeholder={b.type === 'heading2' ? 'Titolo di sezione' : b.type === 'heading3' ? 'Sottotitolo' : b.type === 'quote' ? 'Citazione' : 'Scrivi qui…'} />
               : b.type === 'image' ? <ImageBlock html={b.html} onChange={(h) => update(b.id, h)} />
+              : b.type === 'layered' ? <LayeredBlock html={b.html} onChange={(h) => update(b.id, h)} />
               : <RawBlock html={b.html} type={b.type} onChange={(h) => update(b.id, h)} />}
           </div>
           <Inserter index={i + 1} />
@@ -139,4 +144,14 @@ function ImageBlock({ html, onChange }: { html: string; onChange: (h: string) =>
 function RawBlock({ html, type, onChange }: { html: string; type: BlockType; onChange: (h: string) => void }) {
   const [edit, setEdit] = useState(false);
   return <div className="blk-raw">{edit ? <textarea className="textarea" style={{ fontFamily: 'monospace', fontSize: 12, minHeight: 90 }} value={html} onChange={(e) => onChange(e.target.value)} onBlur={() => setEdit(false)} autoFocus /> : <div className="blk-preview" onDoubleClick={() => setEdit(true)}><div className="article-body" dangerouslySetInnerHTML={{ __html: html }} /><button type="button" className="btn btn-ghost btn-sm" onClick={() => setEdit(true)}>Modifica {LABEL[type].toLowerCase()}</button></div>}</div>;
+}
+
+/** Paragrafo a strati: tre versioni dello stesso passaggio. Se «in breve» o «completo» restano vuoti, vale la versione normale. */
+function LayeredBlock({ html, onChange }: { html: string; onChange: (h: string) => void }) {
+  const read = (d: number) => (html.match(new RegExp(`<div data-depth="${d}">([\\s\\S]*?)</div>`))?.[1] ?? '').replace(/<\/p>\s*<p>/g, '\n\n').replace(/<[^>]+>/g, '').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>');
+  const [v, setV] = useState<[string, string, string]>([read(1), read(2), read(3)]);
+  const toHtml = (t: string) => t.split(/\n{2,}/).map((x) => x.trim()).filter(Boolean).map((x) => `<p>${escapeHtml(x)}</p>`).join('');
+  const emit = (n: [string, string, string]) => { setV(n); const mid = n[1] || n[0] || n[2]; onChange(`<div class="layered"><div data-depth="1">${toHtml(n[0] || mid)}</div><div data-depth="2">${toHtml(mid)}</div><div data-depth="3">${toHtml(n[2] || mid)}</div></div>`); };
+  const L = ['In breve (una frase)', 'Normale', 'Completo (con dettagli e contesto)'];
+  return <div className="blk-layered">{[0, 1, 2].map((i) => <label key={i}><span>{L[i]} · {v[i].split(/\s+/).filter(Boolean).length} parole</span><textarea className="textarea" style={{ minHeight: i === 0 ? 44 : i === 1 ? 80 : 130 }} value={v[i]} onChange={(e) => { const n = [...v] as [string, string, string]; n[i] = e.target.value; emit(n); }} placeholder={i === 1 ? 'La versione che legge chi non tocca il cursore' : i === 0 ? 'Vuoto = uguale alla normale' : 'Vuoto = uguale alla normale'} /></label>)}</div>;
 }

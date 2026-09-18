@@ -1,4 +1,7 @@
 import { ChurnPanel } from '@/components/admin/churn-panel';
+import { CirclesPanel } from '@/components/admin/circles-panel';
+import { listCircleInvites, readersInCircles } from '@/lib/repo-extra3';
+import { siteUrl } from '@/lib/site-url';
 import { churnRisk } from '@/lib/insights';
 import { redirect } from 'next/navigation';
 import { requireUser } from '@/lib/auth';
@@ -19,6 +22,7 @@ export default async function ReadersPage({ searchParams }: PageProps<'/admin/le
     <>
       <div className="page-title"><div><h1>Lettori e abbonati</h1><p>{counts.total} account registrati · {counts.premium} abbonati premium · paywall {pw.enabled ? `attivo (${pw.freeArticles} articoli gratis al mese, ${pw.monthlyPrice} €/mese)` : 'disattivato'}</p></div></div>
       <form className="filters" method="get"><input className="input grow" name="q" placeholder="Cerca per email o nome…" defaultValue={q} /><button className="btn btn-outline" type="submit">Cerca</button></form>
+      <CirclesPanel circles={(await getSettings()).circles ?? []} invites={await listCircleInvites()} members={await readersInCircles()} base={siteUrl()} />
       <ChurnPanel risk={await churnRisk(50)} />
       <ReadersTable readers={readers.map((r) => ({ ...r, createdAtLabel: formatDate(r.createdAt, false), lastLoginLabel: r.lastLogin ? formatDate(r.lastLogin) : '—' }))} />
     </>

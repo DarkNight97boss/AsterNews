@@ -154,3 +154,12 @@ export async function promoteStagingAction(): Promise<ActionResult> {
     await repo.insertActivity({ id: uid('ac'), userId: me.id, action: 'ha promosso in produzione', target: d.url, createdAt: new Date().toISOString() }); return { ok: true, message: `Promossa in produzione: ${d.url}` };
   } catch (e) { return { ok: false, message: (e as Error).message }; }
 }
+
+// ---------------- Il CMS che si adatta ----------------
+export async function trackNavAction(path: string): Promise<void> { const { getCurrentUser } = await import('./auth'); const me = await getCurrentUser(); if (!me || !path.startsWith('/admin')) return; const clean = '/' + path.split('?')[0].split('/').filter(Boolean).slice(0, 3).join('/'); const x3 = await import('./repo-extra3'); await x3.trackNav(me.id, clean.replace(/\/(a_|[a-z]{1,3}_)[a-z0-9]+$/i, '')).catch(() => {}); }
+export async function saveAdaptAction(a: import('./admin-nav').AdaptSettings): Promise<ActionResult> {
+  await requirePermission('settings.manage'); const { PROFILES } = await import('./admin-nav'); const s = await getSettings();
+  const voc: Record<string, string> = {}; for (const [k, v] of Object.entries(a.vocabulary ?? {})) if (['article', 'articles', 'write', 'site', 'team'].includes(k) && String(v).trim()) voc[k] = String(v).trim().slice(0, 40);
+  await repo.saveSettingsRow({ ...s, adapt: { profile: PROFILES.some((p) => p.id === a.profile) ? a.profile : 'quotidiano', autoHide: !!a.autoHide, blackBox: a.blackBox !== false, vocabulary: voc, pinned: (a.pinned ?? []).filter((h) => h.startsWith('/admin')).slice(0, 40) } });
+  revalidateTag('settings', 'max'); revalidatePath('/admin', 'layout'); return { ok: true, message: 'Il CMS si è adattato.' };
+}

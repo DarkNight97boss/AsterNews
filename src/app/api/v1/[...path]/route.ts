@@ -7,6 +7,7 @@ import { findApiKeyByHash } from '@/lib/repo-extra3';
 import { checkLimit } from '@/lib/ratelimit';
 import { siteUrl } from '@/lib/site-url';
 import type { Article } from '@/lib/models';
+import { stripCircles } from '@/lib/circles';
 
 export const dynamic = 'force-dynamic';
 
@@ -23,7 +24,7 @@ const json = (data: unknown, status = 200, headers: Record<string, string> = {})
 async function serialize(a: Article, cats: Awaited<ReturnType<typeof getCategories>>, full = false) {
   const base = siteUrl(); const cat = cats.find((c) => c.id === a.categoryId);
   const [author, tags] = await Promise.all([user(a.authorId), tagsByIds(a.tagIds)]);
-  return { id: a.id, slug: a.slug, url: `${base}${articleUrlWith(a, cats)}`, title: a.title, kicker: a.kicker, subtitle: a.subtitle, excerpt: a.excerpt, image: a.coverImage, category: cat ? { id: cat.id, slug: cat.slug, name: cat.name } : null, author: author ? { id: author.id, name: author.name } : null, tags: tags.map((t) => ({ slug: t.slug, name: t.name })), format: a.format, premium: !!a.premium, publishedAt: a.publishedAt, updatedAt: a.updatedAt, ...(full ? { content: a.content, faq: a.faq ?? [], gallery: a.gallery, videoUrl: a.videoUrl } : {}) };
+  return { id: a.id, slug: a.slug, url: `${base}${articleUrlWith(a, cats)}`, title: a.title, kicker: a.kicker, subtitle: a.subtitle, excerpt: a.excerpt, image: a.coverImage, category: cat ? { id: cat.id, slug: cat.slug, name: cat.name } : null, author: author ? { id: author.id, name: author.name } : null, tags: tags.map((t) => ({ slug: t.slug, name: t.name })), format: a.format, premium: !!a.premium, publishedAt: a.publishedAt, updatedAt: a.updatedAt, ...(full ? { content: stripCircles(a.content), faq: a.faq ?? [], gallery: a.gallery, videoUrl: a.videoUrl } : {}) };
 }
 
 export async function GET(req: Request, { params }: { params: Promise<{ path: string[] }> }) {

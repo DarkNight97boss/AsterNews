@@ -4,13 +4,16 @@ import { Embeds } from './embeds';
 import { QuizWidget, type QuizDef } from './quiz-widget';
 import { optimizeBodyImages } from '@/lib/body-images';
 import { enhanceContent } from '@/lib/content-render';
+import { filterCircles, type Viewer } from '@/lib/circles';
+import { getSettings } from '@/lib/queries';
 
 /**
  * Corpo dell'articolo: HTML dell'editor più i blocchi interattivi (sondaggi) e gli script degli embed (Instagram, X) solo se servono.
  * Un sondaggio è un segnaposto <div data-poll="ID"></div> inserito dall'editor.
  */
-export async function ArticleBody({ html: rawHtml, faq, className = 'article-body', inlineAd, articleId = '' }: { html: string; faq?: { q: string; a: string }[]; className?: string; inlineAd?: ReactNode; articleId?: string }) {
-  const html = await optimizeBodyImages(await enhanceContent(rawHtml));
+export async function ArticleBody({ html: rawHtml, faq, className = 'article-body', inlineAd, articleId = '', viewer }: { viewer?: Viewer; html: string; faq?: { q: string; a: string }[]; className?: string; inlineAd?: ReactNode; articleId?: string }) {
+  const visible = rawHtml.includes('circle-only') ? filterCircles(rawHtml, viewer ?? { staff: false, circles: [] }, (await getSettings()).circles ?? []) : rawHtml;
+  const html = await optimizeBodyImages(await enhanceContent(visible));
   // Spazio pubblicitario dopo il terzo paragrafo (se l'articolo è abbastanza lungo)
   let withAd = html; const paragraphs = [...html.matchAll(/<\/p>/g)];
   if (inlineAd && paragraphs.length >= 5) { const at = paragraphs[2].index! + 4; withAd = html.slice(0, at) + '<div data-inline-ad="1"></div>' + html.slice(at); }

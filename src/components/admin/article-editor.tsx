@@ -53,6 +53,7 @@ export function ArticleEditor({ initial, isNew, isPublic, categories, zones, tag
   const [focus, setFocus] = useState(false); const [fieldDefs, setFieldDefs] = useState<Record<string, CustomField[]>>({}); const [corrText, setCorrText] = useState('');
   useEffect(() => { customFieldsAction().then(setFieldDefs).catch(() => {}); workflowInfoAction().then(setWf).catch(() => {}); }, []);
   const [wf, setWf] = useState<{ steps: string[]; desks: { id: string; name: string }[] }>({ steps: [], desks: [] });
+  const [circleList, setCircleList] = useState<{ id: string; name: string }[]>([]); useEffect(() => { import('@/lib/actions-circles').then((m) => m.circlesAction()).then(setCircleList).catch(() => {}); }, []);
   const [dupes, setDupes] = useState<{ id: string; title: string; status: string; updatedAt: string }[]>([]);
   const [editions, setEditions] = useState<{ id: string; name: string }[]>([]); useEffect(() => { editionsListAction().then(setEditions).catch(() => {}); }, []);
   const extra = a.extra ?? {}; const setExtra = (patch: Partial<NonNullable<Article['extra']>>) => set('extra', { ...extra, ...patch });
@@ -120,7 +121,7 @@ export function ArticleEditor({ initial, isNew, isPublic, categories, zones, tag
               <div className={`char-count ${a.excerpt.length > 200 ? 'over' : ''}`}>{a.excerpt.length}/200</div></div>
           </div>
 
-          <AiAssistant article={a} categories={categories.map((c) => ({ id: c.id, name: c.name }))} onPatch={(p) => { setA((x) => ({ ...x, ...p })); setDirty(true); }} onAddTag={(name) => addTag(name)} />
+          <AiAssistant article={a} categories={categories.map((c) => ({ id: c.id, name: c.name }))} onPatch={(p) => { setA((x) => ({ ...x, ...p, extra: { ...(x.extra ?? {}), aiUsed: [...new Set([...(x.extra?.aiUsed ?? []), ...Object.keys(p)])] } })); setDirty(true); }} onAddTag={(name) => addTag(name)} />
 
           <EditorExtras article={a} isNew={isNew} users={users} canAssign={can('article.assign')} canPublish={can('article.publish')} meId={meId} dirty={dirty} onRestoreDraft={(d) => { setA({ ...d, id: a.id }); setDirty(true); }} onPatch={(p) => setA((x) => ({ ...x, ...p }))} />
 
@@ -133,6 +134,8 @@ export function ArticleEditor({ initial, isNew, isPublic, categories, zones, tag
           <div className="panel"><div className="panel-title">Pianificazione per canale</div>
             <div className="form-row"><div className="field"><label>In home da</label><input className="input" type="datetime-local" value={toLocalInput(extra.slots?.homeFrom ?? null)} onChange={(e) => setExtra({ slots: { ...(extra.slots ?? {}), homeFrom: e.target.value ? new Date(e.target.value).toISOString() : undefined } })} /></div><div className="field"><label>In home fino a</label><input className="input" type="datetime-local" value={toLocalInput(extra.slots?.homeTo ?? null)} onChange={(e) => setExtra({ slots: { ...(extra.slots ?? {}), homeTo: e.target.value ? new Date(e.target.value).toISOString() : undefined } })} /></div></div>
             <div className="form-row"><div className="field"><label>Post social alle</label><input className="input" type="datetime-local" value={toLocalInput(extra.slots?.socialAt ?? null)} onChange={(e) => setExtra({ slots: { ...(extra.slots ?? {}), socialAt: e.target.value ? new Date(e.target.value).toISOString() : undefined } })} /></div><div className="field"><label>Newsletter alle</label><input className="input" type="datetime-local" value={toLocalInput(extra.slots?.newsletterAt ?? null)} onChange={(e) => setExtra({ slots: { ...(extra.slots ?? {}), newsletterAt: e.target.value ? new Date(e.target.value).toISOString() : undefined } })} /></div></div>
+            {circleList.length > 0 && <div className="field"><label>Riservato a (post intero)</label><select className="select" value={extra.circle ?? ''} onChange={(e) => setExtra({ circle: e.target.value || undefined })}><option value="">Tutti</option>{circleList.map((c) => <option key={c.id} value={c.id}>Solo «{c.name}»</option>)}</select></div>}
+            <label className="switch" style={{ marginBottom: 8 }}><input type="checkbox" checked={!extra.hideBlackBox} onChange={(e) => setExtra({ hideBlackBox: !e.target.checked })} /> Mostra ai lettori «Come è nato questo articolo»</label>
             <div className="field"><label>Embargo: non pubblicabile prima di</label><input className="input" type="datetime-local" value={toLocalInput(extra.embargoUntil ?? null)} onChange={(e) => setExtra({ embargoUntil: e.target.value ? new Date(e.target.value).toISOString() : undefined })} /></div>
             <p className="help">Vuoto = subito. L&apos;articolo resta pubblicato: cambia solo quando compare in evidenza in home e quando parte sui canali.</p>
             {!isNew && <div style={{ display: 'flex', gap: 6, marginTop: 8 }}><a className="btn btn-outline btn-sm" href={`/api/export/article/${a.id}?format=print`} target="_blank" rel="noreferrer">🖨 Stampa / PDF</a><a className="btn btn-outline btn-sm" href={`/api/export/article/${a.id}?format=doc`}>📝 Word</a></div>}

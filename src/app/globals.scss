@@ -613,3 +613,13 @@ html[data-reading='1'] { .site-header, .topbar, .ticker, .site-footer, .article-
 .archive-list { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 8px 20px; li { padding: 6px 0; border-bottom: 1px solid var(--line); text-transform: capitalize; display: flex; justify-content: space-between; a { text-decoration: none; font-weight: 700; color: inherit; } } }
 .ad-order { .plan { cursor: pointer; input { margin-right: 6px; } } .field { margin-bottom: 10px; } }
 .link-like { background: none; border: 0; padding: 0; color: inherit; font: inherit; font-weight: 700; text-decoration: underline; cursor: pointer; }
+/* scrittura a strati: senza JavaScript si vede la versione normale */
+.layered > [data-depth='1'], .layered > [data-depth='3'] { display: none; }
+html[data-depth='1'] .layered > [data-depth='2'], html[data-depth='3'] .layered > [data-depth='2'] { display: none; }
+html[data-depth='1'] .layered > [data-depth='1'], html[data-depth='3'] .layered > [data-depth='3'] { display: block; }
+.depth-slider { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 10px 14px; margin: 0 0 20px; border: 1px solid var(--line); background: #fff; position: sticky; top: 8px; z-index: 5; .ds-label { font-size: 13px; font-weight: 700; } input { flex: 1; min-width: 140px; accent-color: var(--accent, #d7262d); } .ds-value { font-size: 13px; min-width: 130px; text-align: right; } }
+.circle-only.visible { border-left: 3px dashed var(--brand, #22418f); padding-left: 14px; margin: 18px 0; .circle-tag { display: block; font-size: 11px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--brand, #22418f); margin-bottom: 4px; } }
+.circle-locked { font-size: 14px; color: var(--muted); font-style: italic; border: 1px dashed var(--line); padding: 8px 12px; }
+.circle-gate { border: 2px solid var(--brand, #22418f); padding: 24px; text-align: center; margin: 20px 0; h3 { font-family: var(--font-serif); margin: 0 0 8px; } p { color: var(--muted); max-width: 480px; margin: 0 auto 14px; } }
+.black-box { margin: 20px 0 0; font-size: 14px; border: 1px solid var(--line); padding: 10px 14px; summary { cursor: pointer; font-weight: 700; } dl { margin: 10px 0 0; display: grid; gap: 6px; div { display: grid; grid-template-columns: 170px 1fr; gap: 10px; } dt { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .06em; } dd { margin: 0; } } }
+@media (max-width: 640px) { .black-box dl div { grid-template-columns: 1fr; gap: 0; } }

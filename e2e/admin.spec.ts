@@ -2,11 +2,20 @@ import { expect, test } from '@playwright/test';
 
 const EMAIL = process.env.E2E_EMAIL ?? (process.env.E2E_BASE_URL ? '' : 'admin@asternews.it');
 const PASSWORD = process.env.E2E_PASSWORD ?? (process.env.E2E_BASE_URL ? '' : 'aster2026');
-const PAGES = ['/admin', '/admin/articoli', '/admin/articoli?cestino=1', '/admin/articoli/nuovo', '/admin/scrivi', '/admin/calendario', '/admin/scaletta', '/admin/contatti', '/admin/statistiche', '/admin/statistiche/autori', '/admin/categorie', '/admin/tag', '/admin/media', '/admin/mobile', '/admin/pagine', '/admin/blocchi', '/admin/eventi', '/admin/eventi/biglietti', '/admin/zone', '/admin/redazione', '/admin/commenti', '/admin/segnalazioni', '/admin/newsletter', '/admin/social', '/admin/annunci', '/admin/lettori', '/admin/utenti', '/admin/impostazioni', '/admin/menu', '/admin/home', '/admin/api', '/admin/donazioni', '/admin/importa', '/admin/redirect', '/admin/pubblicita', '/admin/edizioni', '/admin/estensioni', '/admin/aggiornamenti', '/admin/backup', '/admin/errori', '/admin/prestazioni', '/admin/sicurezza', '/admin/privacy', '/admin/rilascio', '/admin/ai-uso', '/admin/attivita', '/admin/profilo', '/admin/guida'];
+const PAGES = ['/admin', '/admin/articoli', '/admin/articoli?cestino=1', '/admin/articoli/nuovo', '/admin/scrivi', '/admin/calendario', '/admin/scaletta', '/admin/contatti', '/admin/statistiche', '/admin/statistiche/autori', '/admin/categorie', '/admin/tag', '/admin/media', '/admin/mobile', '/admin/pagine', '/admin/blocchi', '/admin/eventi', '/admin/eventi/biglietti', '/admin/zone', '/admin/redazione', '/admin/commenti', '/admin/segnalazioni', '/admin/newsletter', '/admin/social', '/admin/annunci', '/admin/lettori', '/admin/utenti', '/admin/impostazioni', '/admin/adatta', '/admin/menu', '/admin/home', '/admin/api', '/admin/donazioni', '/admin/importa', '/admin/redirect', '/admin/pubblicita', '/admin/edizioni', '/admin/estensioni', '/admin/aggiornamenti', '/admin/backup', '/admin/errori', '/admin/prestazioni', '/admin/sicurezza', '/admin/privacy', '/admin/rilascio', '/admin/ai-uso', '/admin/attivita', '/admin/profilo', '/admin/guida'];
 
 test.describe('redazione', () => {
   test.skip(!EMAIL || !PASSWORD, 'credenziali e2e non impostate');
   test.beforeEach(async ({ page }) => { await page.goto('/login'); await page.getByLabel('Email').fill(EMAIL); await page.getByLabel('Password').fill(PASSWORD); await page.getByRole('button', { name: /^accedi$/i }).click(); await expect(page).toHaveURL(/\/admin/, { timeout: 20_000 }); });
+
+  // Va per primo: il menu tiene in primo piano le voci già aperte, e il test successivo le apre tutte.
+  test('adatta il CMS: con il profilo «blog personale» il menu parla di post e si accorcia', async ({ page }) => {
+    await page.goto('/admin/adatta'); const before = await page.locator('.admin-sidebar nav a').count();
+    await page.getByRole('button', { name: /Blog personale/ }).click(); await page.getByRole('button', { name: /salva e applica/i }).click(); await expect(page.getByText(/si è adattato/i)).toBeVisible({ timeout: 15_000 });
+    await page.reload(); await expect(page.locator('.admin-sidebar nav').getByRole('link', { name: /Post/ }).first()).toBeVisible(); await expect(page.getByRole('button', { name: /Altro/ })).toBeVisible();
+    expect(await page.locator('.admin-sidebar nav a').count()).toBeLessThan(before);
+    await page.getByRole('button', { name: /Quotidiano/ }).click(); await page.getByRole('button', { name: /salva e applica/i }).click(); await expect(page.getByText(/si è adattato/i)).toBeVisible({ timeout: 15_000 });
+  });
 
   test('tutte le pagine di redazione si aprono senza errori', async ({ page }) => {
     test.setTimeout(300_000);
@@ -36,5 +45,15 @@ test.describe('redazione', () => {
     const title = `Blocco e2e ${Date.now()}`; const block = page.locator('.hb-block').last(); await block.locator('select').first().selectOption('latest'); await block.locator('input').first().fill(title);
     await page.getByRole('button', { name: /salva home/i }).click(); await expect(page.getByText(/home salvata/i)).toBeVisible({ timeout: 15_000 });
     await page.goto('/'); await expect(page.getByRole('heading', { name: title })).toBeVisible();
+  });
+
+  test('scrittura a strati e scatola nera: il lettore sceglie la profondità', async ({ page }) => {
+    await page.goto('/admin/articoli/nuovo'); const title = `Strati e2e ${Date.now()}`; await page.getByPlaceholder("Titolo dell'articolo").fill(title);
+    await page.getByRole('button', { name: 'Blocchi', exact: true }).click(); await page.locator('.blk-plus').first().click(); await page.getByRole('button', { name: /Paragrafo a strati/ }).click();
+    const areas = page.locator('.blk-layered textarea'); await areas.nth(0).fill('Versione breve.'); await areas.nth(1).fill('Versione normale del passaggio.'); await areas.nth(2).fill('Versione completa con tutti i dettagli e il contesto.');
+    await page.getByRole('button', { name: /^Pubblica$/ }).click(); const live = page.getByRole('link', { name: /vedi sul sito/i }); await expect(live).toBeVisible({ timeout: 20_000 }); await page.goto((await live.getAttribute('href'))!);
+    await expect(page.getByText('Versione normale del passaggio.')).toBeVisible(); await expect(page.getByText('Versione breve.')).toBeHidden();
+    await page.getByRole('slider').fill('1'); await expect(page.getByText('Versione breve.')).toBeVisible(); await expect(page.getByText('Versione normale del passaggio.')).toBeHidden();
+    await page.getByRole('slider').fill('3'); await expect(page.getByText(/tutti i dettagli/)).toBeVisible();
   });
 });
