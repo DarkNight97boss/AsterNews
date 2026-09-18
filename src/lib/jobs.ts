@@ -40,6 +40,7 @@ export async function runDailyJobs(): Promise<JobReport> {
   try { const { runDailyExtensions } = await import('./extensions'); Object.assign(steps, await runDailyExtensions()); } catch { /* ignore */ }
   try { const { ensureIndex } = await import('./embeddings'); steps.embedding = await ensureIndex(300); } catch (e) { steps.embedding = 'errore: ' + (e as Error).message; }
   try { const { scheduledAudit } = await import('./pagespeed'); steps.pagespeed = await scheduledAudit(); } catch (e) { steps.pagespeed = 'errore: ' + (e as Error).message; }
+  try { const { remindDueCommitments } = await import('./trust-notify'); const n = await remindDueCommitments(); if (n) steps.promesse = `${n} promemoria inviati`; } catch { /* ignore */ }
   steps.salute = await healthCheck();
   return { job: 'daily', steps };
 }

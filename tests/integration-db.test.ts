@@ -126,3 +126,23 @@ describe('cerchie e menu che si adatta', () => {
   });
   it('uso del menu registrato per utente', async () => { await x3.trackNav('u1', '/admin/media'); await x3.trackNav('u1', '/admin/media'); const u = await x3.navUsage('u1'); expect(u.used).toEqual(['/admin/media']); expect(u.firstDay).toBe(new Date().toISOString().slice(0, 10)); });
 });
+
+describe('archivio generico dei contributi', () => {
+  it('aggiunge, filtra per stato e scadenza, conta per riferimento, aggiorna', async () => {
+    const R = await import('../src/lib/records');
+    const a = await R.addRecord('promise', { ref: 'a1', owner: 'u1', data: { text: 'Aggiorneremo alla sentenza' }, dueAt: '2026-01-01T00:00:00.000Z' }); await R.addRecord('promise', { ref: 'a1', data: { text: 'Altra' }, dueAt: '2030-01-01T00:00:00.000Z' }); await R.addRecord('thanks', { ref: 'a1#p3', data: {} }); await R.addRecord('thanks', { ref: 'a1#p3', data: {} }); await R.addRecord('thanks', { ref: 'a1#p5', data: {} });
+    expect(await R.listRecords('promise', { ref: 'a1' })).toHaveLength(2); expect((await R.listRecords('promise', { dueBefore: '2027-01-01T00:00:00.000Z', status: 'open' })).map((r) => r.id)).toEqual([a.id]);
+    expect(await R.countByRef('thanks', 'a1#')).toEqual({ 'a1#p3': 2, 'a1#p5': 1 });
+    await R.updateRecord(a.id, { status: 'done' }); expect((await R.findRecord(a.id))?.status).toBe('done'); expect((await R.findRecord<{ text: string }>(a.id))?.data.text).toBe('Aggiorneremo alla sentenza'); expect(await R.countRecords('promise', { status: 'open' })).toBe(1);
+  });
+});
+
+describe('firma degli articoli', () => {
+  it('firma, riconosce il testo intatto e quello alterato; la chiave resta la stessa', async () => {
+    const S = await import('../src/lib/signing'); const sig = await S.signArticle('Titolo', '<p>Testo originale</p>');
+    expect(await S.verifyArticle('Titolo', '<div>Testo   originale</div>', sig)).toEqual({ signed: true, intact: true, authentic: true });
+    expect((await S.verifyArticle('Titolo', '<p>Testo ritoccato</p>', sig)).intact).toBe(false);
+    expect((await S.verifyArticle('Titolo', '<p>Testo originale</p>', { hash: sig.hash, sig: Buffer.from('falsa').toString('base64') })).authentic).toBe(false);
+    expect(await S.publicKeyPem()).toContain('BEGIN PUBLIC KEY'); expect((await S.verifyArticle('x', 'y')).signed).toBe(false);
+  });
+});

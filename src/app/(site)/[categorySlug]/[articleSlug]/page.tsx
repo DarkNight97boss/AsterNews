@@ -17,6 +17,9 @@ import { RecommendStrip } from '@/components/site/recommend-strip';
 import { ArticleTools } from '@/components/site/article-tools';
 import { DepthSlider } from '@/components/site/depth-slider';
 import { canSeeArticle } from '@/lib/circles';
+import { TrustPanel, VerificationBadge } from '@/components/site/trust-panel';
+import { AttentionTracker } from '@/components/site/attention-tracker';
+import { recordRead } from '@/lib/trust-notify';
 import { buildToc, wordCount } from '@/lib/content-render';
 import { listRevisions } from '@/lib/repo-extra';
 import { AdSlot } from '@/components/site/ad-slot';
@@ -67,6 +70,7 @@ export default async function ArticlePage({ params }: PageProps<'/[categorySlug]
   const [viewerReader, staffUser] = await Promise.all([getCurrentReader(), (await import('@/lib/auth')).getCurrentUser()]);
   const viewer = { staff: !!staffUser, circles: viewerReader?.prefs?.circles ?? [] }; const circleName = (settings.circles ?? []).find((c) => c.id === a.extra?.circle)?.name ?? '';
   const locked = !canSeeArticle(a.extra?.circle, viewer);
+  if (viewerReader && !locked) void recordRead(viewerReader.id, a.id);
   const layered = a.content.includes('class="layered"'); const wordsAt = (d: number) => Math.max(1, Math.round(wordCount(a.content.replace(/<div data-depth="(\d)">[\s\S]*?<\/div>/g, (m, n) => (Number(n) === d ? m : ''))) / 200));
   const revs = a.extra?.hideBlackBox || settings.adapt?.blackBox === false ? [] : await listRevisions(a.id, 50);
   const box = revs.length || a.extra?.sources?.length || a.extra?.aiUsed?.length ? { revisions: revs.length, started: revs.length ? revs[revs.length - 1].createdAt : a.createdAt, sources: a.extra?.sources?.length ?? 0, verified: (a.extra?.sources ?? []).filter((x) => x.verified).length, ai: a.extra?.aiUsed ?? [], corrections: a.extra?.corrections?.length ?? 0, words: wordCount(a.content) } : null;
@@ -121,6 +125,7 @@ export default async function ArticlePage({ params }: PageProps<'/[categorySlug]
       <ReadingProgress />
       <ViewCounter id={a.id} />
       <Analytics articleId={a.id} />
+      <AttentionTracker category={cat?.name ?? 'Altro'} />
       <div className="article-grid">
         <aside className="article-aside">
           {a.byline ? <div className="a-name">{a.byline}</div> : author && (
@@ -150,6 +155,7 @@ export default async function ArticlePage({ params }: PageProps<'/[categorySlug]
             {(z || a.address) && <span className="article-place">{z && <Link href={`/zone/${z.slug}`}>{z.name}</Link>}{z && a.address && ' / '}{a.address}</span>}
             <h1>{a.title}</h1>
             <p className="subtitle">{a.subtitle}</p>
+            <VerificationBadge a={a} />
             {langLinks.length > 0 && <p className="lang-switch">Leggi in: {langLinks.map((l) => <Link key={l.lang} href={l.url} hrefLang={l.lang}>{l.label}</Link>)}</p>}
             {a.sponsored && <p className="sponsored-label">Contenuto sponsorizzato</p>}
           </header>
@@ -167,6 +173,7 @@ export default async function ArticlePage({ params }: PageProps<'/[categorySlug]
           {layered && !locked && <DepthSlider minutes={[wordsAt(1), wordsAt(2), wordsAt(3)]} />}
           {locked ? <div className="circle-gate"><h3>🔒 Questo testo è riservato a «{circleName}»</h3><p>L&apos;autore lo condivide solo con un gruppo di persone. Se hai ricevuto una chiave d&apos;invito, aprila dopo aver effettuato l&apos;accesso.</p><Link className="btn btn-primary" href={`/account?redirect=${encodeURIComponent(articleUrl(a))}`}>Accedi</Link></div> : gated ? <Paywall articleId={a.id} premiumOnly={!!a.premium} price={paywall.monthlyPrice} free={paywall.freeArticles}><ArticleBody html={a.content} viewer={viewer} faq={a.faq} articleId={a.id} inlineAd={<AdSlot slot="article_inline" size="728×90" className="ad-inline" />} /></Paywall> : <ArticleBody html={a.content} viewer={viewer} articleId={a.id} faq={a.faq} inlineAd={<AdSlot slot="article_inline" size="728×90" className="ad-inline" />} />}
           {(a.extra?.corrections?.length ?? 0) > 0 && <section className="corrections-box" aria-label="Correzioni"><b>Correzioni</b>{a.extra!.corrections!.map((c, i) => <p key={i}><time dateTime={c.date}>{new Date(c.date).toLocaleDateString('it-IT', { day: 'numeric', month: 'long', year: 'numeric' })}</time> · {c.text}</p>)}</section>}
+          {!locked && <TrustPanel a={a} author={author ?? undefined} settings={settings} revisions={box?.revisions ?? 0} />}
           {box && !locked && <details className="black-box"><summary>Come è nato questo articolo</summary><dl><div><dt>Lavorazione</dt><dd>iniziato il {new Date(box.started).toLocaleDateString('it-IT', { day: 'numeric', month: 'long' })}, {box.revisions} {box.revisions === 1 ? 'versione salvata' : 'versioni salvate'}</dd></div><div><dt>Lunghezza</dt><dd>{box.words} parole</dd></div>{box.sources > 0 && <div><dt>Fonti</dt><dd>{box.sources} consultate, {box.verified} verificate direttamente</dd></div>}<div><dt>Intelligenza artificiale</dt><dd>{box.ai.length ? `l'assistente ha proposto: ${box.ai.map((k) => ({ title: 'titolo', subtitle: 'sommario', excerpt: 'estratto', seo: 'descrizione per i motori', tagIds: 'tag', kicker: 'occhiello', content: 'parti del testo', coverCaption: 'didascalia' }[k] ?? k)).join(', ')}; un giornalista ha rivisto e approvato tutto` : 'nessun uso per questo articolo'}</dd></div>{box.corrections > 0 && <div><dt>Correzioni</dt><dd>{box.corrections}, elencate sopra</dd></div>}</dl></details>}
           {history.length > 0 && <details className="update-history"><summary>Cronologia degli aggiornamenti ({history.length})</summary><ul>{history.map((h) => <li key={h.id}><time dateTime={h.createdAt}>{new Date(h.createdAt).toLocaleString('it-IT', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</time>{h.note ? ` · ${h.note}` : ''}</li>)}</ul></details>}
           <AdSlot slot="article_bottom" size="728×90" className="ad-inline" />

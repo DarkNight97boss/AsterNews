@@ -188,6 +188,9 @@ CREATE TABLE IF NOT EXISTS donations (id TEXT PRIMARY KEY, amount REAL NOT NULL,
 CREATE TABLE IF NOT EXISTS api_keys (id TEXT PRIMARY KEY, name TEXT NOT NULL, prefix TEXT NOT NULL, key_hash TEXT NOT NULL, scopes TEXT DEFAULT '["read"]', active INTEGER DEFAULT 1, calls INTEGER DEFAULT 0, last_used TEXT, created_by TEXT DEFAULT '', created_at TEXT);
 CREATE TABLE IF NOT EXISTS broken_links (id TEXT PRIMARY KEY, article_id TEXT NOT NULL, url TEXT NOT NULL, status INTEGER DEFAULT 0, error TEXT DEFAULT '', checked_at TEXT, fixed INTEGER DEFAULT 0);
 CREATE INDEX IF NOT EXISTS idx_broken_article ON broken_links(article_id);
+CREATE TABLE IF NOT EXISTS records (id TEXT PRIMARY KEY, kind TEXT NOT NULL, ref TEXT DEFAULT '', owner TEXT DEFAULT '', status TEXT DEFAULT 'open', data TEXT DEFAULT '{}', due_at TEXT, created_at TEXT, updated_at TEXT);
+CREATE INDEX IF NOT EXISTS idx_records_kind_ref ON records(kind, ref, status);
+CREATE INDEX IF NOT EXISTS idx_records_due ON records(kind, due_at);
 CREATE TABLE IF NOT EXISTS circle_invites (token TEXT PRIMARY KEY, circle_id TEXT NOT NULL, max_uses INTEGER DEFAULT 1, uses INTEGER DEFAULT 0, revoked INTEGER DEFAULT 0, created_at TEXT);
 CREATE TABLE IF NOT EXISTS nav_usage (user_id TEXT NOT NULL, path TEXT NOT NULL, day TEXT NOT NULL, count INTEGER DEFAULT 0, PRIMARY KEY (user_id, path, day));
 CREATE TABLE IF NOT EXISTS ad_orders (id TEXT PRIMARY KEY, ad_id TEXT NOT NULL, company TEXT DEFAULT '', email TEXT NOT NULL, amount REAL DEFAULT 0, days INTEGER DEFAULT 0, status TEXT DEFAULT 'pending', created_at TEXT);

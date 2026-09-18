@@ -30,7 +30,7 @@ const rowToEvent = (r: Row): Event => ({ id: String(r.id), slug: String(r.slug),
 const rowToReport = (r: Row): Report => ({ id: String(r.id), name: String(r.name ?? ''), email: String(r.email ?? ''), zoneId: String(r.zone_id ?? ''), subject: String(r.subject ?? ''), body: String(r.body ?? ''), image: String(r.image ?? ''), status: r.status as Report['status'], reply: String(r.reply ?? ''), createdAt: String(r.created_at ?? '') });
 
 // ---------------- Articoli ----------------
-export interface ArticleFilter { includeCircles?: boolean; trash?: boolean; includeDeleted?: boolean; status?: ArticleStatus | ArticleStatus[]; categoryId?: string; categoryIds?: string[]; authorId?: string; zoneId?: string; editionId?: string; tagId?: string; format?: Article['format']; featured?: boolean; breaking?: boolean; liveActive?: boolean; q?: string; excludeIds?: string[]; kinds?: string[]; notKinds?: string[]; from?: string; to?: string; premium?: boolean }
+export interface ArticleFilter { extraHas?: string; includeCircles?: boolean; trash?: boolean; includeDeleted?: boolean; status?: ArticleStatus | ArticleStatus[]; categoryId?: string; categoryIds?: string[]; authorId?: string; zoneId?: string; editionId?: string; tagId?: string; format?: Article['format']; featured?: boolean; breaking?: boolean; liveActive?: boolean; q?: string; excludeIds?: string[]; kinds?: string[]; notKinds?: string[]; from?: string; to?: string; premium?: boolean }
 export type ArticleSort = 'published' | 'updated' | 'views' | 'title' | 'created';
 
 function where(f: ArticleFilter, params: unknown[]): string {
@@ -39,6 +39,7 @@ function where(f: ArticleFilter, params: unknown[]): string {
   // I post riservati a una cerchia non compaiono nelle liste pubbliche (home, feed, sitemap, API): si raggiungono solo dal link, con accesso.
   if (f.status === 'published' && !f.includeCircles) w.push("(a.extra IS NULL OR a.extra NOT LIKE '%\"circle\":\"%')");
   if (f.status) { const arr = Array.isArray(f.status) ? f.status : [f.status]; w.push(`a.status IN (${arr.map(() => '?').join(',')})`); params.push(...arr); }
+  if (f.extraHas) { w.push('a.extra LIKE ?'); params.push(`%"${f.extraHas.replace(/[%_"]/g, '')}":%`); }
   if (f.categoryId) { w.push('a.category_id = ?'); params.push(f.categoryId); }
   if (f.categoryIds?.length) { w.push(`a.category_id IN (${f.categoryIds.map(() => '?').join(',')})`); params.push(...f.categoryIds); }
   if (f.editionId) { w.push("(a.edition_id = ? OR a.edition_id = '')"); params.push(f.editionId); }

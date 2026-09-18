@@ -69,6 +69,8 @@ export async function saveArticleAction(input: Article, status: ArticleStatus): 
     if (a.status === 'published' && existing?.status !== 'published' && w.rules.length) { const r = applyRules(w, a); Object.assign(a, r.article); if (r.social.length) (a as Article & { _ruleSocial?: string[] })._ruleSocial = r.social; }
   }
   a.seoScore = analyze(a, ctx).score;
+  // Firma crittografica: ogni versione pubblicata porta l'impronta del testo firmata dalla testata, verificabile in /api/verify
+  if (a.status === 'published') { try { const { signArticle } = await import('./signing'); a.extra = { ...(a.extra ?? {}), signature: await signArticle(a.title, a.content) }; } catch { /* la firma non blocca la pubblicazione */ } }
   if (existing) await x.insertRevision({ id: uid('rv'), articleId: a.id, userId: u.id, note: `${existing.status} → ${a.status}`, data: existing, createdAt: now });
   await repo.upsertArticle(a);
   await x.deleteAutosave(a.id); await x.releaseLock(a.id, u.id);
@@ -77,6 +79,8 @@ export async function saveArticleAction(input: Article, status: ArticleStatus): 
   { const { dispatchWebhook } = await import('./webhooks'); const cats = await getCategories(); const url = `${siteUrl()}/${cats.find((c) => c.id === a.categoryId)?.slug ?? 'notizie'}/${a.slug}`; if (a.status === 'published') dispatchWebhook(existing?.status === 'published' ? 'article.updated' : 'article.published', { id: a.id, title: a.title, url, excerpt: a.excerpt, image: a.coverImage, category: cats.find((c) => c.id === a.categoryId)?.name ?? '', author: u.name }).catch(() => {}); }
   // Correzione che si propaga: se l'articolo era già uscito sui social e aggiungi una correzione, parte un post di rettifica sugli stessi canali
   if (a.status === 'published' && existing?.status === 'published' && (a.extra?.corrections?.length ?? 0) > (existing.extra?.corrections?.length ?? 0)) { (async () => { const x2 = await import('./repo-extra2'); const sent = (await x2.socialPostsForArticle(a.id)).filter((p) => p.status === 'sent'); const nets = [...new Set(sent.map((p) => p.network))]; if (!nets.length) return; const c = a.extra!.corrections![a.extra!.corrections!.length - 1]; const { enqueue, processQueue } = await import('./social'); await enqueue(a, nets, u.id, null, `Correzione · ${a.title}: ${c.text}`.slice(0, 260)); await processQueue(nets.length); })().catch(() => {}); }
+  // …e arriva per email a chi aveva già letto la versione sbagliata
+  if (a.status === 'published' && existing?.status === 'published' && (a.extra?.corrections?.length ?? 0) > (existing.extra?.corrections?.length ?? 0)) import('./trust-notify').then((m) => m.notifyCorrectionToReaders(a)).catch(() => {});
   if (a.status === 'published') import('./embeddings').then((m) => m.indexArticle(a)).catch(() => {});
   if (a.status === 'published' && existing?.status !== 'published') import('./topic-notify').then((m) => m.notifyTopics(a)).catch(() => {});
   if (a.status === 'published' && existing?.status !== 'published') {

@@ -104,7 +104,10 @@ export interface Article {
 }
 
 /** Dati aggiuntivi dell'articolo (una colonna JSON, così le funzioni nuove non richiedono nuove colonne). */
-export interface ArticleExtra { fields?: Record<string, string>; corrections?: { date: string; text: string }[]; showHistory?: boolean; template?: string; titleB?: string; abStats?: { a: number; b: number; ca: number; cb: number; winner?: 'a' | 'b' }; audioUrl?: string; audioDuration?: number; lang?: string; translationOf?: string; translations?: Record<string, string>; stage?: number; deskId?: string; slots?: { homeFrom?: string; homeTo?: string; socialAt?: string; newsletterAt?: string }; wordsTarget?: number; circle?: string; aiUsed?: string[]; hideBlackBox?: boolean; embargoUntil?: string; sources?: { name: string; contact: string; note: string; verified: boolean }[]; podcast?: { chapters?: { time: string; title: string }[]; episode?: number } }
+export interface ArticleExtra { fields?: Record<string, string>; corrections?: { date: string; text: string }[]; showHistory?: boolean; template?: string; titleB?: string; abStats?: { a: number; b: number; ca: number; cb: number; winner?: 'a' | 'b' }; audioUrl?: string; audioDuration?: number; lang?: string; translationOf?: string; translations?: Record<string, string>; stage?: number; deskId?: string; slots?: { homeFrom?: string; homeTo?: string; socialAt?: string; newsletterAt?: string }; wordsTarget?: number; circle?: string; aiUsed?: string[]; hideBlackBox?: boolean; embargoUntil?: string; sources?: { name: string; contact: string; note: string; verified: boolean }[]; podcast?: { chapters?: { time: string; title: string }[]; episode?: number }; label?: { kind?: ArticleKindLabel; onSite?: boolean; docs?: number }; conflict?: string; verification?: { state: VerificationState; note?: string; at?: string }; openQuestions?: string[]; signature?: { hash: string; sig: string; at: string } }
+export type ArticleKindLabel = 'cronaca' | 'analisi' | 'opinione' | 'inchiesta' | 'comunicato' | 'intervista' | 'satira';
+export type VerificationState = 'confirmed' | 'developing' | 'unverified' | 'denied';
+export interface TrustSettings { funding?: { label: string; percent: number; note?: string }[]; fundingYear?: string; commitments?: { text: string; state: 'kept' | 'progress' | 'missed'; note?: string }[]; disclosures?: Record<string, string>; replyEnabled?: boolean }
 export interface CustomField { key: string; label: string; type: 'text' | 'number' | 'date' | 'url' | 'rating' | 'select'; options?: string }
 export interface Snippet { id: string; name: string; html: string; updatedAt: string }
 export interface Desk { id: string; name: string; categoryIds: string[]; userIds: string[] }
@@ -287,6 +290,7 @@ export interface SiteSettings {
   adSales?: { enabled: boolean; prices: Record<string, number>; note: string };
   adapt?: import('./admin-nav').AdaptSettings;
   circles?: { id: string; name: string }[];
+  trust?: TrustSettings;
   themeVersions?: ThemeVersion[];
   editionUsers?: Record<string, string[]>;
 }

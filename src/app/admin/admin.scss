@@ -1,1 +1,6 @@
 @use '../admin' as *;
+
+/* Fiducia */
+.reply-item { border-bottom: 1px solid var(--line, #e5e5e5); padding: 12px 0; blockquote { margin: 8px 0; padding-left: 12px; border-left: 3px solid #ccc; white-space: pre-line; } }
+.due-list { list-style: none; padding: 0; margin: 0; li { padding: 10px 0; border-bottom: 1px solid var(--line, #e5e5e5); } .due-now > div > b { color: #c62828; } }
+.settle { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; .input { flex: 1 1 180px; } }
