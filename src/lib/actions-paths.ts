@@ -16,4 +16,3 @@ export async function savePathAction(id: string, p: ReadingPath): Promise<Action
   await addRecord('path', { id: id || uid('pth'), status: 'approved', data: { slug: slugify(p.slug || title).slice(0, 60), title: title.slice(0, 120), intro: p.intro.trim().slice(0, 500), steps } }); revalidatePath('/percorsi'); revalidatePath('/admin/percorsi'); return { ok: true, message: `Percorso salvato con ${steps.length} tappe.` };
 }
 export async function deletePathAction(id: string): Promise<ActionResult> { await requirePermission('article.publish'); await deleteRecord(id); revalidatePath('/percorsi'); revalidatePath('/admin/percorsi'); return { ok: true, message: 'Percorso eliminato.' }; }
-export async function allPaths() { return listRecords<ReadingPath>('path', { status: 'approved', limit: 100 }); }

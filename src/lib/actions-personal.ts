@@ -10,6 +10,7 @@ import { addRecord, deleteRecord, findRecord, listRecords, updateRecord } from '
 import { slugify, stripHtml, uid } from './utils';
 import type { Article, PersonalSettings } from './models';
 import type { ActionResult } from './actions';
+import { collectionArticles } from './personal-data';
 
 const touch = () => { revalidateTag('settings', 'max'); revalidatePath('/', 'layout'); };
 export async function savePersonalAction(p: PersonalSettings): Promise<ActionResult> {
@@ -28,11 +29,6 @@ export async function confirmUseAction(id: string): Promise<ActionResult> { awai
 export async function deletePersonalRecordAction(id: string): Promise<ActionResult> { await requirePermission('article.publish'); const r = await findRecord(id); if (!r || !['uses', 'collection', 'letters'].includes(r.kind)) return { ok: false, message: 'Voce non trovata.' }; await deleteRecord(id); revalidatePath('/admin/personale'); revalidatePath('/uso'); revalidatePath('/raccolte'); return { ok: true, message: 'Eliminato.' }; }
 /** Raccolte automatiche: una frase descrive il tema, gli articoli si trovano da soli (ricerca semantica se attiva, altrimenti testuale). */
 export interface Collection { slug: string; title: string; query: string; intro: string; evolution?: string }
-export async function collectionArticles(query: string, limit = 60): Promise<Article[]> {
-  const seen = new Map<string, Article>(); try { const { embeddingsEnabled, semanticSearch } = await import('./embeddings'); if (await embeddingsEnabled()) for (const a of await semanticSearch(query, 30)) if (a.status === 'published' && !a.extra?.circle) seen.set(a.id, a); } catch { /* ricerca semantica non attiva */ }
-  for (const term of query.split(/[,;]|\s+e\s+/).map((t) => t.trim()).filter((t) => t.length >= 3).slice(0, 6)) for (const a of (await search(term, 40)).items) if (!seen.has(a.id)) seen.set(a.id, a);
-  return [...seen.values()].sort((a, b) => (a.publishedAt ?? '').localeCompare(b.publishedAt ?? '')).slice(0, limit);
-}
 export async function saveCollectionAction(id: string, c: Collection): Promise<ActionResult> { await requirePermission('article.publish'); if (c.title.trim().length < 3 || c.query.trim().length < 3) return { ok: false, message: 'Servono un titolo e le parole del tema.' }; const n = (await collectionArticles(c.query)).length; if (n === 0) return { ok: false, message: 'Nessun articolo trovato con queste parole: prova a cambiarle.' }; const prev = id ? await findRecord<Collection>(id) : undefined; await addRecord('collection', { id: id || uid('col'), status: 'approved', data: { slug: slugify(c.slug || c.title).slice(0, 60), title: c.title.trim().slice(0, 100), query: c.query.trim().slice(0, 200), intro: c.intro.trim().slice(0, 500), evolution: prev?.data.evolution } }); revalidatePath('/raccolte'); revalidatePath('/admin/personale'); return { ok: true, message: `Raccolta salvata: ${n} articoli trovati da soli.` }; }
 /** Grafo delle idee: come è cambiato nel tempo quello che scrivi su un tema. Lo prepara l'AI leggendo solo i tuoi testi, e lo puoi correggere. */
 export async function evolutionAction(id: string): Promise<ActionResult> {
@@ -66,5 +62,3 @@ export async function signGuestbookAction(name: string, image: string): Promise<
   if (await guardRate('ospiti', 2, 3_600_000)) return { ok: false, message: 'Hai già firmato da poco. Grazie!' }; if (!image.startsWith('data:image/png;base64,') || image.length < 2000 || image.length > 260_000) return { ok: false, message: 'Scrivi qualcosa nel riquadro (non troppo fitto).' };
   await addRecord('guestbook', { status: 'pending', data: { name: name.trim().slice(0, 60) || 'Anonimo', image } }); return { ok: true, message: 'Grazie! Il tuo messaggio compare dopo uno sguardo dell\'autore.' };
 }
-export async function nowData() { return (await findRecord<Record<string, string>>('now_main'))?.data ?? null; }
-export async function personalLists() { const [uses, collections, letters] = await Promise.all([listRecords<Record<string, string>>('uses', { limit: 200, order: 'old' }), listRecords<Collection>('collection', { limit: 100, order: 'old' }), listRecords<Correspondence>('letters', { limit: 100 })]); return { uses, collections, letters }; }

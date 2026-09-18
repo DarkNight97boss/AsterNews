@@ -24,17 +24,17 @@ export async function POST(req: Request) {
   const o = ev.data.object;
   try {
     if (ev.type === 'checkout.session.completed' && (o.metadata as { donation_id?: string })?.donation_id) {
-      const { completeDonation } = await import('@/lib/actions-donations'); await completeDonation(String((o.metadata as { donation_id: string }).donation_id));
+      const { completeDonation } = await import('@/lib/fulfilment'); await completeDonation(String((o.metadata as { donation_id: string }).donation_id));
     } else if (ev.type === 'checkout.session.completed' && (o.metadata as { listing_id?: string })?.listing_id) {
-      const { markListingPaid } = await import('@/lib/actions-listings'); await markListingPaid(String((o.metadata as { listing_id: string }).listing_id));
+      const { markListingPaid } = await import('@/lib/fulfilment'); await markListingPaid(String((o.metadata as { listing_id: string }).listing_id));
     } else if (ev.type === 'checkout.session.completed' && (o.metadata as { ad_order_id?: string })?.ad_order_id) {
-      const { completeAdOrder } = await import('@/lib/actions-revenue'); await completeAdOrder(String((o.metadata as { ad_order_id: string }).ad_order_id));
+      const { completeAdOrder } = await import('@/lib/fulfilment'); await completeAdOrder(String((o.metadata as { ad_order_id: string }).ad_order_id));
     } else if (ev.type === 'checkout.session.completed' && (o.metadata as { team_seats?: string })?.team_seats) {
-      const { completeTeamOrder } = await import('@/lib/actions-revenue'); await completeTeamOrder(o.metadata as { team_seats: string; team_months: string; team_email: string; team_company?: string });
+      const { completeTeamOrder } = await import('@/lib/fulfilment'); await completeTeamOrder(o.metadata as { team_seats: string; team_months: string; team_email: string; team_company?: string });
     } else if (ev.type === 'checkout.session.completed' && (o.metadata as { ticket_id?: string })?.ticket_id) {
-      const { completeTicket } = await import('@/lib/actions-engage'); await completeTicket(String((o.metadata as { ticket_id: string }).ticket_id));
+      const { completeTicket } = await import('@/lib/fulfilment'); await completeTicket(String((o.metadata as { ticket_id: string }).ticket_id));
     } else if (ev.type === 'checkout.session.completed' && (o.metadata as { gift_email?: string })?.gift_email) {
-      const m = o.metadata as { gift_email: string; gift_months?: string; gift_message?: string; reader_id?: string }; const { createGiftCode } = await import('@/lib/actions-community'); await createGiftCode(m.gift_email, Number(m.gift_months) || 1, m.gift_message ?? '', m.reader_id ?? '');
+      const m = o.metadata as { gift_email: string; gift_months?: string; gift_message?: string; reader_id?: string }; const { createGiftCode } = await import('@/lib/fulfilment'); await createGiftCode(m.gift_email, Number(m.gift_months) || 1, m.gift_message ?? '', m.reader_id ?? '');
     } else if (ev.type === 'checkout.session.completed') {
       const readerId = String((o.metadata as { reader_id?: string })?.reader_id ?? o.client_reference_id ?? '');
       if (readerId) await x.updateReader(readerId, { premium: true, premiumUntil: null, stripeCustomer: String(o.customer ?? '') });

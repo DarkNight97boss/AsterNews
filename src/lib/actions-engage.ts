@@ -45,11 +45,4 @@ export async function startTicketCheckoutAction(eventId: string, input: { name: 
     const d = await r.json() as { url?: string; error?: { message: string } }; if (!r.ok || !d.url) return { ok: false, message: d.error?.message ?? 'Errore Stripe' }; return { ok: true, url: d.url };
   } catch (err) { return { ok: false, message: (err as Error).message }; }
 }
-/** Chiamata dal webhook Stripe: conferma il biglietto, aggiorna i venduti e invia il codice. */
-export async function completeTicket(ticketId: string): Promise<void> {
-  const t = await x3.markTicketPaid(ticketId); if (!t) return; const e = await repo.findEvent(t.eventId); if (!e) return;
-  await repo.addTicketsSold(e.id, t.qty);
-  const { mailConfigured, mailLayout, sendMail } = await import('./mailer'); const s = await getSettings();
-  if (await mailConfigured()) await sendMail({ to: t.email, subject: `Il tuo biglietto · ${e.title}`, html: mailLayout(s.siteName, 'Biglietto confermato', `<p>Ciao ${t.name || ''}, il pagamento è andato a buon fine.</p><p><b>${e.title}</b><br>${e.place} ${e.address}<br>${e.dateFrom}${e.timeInfo ? ' · ' + e.timeInfo : ''}</p><p>Biglietti: <b>${t.qty}</b><br>Codice da mostrare all'ingresso: <b style="font-size:22px">${t.code}</b></p>`) }).catch(() => {});
-}
 export async function checkInTicketAction(code: string): Promise<ActionResult> { await requirePermission('article.publish'); const t = await x3.findTicketByCode(code.trim().toUpperCase()); if (!t || t.status !== 'paid') return { ok: false, message: 'Codice non valido o non pagato.' }; if (t.usedAt) return { ok: false, message: `Già usato il ${new Date(t.usedAt).toLocaleString('it-IT')}.` }; await x3.useTicket(t.id); revalidatePath('/admin/eventi/biglietti'); return { ok: true, message: `Valido: ${t.qty} ingresso/i per ${t.name || t.email}.` }; }

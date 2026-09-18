@@ -36,7 +36,6 @@ export async function submitListingAction(input: { kind: ListingKind; title: str
   revalidatePath('/annunci'); revalidatePath('/necrologi');
   return { ok: true, message: s.moderation ? 'Ricevuto! Sarà pubblicato dopo il controllo della redazione.' : 'Pubblicato.', id: l.id };
 }
-export async function markListingPaid(id: string): Promise<void> { const l = await x2.findListing(id); if (!l) return; const s = await listingsSettings(); await x2.updateListingStatus(id, s.moderation ? 'pending' : 'published', true); revalidatePath('/annunci'); if (await mailConfigured()) { const site = await getSettings(); sendMail({ to: l.contactEmail, subject: `Pagamento ricevuto · ${site.siteName}`, html: mailLayout(site.siteName, 'Grazie!', `<p>Abbiamo ricevuto il pagamento per «${esc(l.title)}». ${s.moderation ? 'Il testo sarà pubblicato dopo il controllo della redazione.' : 'È già online.'}</p>`) }).catch(() => {}); } }
 
 // ---------------- Redazione ----------------
 export async function setListingStatusAction(id: string, status: Listing['status']): Promise<ActionResult> { await requirePermission('comment.moderate'); await x2.updateListingStatus(id, status); revalidatePath('/annunci'); revalidatePath('/necrologi'); revalidatePath('/admin/annunci'); return { ok: true, message: 'Aggiornato.' }; }

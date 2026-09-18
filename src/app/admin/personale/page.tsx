@@ -2,7 +2,7 @@ import { requireUser } from '@/lib/auth';
 import { can } from '@/lib/permissions';
 import { getSettings, getTags } from '@/lib/queries';
 import { listArticles } from '@/lib/repo';
-import { nowData, personalLists } from '@/lib/actions-personal';
+import { nowData, personalLists } from '@/lib/personal-data';
 import { onThisDay } from '@/lib/personal';
 import { stripHtml } from '@/lib/utils';
 import { CollectionsManager, LettersManager, NowForm, PastToday, PersonalSettingsForm, TypeByWords, UsesManager } from '@/components/admin/personal-admin';

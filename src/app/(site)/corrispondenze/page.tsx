@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { personalLists } from '@/lib/actions-personal';
+import { personalLists } from '@/lib/personal-data';
 
 export const metadata: Metadata = { title: 'Corrispondenze', description: 'Scambi di lettere pubbliche con altri autori.' };
 export const dynamic = 'force-dynamic';

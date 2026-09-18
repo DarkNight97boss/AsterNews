@@ -24,10 +24,12 @@ import { hasAuthorNotes } from '@/lib/writing';
 import { SelectionTools } from '@/components/site/selection-tools';
 import { ReadingModes } from '@/components/site/reading-modes';
 import { AmbientSound, AskArticle, LongResponseForm, MindChange } from '@/components/site/article-dialogue';
-import { highlightsFor, mindStats } from '@/lib/actions-reading';
+import { highlightsFor, mindStats } from '@/lib/reading-data';
 import { listRecords } from '@/lib/records';
 import { normalizeCode, placeSlug } from '@/lib/reading';
 import { aiAvailable } from '@/lib/ai';
+import { approvedOf } from '@/lib/commons-data';
+import { ContributionForm } from '@/components/site/contribution-form';
 import { recordRead } from '@/lib/trust-notify';
 import { buildToc, wordCount } from '@/lib/content-render';
 import { listRevisions } from '@/lib/repo-extra';
@@ -83,6 +85,7 @@ export default async function ArticlePage({ params, searchParams }: PageProps<'/
   // Un anno fa oggi: il post che risponde a uno vecchio lo dichiara, e quello vecchio rimanda alla rilettura
   const repliedTo = a.extra?.replyTo ? await (await import('@/lib/repo')).findArticle(a.extra.replyTo) : null; const rereads = (await (await import('@/lib/repo')).listArticles({ status: 'published', extraHas: 'replyTo' }, 'published', 200)).filter((x) => x.extra?.replyTo === a.id);
   const allCats = await getCategories(); const pastLinks = <>{repliedTo && repliedTo.status === 'published' && <p className="past-link">↩︎ Risposta a quello che scrivevo il {formatDate(repliedTo.publishedAt)}: <Link href={articleUrlWith(repliedTo, allCats)}>{repliedTo.title}</Link></p>}{rereads.map((r) => <p key={r.id} className="past-link">↪︎ Riletto il {formatDate(r.publishedAt)}: <Link href={articleUrlWith(r, allCats)}>{r.title}</Link></p>)}</>;
+  const translations = locked ? [] : await approvedOf('translation', { ref: a.id });
   const [topHl, mind, responses, canAsk] = locked ? [[], null, [], false] as const : await Promise.all([highlightsFor(a.id), a.extra?.mindQuestion ? mindStats(a.id) : null, listRecords<{ name: string; title: string; text: string }>('response', { ref: a.id, status: 'approved', order: 'old' }), aiAvailable()]);
   const layered = a.content.includes('class="layered"'); const wordsAt = (d: number) => Math.max(1, Math.round(wordCount(a.content.replace(/<div data-depth="(\d)">[\s\S]*?<\/div>/g, (m, n) => (Number(n) === d ? m : ''))) / 200));
   const revs = a.extra?.hideBlackBox || settings.adapt?.blackBox === false ? [] : await listRevisions(a.id, 50);
@@ -172,6 +175,7 @@ export default async function ArticlePage({ params, searchParams }: PageProps<'/
             {a.extra?.memory && <p className="memory-line">Scritto a {a.extra.memory.place} · {a.extra.memory.temp}° e {a.extra.memory.weather}</p>}
             {pastLinks}
             {langLinks.length > 0 && <p className="lang-switch">Leggi in: {langLinks.map((l) => <Link key={l.lang} href={l.url} hrefLang={l.lang}>{l.label}</Link>)}</p>}
+            {translations.length > 0 && <p className="lang-switch">Tradotto dai lettori: {translations.map((t) => <Link key={t.id} href={`/traduzioni/${t.id}`}>{t.data.lang}</Link>)}</p>}
             {a.sponsored && <p className="sponsored-label">Contenuto sponsorizzato</p>}
           </header>
           {a.format === 'video' && a.videoUrl ? (
@@ -217,6 +221,7 @@ export default async function ArticlePage({ params, searchParams }: PageProps<'/
           )}
           {!locked && responses.length > 0 && <section className="section long-responses"><div className="section-title"><h2>Le risposte dei lettori</h2></div>{responses.map((r) => <article key={r.id}><h3><Link href={`/risposte/${r.id}`}>{r.data.title}</Link></h3><p className="help">di {r.data.name}</p><p>{r.data.text.slice(0, 280)}… <Link href={`/risposte/${r.id}`}>Continua</Link></p></article>)}</section>}
           {!locked && a.allowComments && <LongResponseForm articleId={a.id} />}
+          {!locked && !a.premium && <ContributionForm kind="translation" refId={a.id} />}
           {a.allowComments && (
             <section className="comments">
               <h3>Commenti ({comments.length})</h3>

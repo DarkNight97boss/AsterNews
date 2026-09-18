@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation';
 import { requireUser } from '@/lib/auth';
 import { can } from '@/lib/permissions';
-import { allPaths } from '@/lib/actions-paths';
+import { allPaths } from '@/lib/paths-data';
 import { findArticle } from '@/lib/repo';
 import { PathsManager } from '@/components/admin/paths-manager';
 

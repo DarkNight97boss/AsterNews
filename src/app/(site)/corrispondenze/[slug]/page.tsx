@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { personalLists } from '@/lib/actions-personal';
+import { personalLists } from '@/lib/personal-data';
 import { getSettings } from '@/lib/queries';
 
 export const dynamic = 'force-dynamic';

@@ -35,13 +35,6 @@ export async function startPlanCheckoutAction(planId: string, gift?: { email: st
     return { ok: true, url: String(session.url) };
   } catch (e) { return fail((e as Error).message); }
 }
-/** Dopo il pagamento di un regalo (webhook): crea il codice e lo invia al destinatario. */
-export async function createGiftCode(email: string, months: number, message: string, from: string): Promise<string> {
-  const code = 'DONO-' + randomToken(4).toUpperCase().slice(0, 8); const s = await getSettings();
-  await x3.insertGift({ id: uid('gf'), code, email, months, message, fromReader: from, redeemedBy: '', createdAt: new Date().toISOString(), redeemedAt: null });
-  if (await mailConfigured()) await sendMail({ to: email, subject: `🎁 Ti hanno regalato ${s.siteName}`, html: mailLayout(s.siteName, 'Un abbonamento in regalo', `<p>Qualcuno ti ha regalato ${months} ${months === 1 ? 'mese' : 'mesi'} di ${s.siteName}.</p>${message ? `<blockquote>${message.replace(/</g, '&lt;')}</blockquote>` : ''}<p>Il tuo codice: <b style="font-size:20px">${code}</b></p><p><a href="${siteUrl()}/account?regalo=${code}">Attivalo nel tuo account</a> (basta registrarsi con questa email).</p>`) }).catch(() => {});
-  return code;
-}
 export async function redeemGiftAction(code: string): Promise<ActionResult> {
   const limited = await (await import('./ratelimit')).guardRate('gift', 6, 600_000); if (limited) return fail(limited);
   const reader = await getCurrentReader(); if (!reader) return fail('Accedi o registrati per usare il codice.');

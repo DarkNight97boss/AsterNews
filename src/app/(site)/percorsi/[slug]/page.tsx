@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { allPaths } from '@/lib/actions-paths';
+import { allPaths } from '@/lib/paths-data';
 import { findArticle } from '@/lib/repo';
 import { articleUrlWith, getCategories } from '@/lib/queries';
 import { readingTime } from '@/lib/utils';

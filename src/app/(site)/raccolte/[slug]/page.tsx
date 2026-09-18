@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { collectionArticles, personalLists } from '@/lib/actions-personal';
+import { collectionArticles, personalLists } from '@/lib/personal-data';
 import { articleUrlWith, getCategories } from '@/lib/queries';
 
 export const dynamic = 'force-dynamic';

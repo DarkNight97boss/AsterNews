@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { personalLists } from '@/lib/actions-personal';
+import { personalLists } from '@/lib/personal-data';
 
 export const metadata: Metadata = { title: 'Usa questo', description: 'Strumenti, libri e luoghi che consiglio, con la data dell\'ultima volta che l\'ho confermato.' };
 export const dynamic = 'force-dynamic';

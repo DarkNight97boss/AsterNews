@@ -1,4 +1,4 @@
-import { collectionArticles, personalLists } from '@/lib/actions-personal';
+import { collectionArticles, personalLists } from '@/lib/personal-data';
 import { listArticles } from '@/lib/repo';
 import { getSettings, getUsers } from '@/lib/queries';
 import { stripCircles } from '@/lib/circles';

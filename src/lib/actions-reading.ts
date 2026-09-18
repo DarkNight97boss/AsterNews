@@ -13,6 +13,7 @@ import { codeFromBytes, mindShift, normalizeCode, topHighlights, type Stance } f
 import { stripHtml } from './utils';
 import type { AltVersion } from './models';
 import type { ActionResult } from './actions';
+import { mindStats } from './reading-data';
 
 const pub = async (id: string) => { const a = await repo.findArticle(id); return a && a.status === 'published' && !a.extra?.circle ? a : null; };
 /** Riprendi da dove eri: nessun account, solo un codice di tre parole valido 30 giorni. */
@@ -50,7 +51,6 @@ export async function askArticleAction(articleId: string, question: string): Pro
 /** Evidenziazioni collettive e grazie mirato: anonimi, con limite di frequenza. */
 export async function highlightAction(articleId: string, text: string): Promise<ActionResult> { if (await guardRate('evidenzia', 20, 600_000)) return { ok: false, message: 'Hai sottolineato molto: riprova tra poco.' }; const t = text.trim().replace(/\s+/g, ' '); if (t.length < 12 || t.length > 400 || !(await pub(articleId))) return { ok: false, message: 'Seleziona una frase.' }; await addRecord('highlight', { ref: articleId, data: { text: t.slice(0, 200) } }); return { ok: true, message: 'Sottolineato. Le frasi più sottolineate diventano visibili a tutti.' }; }
 export async function thanksAction(articleId: string, text: string): Promise<ActionResult> { if (await guardRate('grazie', 10, 600_000)) return { ok: false, message: 'Grazie dei grazie! Riprova tra poco.' }; const t = text.trim().replace(/\s+/g, ' '); if (t.length < 12 || !(await pub(articleId))) return { ok: false, message: 'Seleziona il passaggio per cui vuoi ringraziare.' }; await addRecord('thanks', { ref: articleId, data: { text: t.slice(0, 200) } }); return { ok: true, message: 'Grazie recapitato all\'autore, con il passaggio che hai scelto.' }; }
-export async function highlightsFor(articleId: string) { return topHighlights((await listRecords<{ text: string }>('highlight', { ref: articleId, limit: 1500 })).map((r) => r.data.text)); }
 /** Lettura condivisa: una stanza con un codice; le sottolineature di chi è dentro compaiono agli altri. */
 export async function coreadCreateAction(articleId: string): Promise<ActionResult & { code?: string }> { if (await guardRate('insieme', 5, 600_000)) return { ok: false, message: 'Riprova tra poco.' }; if (!(await pub(articleId))) return { ok: false, message: 'Articolo non trovato.' }; const code = codeFromBytes([...randomBytes(3)]); await addRecord('coread', { id: `co_${code}_${articleId}`.slice(0, 120), ref: articleId, data: { code }, dueAt: new Date(Date.now() + 7 * 86_400_000).toISOString() }); return { ok: true, code }; }
 export async function coreadAddAction(articleId: string, code: string, who: string, text: string): Promise<ActionResult> { if (await guardRate('insieme-hl', 40, 600_000)) return { ok: false, message: 'Riprova tra poco.' }; const c = normalizeCode(code); if (!(await findRecord(`co_${c}_${articleId}`.slice(0, 120)))) return { ok: false, message: 'Stanza non trovata.' }; const t = text.trim().replace(/\s+/g, ' '); if (t.length < 8) return { ok: false, message: 'Seleziona una frase.' }; await addRecord('coread-hl', { ref: `${c}:${articleId}`, data: { who: who.trim().slice(0, 30) || 'Ospite', text: t.slice(0, 300) } }); return { ok: true }; }
@@ -60,7 +60,6 @@ export async function mindAction(articleId: string, before: Stance, after: Stanc
   if (await guardRate('idea', 6, 3_600_000)) return { ok: false, message: 'Hai già risposto di recente.' }; const a = await pub(articleId); const ok = ['si', 'forse', 'no']; if (!a?.extra?.mindQuestion || !ok.includes(before) || !ok.includes(after)) return { ok: false, message: 'Risposta non valida.' };
   await addRecord('mind', { ref: articleId, data: { before, after } }); return { ok: true, stats: await mindStats(articleId) };
 }
-export async function mindStats(articleId: string) { return mindShift((await listRecords<{ before: Stance; after: Stance }>('mind', { ref: articleId, limit: 5000 })).map((r) => r.data)); }
 /** Risposte lunghe al posto dei commenti: un contro-articolo che la redazione può pubblicare accanto. */
 export async function longResponseAction(articleId: string, input: { name: string; email: string; title: string; text: string }): Promise<ActionResult> {
   if (await guardRate('risposta-lunga', 2, 3_600_000)) return { ok: false, message: 'Hai già inviato una risposta da poco.' }; const a = await pub(articleId); if (!a) return { ok: false, message: 'Articolo non trovato.' };
@@ -73,4 +72,3 @@ export async function altVersionAction(kind: 'kids' | 'easy', title: string, con
   const brief = kind === 'kids' ? 'per bambini di 8-11 anni: frasi brevi, esempi concreti, nessun dettaglio cruento, nessuna semplificazione falsa; se il tema non è adatto ai bambini spiega solo il fatto essenziale con delicatezza' : 'in lingua facile per chi sta imparando l\'italiano (livello A2): frasi di massimo 12 parole, verbi al presente o passato prossimo, una informazione per frase, niente modi di dire';
   try { const d = await askJson<AltVersion>(`Riscrivi questo articolo ${brief}. Non aggiungere fatti e non toglierne di essenziali. "html" usa solo <p> e <h2>. "glossary": 4-8 parole difficili rimaste nel testo, spiegate in una frase semplice.\n\nTitolo: ${title}\n\n${clip(stripHtml(content), 9000)}\n\nJSON: {"html":"...","glossary":[{"term":"...","meaning":"..."}]}`, { maxTokens: 4000, action: `versione:${kind}` }); return { ok: true, data: { html: String(d.html ?? ''), glossary: (d.glossary ?? []).slice(0, 10) } }; } catch (e) { return { ok: false, message: (e as Error).message }; }
 }
-export async function refreshArticlePath(path: string): Promise<void> { await requireUser(); revalidatePath(path); }

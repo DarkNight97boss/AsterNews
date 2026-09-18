@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { personalLists } from '@/lib/actions-personal';
+import { personalLists } from '@/lib/personal-data';
 
 export const metadata: Metadata = { title: 'Raccolte', description: 'I temi che tornano, messi insieme da soli.' };
 export const dynamic = 'force-dynamic';

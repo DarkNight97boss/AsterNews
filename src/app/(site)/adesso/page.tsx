@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { nowData } from '@/lib/actions-personal';
+import { nowData } from '@/lib/personal-data';
 import { getSettings } from '@/lib/queries';
 
 export const metadata: Metadata = { title: 'Adesso', description: 'Cosa sto leggendo, scrivendo, ascoltando in questo periodo.' };

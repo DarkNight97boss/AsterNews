@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { allPaths } from '@/lib/actions-paths';
+import { allPaths } from '@/lib/paths-data';
 
 export const metadata: Metadata = { title: 'Percorsi di lettura', description: 'Serie guidate per capire un tema in poche tappe, con il punto a cui sei arrivato.' };
 export const dynamic = 'force-dynamic';

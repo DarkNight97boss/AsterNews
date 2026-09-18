@@ -108,6 +108,7 @@ export interface ArticleExtra { fields?: Record<string, string>; corrections?: {
 export interface AltVersion { html: string; glossary: { term: string; meaning: string }[] }
 export type ArticleKindLabel = 'cronaca' | 'analisi' | 'opinione' | 'inchiesta' | 'comunicato' | 'intervista' | 'satira';
 export type VerificationState = 'confirmed' | 'developing' | 'unverified' | 'denied';
+export interface CommonsSettings { listening?: { enabled: boolean; weekday: number; time: string; url: string; note: string }; partners?: { name: string; benefit: string; address: string }[]; suspendedPool?: number }
 export interface PersonalSettings { silence?: { until: string; message: string }; legacy?: import('./personal').LegacySettings; ownerChatId?: string; seasons?: import('./personal').Season[]; eventMode?: { enabled: boolean; title: string; intro: string; tagId: string; until: string }; autoHome?: boolean; memory?: boolean }
 export interface TrustSettings { funding?: { label: string; percent: number; note?: string }[]; fundingYear?: string; commitments?: { text: string; state: 'kept' | 'progress' | 'missed'; note?: string }[]; disclosures?: Record<string, string>; replyEnabled?: boolean }
 export interface CustomField { key: string; label: string; type: 'text' | 'number' | 'date' | 'url' | 'rating' | 'select'; options?: string }
@@ -294,6 +295,7 @@ export interface SiteSettings {
   circles?: { id: string; name: string }[];
   trust?: TrustSettings;
   personal?: PersonalSettings;
+  commons?: CommonsSettings;
   themeVersions?: ThemeVersion[];
   editionUsers?: Record<string, string[]>;
 }
