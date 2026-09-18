@@ -1,5 +1,6 @@
 import 'server-only';
 import * as x3 from './repo-extra3';
+import { renderAuthorNotes, renderLiveData, type LiveDatum } from './writing';
 
 /**
  * Rifiniture del contenuto al momento del rendering (il testo salvato non cambia):
@@ -14,6 +15,9 @@ export async function enhanceContent(html: string): Promise<string> {
     const snippets = await Promise.all(ids.map((id) => x3.findSnippet(id)));
     out = out.replace(/<div[^>]*data-snippet="([^"]+)"[^>]*>[\s\S]*?<\/div>/g, (_, id) => { const s = snippets.find((sn) => sn?.id === id); return s ? `<div class="snippet" data-snippet="${id}">${s.html}</div>` : ''; });
   }
+  // numeri collegati alla fonte: {{dato:chiave}} → valore corrente; annotazioni dell'autore [[nota: …]]
+  if (out.includes('{{dato:')) { const { listRecords } = await import('./records'); out = renderLiveData(out, (await listRecords<LiveDatum>('datum', { limit: 500 })).map((r) => r.data)); }
+  out = renderAuthorNotes(out);
   out = renderFootnotes(out);
   out = addHeadingIds(out);
   return out;

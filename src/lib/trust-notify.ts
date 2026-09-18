@@ -28,3 +28,13 @@ export async function remindDueCommitments(): Promise<number> {
   }
   return n;
 }
+/** Frasi con data di scadenza: alla scadenza l'autore riceve una notifica (una volta) e la frase compare nell'Officina. */
+export async function remindExpiredSentences(): Promise<number> {
+  const { listArticles, patchArticle } = await import('./repo'); const today = new Date().toISOString().slice(0, 10); let n = 0;
+  for (const a of await listArticles({ status: 'published', extraHas: 'expiring', includeCircles: true }, 'updated', 500)) {
+    const list = (a.extra?.expiring ?? []) as { text: string; date: string; done?: boolean; reminded?: boolean }[]; const due = list.filter((x) => !x.done && !x.reminded && x.date && x.date <= today); if (!due.length) continue;
+    for (const d of due) { await insertNotification({ id: uid('nf'), userId: a.authorId, kind: 'review', text: `Frase scaduta in «${a.title.slice(0, 60)}»: «${d.text.slice(0, 80)}» è ancora vera?`, url: `/admin/articoli/${a.id}`, read: false, createdAt: new Date().toISOString() }); d.reminded = true; n++; }
+    await patchArticle(a.id, { extra: JSON.stringify({ ...a.extra, expiring: list }) });
+  }
+  return n;
+}

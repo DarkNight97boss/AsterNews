@@ -14,6 +14,7 @@ import { RichEditor } from './rich-editor';
 import { SeoAssistant } from './seo-assistant';
 import { EditorExtras } from './editor-extras';
 import { TrustEditor } from './trust-editor';
+import { RehearsalPanel } from './rehearsal-panel';
 import { BlockEditor } from './block-editor';
 import { AiAssistant } from './ai-assistant';
 import { TemplatePicker } from './template-picker';
@@ -160,6 +161,7 @@ export function ArticleEditor({ initial, isNew, isPublic, categories, zones, tag
             <div style={{ display: 'flex', gap: 6 }}><input className="input" placeholder="Testo della correzione (Corrige)" value={corrText} onChange={(e) => setCorrText(e.target.value)} /><button type="button" className="btn btn-outline btn-sm" disabled={!corrText.trim()} onClick={() => { setExtra({ corrections: [...(extra.corrections ?? []), { date: new Date().toISOString(), text: corrText.trim() }] }); setCorrText(''); }}>Aggiungi</button></div>
             <p className="help" style={{ marginTop: 6 }}>Le correzioni compaiono datate in fondo all&apos;articolo e nei dati strutturati.</p>
           </div>
+          <RehearsalPanel article={a} isNew={isNew} users={users.map((u) => ({ id: u.id, name: u.name }))} meId={meId} extra={extra} setExtra={setExtra} onInsert={(html) => set('content', a.content + '\n' + html)} onTitle={(t) => set('title', t)} />
           <TranscribePanel onInsert={(html) => set('content', a.content + '\n' + html)} />
           <div className="panel"><div className="panel-title">Dati strutturati (Google)</div><ul className="schema-list">{checkArticleSchema(a, { authorName: users.find((u) => u.id === a.authorId)?.name ?? '', siteLogo: true }).map((i, k) => <li key={k} className={i.level}>{i.level === 'ok' ? '✔' : i.level === 'warn' ? '⚠' : '✖'} {i.text}</li>)}</ul>{a.sponsored && !isNew && <a className="btn btn-outline btn-sm" href={`/api/export/sponsor/${a.id}`} target="_blank" rel="noreferrer">📊 Report per l&apos;inserzionista</a>}</div>
           <div className="panel"><div className="panel-title">Accessibilità</div>{(() => { const issues = checkAccessibility(a.content, a.title); return issues.length ? <ul className="ai-list">{issues.map((i, k) => <li key={k}><span className={`badge ${i.level === 'error' ? 'badge-red' : 'badge-gray'}`}>{i.level === 'error' ? 'da correggere' : 'consiglio'}</span> {i.text}</li>)}</ul> : <p className="help">Nessun problema di accessibilità rilevato nel testo.</p>; })()}</div>

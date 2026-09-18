@@ -26,13 +26,13 @@ export async function Kicker({ article, className }: { article: Article; classNa
 export function ArticleCardView({ article: a, cat, author, variant = 'md', index = 0, showExcerpt = false, showMeta = false, showImage = true, priority = false }: Props & { cat?: Category; author?: User }) {
   const link = `/${cat?.slug ?? 'notizie'}/${a.slug}`;
   const cls = `card card-${variant}`;
-  if (variant === 'city') return <article className={cls}><h3 className="card-title"><Link href={link}><span className="city">{a.kicker || cat?.name}</span>{a.title}</Link></h3></article>;
-  if (variant === 'number') return <article className={cls}><span className="num">{index}</span><div className="card-body"><KickerView article={a} cat={cat} /><h3 className="card-title"><Link href={link}>{a.title}</Link></h3></div></article>;
+  if (variant === 'city') return <article className={cls}><h3 className="card-title"><Link href={link}><span className="city">{a.kicker || cat?.name}</span>{a.extra?.titles?.home || a.title}</Link></h3></article>;
+  if (variant === 'number') return <article className={cls}><span className="num">{index}</span><div className="card-body"><KickerView article={a} cat={cat} /><h3 className="card-title"><Link href={link}>{a.extra?.titles?.home || a.title}</Link></h3></div></article>;
   if (variant === 'opinion') {
     return (
       <article className={cls}>
         {author && <div className="op-head"><img src={author.avatar} alt={author.name} loading="lazy" decoding="async" width={48} height={48} /><div><Link className="op-name" href={`/autore/${author.id}`}>{author.name}</Link><div className="op-role">{ROLE_LABELS[author.role]}</div></div></div>}
-        <h3 className="card-title"><Link href={link}>{a.title}</Link></h3>
+        <h3 className="card-title"><Link href={link}>{a.extra?.titles?.home || a.title}</Link></h3>
         {showExcerpt && <p className="card-excerpt">{a.excerpt}</p>}
       </article>
     );
@@ -41,7 +41,7 @@ export function ArticleCardView({ article: a, cat, author, variant = 'md', index
     return (
       <article className={`card card-overlay ${variant === 'overlay-sm' ? 'card-overlay-sm' : ''}`}>
         <Link className="card-img" href={link} aria-label={a.title}><SmartImage src={a.coverImage} alt={a.title} priority={priority} slot={variant === 'overlay' ? 'overlay' : 'overlay-sm'} />{a.format === 'video' && <span className="card-format">▶</span>}</Link>
-        <div className="card-body"><KickerView article={a} cat={cat} /><h3 className="card-title"><Link href={link}>{a.title}</Link></h3>{showExcerpt && variant === 'overlay' && <p className="card-excerpt">{a.excerpt}</p>}{showMeta && <div className="meta"><span>{relativeDate(a.publishedAt)}</span></div>}</div>
+        <div className="card-body"><KickerView article={a} cat={cat} /><h3 className="card-title"><Link href={link}>{a.extra?.titles?.home || a.title}</Link></h3>{showExcerpt && variant === 'overlay' && <p className="card-excerpt">{a.excerpt}</p>}{showMeta && <div className="meta"><span>{relativeDate(a.publishedAt)}</span></div>}</div>
       </article>
     );
   }
@@ -55,7 +55,7 @@ export function ArticleCardView({ article: a, cat, author, variant = 'md', index
       )}
       <div className="card-body">
         <KickerView article={a} cat={cat} />
-        <h3 className="card-title"><Link href={link}>{a.title}</Link></h3>
+        <h3 className="card-title"><Link href={link}>{a.extra?.titles?.home || a.title}</Link></h3>
         {showExcerpt && <p className="card-excerpt">{a.excerpt}</p>}
         {showMeta && <div className="meta"><span>{relativeDate(a.publishedAt)}</span>{a.sponsored && <span>· <span className="sponsored-label">Contenuto sponsorizzato</span></span>}</div>}
       </div>

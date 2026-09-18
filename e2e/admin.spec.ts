@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test';
 
 const EMAIL = process.env.E2E_EMAIL ?? (process.env.E2E_BASE_URL ? '' : 'admin@asternews.it');
 const PASSWORD = process.env.E2E_PASSWORD ?? (process.env.E2E_BASE_URL ? '' : 'aster2026');
-const PAGES = ['/admin', '/admin/articoli', '/admin/articoli?cestino=1', '/admin/articoli/nuovo', '/admin/scrivi', '/admin/calendario', '/admin/scaletta', '/admin/fiducia', '/admin/contatti', '/admin/statistiche', '/admin/statistiche/autori', '/admin/categorie', '/admin/tag', '/admin/media', '/admin/mobile', '/admin/pagine', '/admin/blocchi', '/admin/eventi', '/admin/eventi/biglietti', '/admin/zone', '/admin/redazione', '/admin/commenti', '/admin/segnalazioni', '/admin/newsletter', '/admin/social', '/admin/annunci', '/admin/lettori', '/admin/utenti', '/admin/impostazioni', '/admin/adatta', '/admin/menu', '/admin/home', '/admin/api', '/admin/donazioni', '/admin/importa', '/admin/redirect', '/admin/pubblicita', '/admin/edizioni', '/admin/estensioni', '/admin/aggiornamenti', '/admin/backup', '/admin/errori', '/admin/prestazioni', '/admin/sicurezza', '/admin/privacy', '/admin/rilascio', '/admin/ai-uso', '/admin/attivita', '/admin/profilo', '/admin/guida'];
+const PAGES = ['/admin', '/admin/articoli', '/admin/articoli?cestino=1', '/admin/articoli/nuovo', '/admin/scrivi', '/admin/calendario', '/admin/scaletta', '/admin/fiducia', '/admin/officina', '/admin/contatti', '/admin/statistiche', '/admin/statistiche/autori', '/admin/categorie', '/admin/tag', '/admin/media', '/admin/mobile', '/admin/pagine', '/admin/blocchi', '/admin/eventi', '/admin/eventi/biglietti', '/admin/zone', '/admin/redazione', '/admin/commenti', '/admin/segnalazioni', '/admin/newsletter', '/admin/social', '/admin/annunci', '/admin/lettori', '/admin/utenti', '/admin/impostazioni', '/admin/adatta', '/admin/menu', '/admin/home', '/admin/api', '/admin/donazioni', '/admin/importa', '/admin/redirect', '/admin/pubblicita', '/admin/edizioni', '/admin/estensioni', '/admin/aggiornamenti', '/admin/backup', '/admin/errori', '/admin/prestazioni', '/admin/sicurezza', '/admin/privacy', '/admin/rilascio', '/admin/ai-uso', '/admin/attivita', '/admin/profilo', '/admin/guida'];
 
 test.describe('redazione', () => {
   test.skip(!EMAIL || !PASSWORD, 'credenziali e2e non impostate');
@@ -66,5 +66,17 @@ test.describe('redazione', () => {
     await page.getByRole('button', { name: /invia alla redazione/i }).click(); await expect(page.getByText(/Richiesta ricevuta/)).toBeVisible({ timeout: 15_000 });
     await page.goto('/admin/fiducia'); await expect(page.getByText('Mario Rossi')).toBeVisible(); await page.getByRole('button', { name: /Pubblica sotto l.articolo/ }).first().click(); await expect(page.getByText('Mario Rossi')).toBeHidden({ timeout: 15_000 });
     await page.goto(url); await expect(page.getByText(/Replica di Mario Rossi/)).toBeVisible(); await page.goto('/domande-aperte'); await expect(page.getByText('Chi ha firmato il contratto?')).toBeVisible();
+  });
+  test('officina: tre appunti maturano in un tema, un numero vivo e una nota d\'autore arrivano al lettore', async ({ page }) => {
+    const key = `residenti${Date.now().toString(36)}`; await page.goto('/admin/officina');
+    for (const n of ['La piscina comunale è chiusa da mesi', 'Costi della piscina da chiedere in Comune', 'I genitori protestano per la piscina']) { await page.getByLabel('Nuovo appunto').fill(n); await page.getByRole('button', { name: 'Annota' }).click(); await expect(page.locator('.seed-list').getByText(n)).toBeVisible({ timeout: 15_000 }); }
+    await expect(page.getByText(/Hai 3 appunti su «piscin/)).toBeVisible();
+    await page.getByLabel('Chiave').fill(key); await page.getByLabel('Valore').fill('48.312'); await page.getByLabel('Fonte').fill('ISTAT'); await page.getByRole('button', { name: 'Salva dato' }).click(); await expect(page.getByText(`{{dato:${key}}}`).first()).toBeVisible({ timeout: 15_000 });
+    await page.goto('/admin/articoli/nuovo'); await page.getByPlaceholder("Titolo dell'articolo").fill(`Officina e2e ${Date.now()}`);
+    await page.getByRole('button', { name: 'Blocchi', exact: true }).click(); await page.locator('.blk-plus').first().click(); await page.getByRole('button', { name: /¶ Paragrafo/ }).click();
+    await page.locator('.blk-edit').first().click(); await page.keyboard.type(`I residenti sono {{dato:${key}}} secondo il Comune. [[nota: qui ho tagliato due paragrafi]] Fine.`);
+    await page.getByRole('button', { name: /^Pubblica$/ }).click(); const live = page.getByRole('link', { name: /vedi sul sito/i }); await expect(live).toBeVisible({ timeout: 20_000 }); await page.goto((await live.getAttribute('href'))!);
+    await expect(page.locator('.live-datum')).toHaveText('48.312'); await expect(page.getByText('qui ho tagliato due paragrafi')).toBeHidden();
+    await page.getByRole('button', { name: /Note dell.autore/ }).click(); await expect(page.getByText('qui ho tagliato due paragrafi')).toBeVisible();
   });
 });

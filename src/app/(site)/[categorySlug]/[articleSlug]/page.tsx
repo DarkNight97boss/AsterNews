@@ -19,6 +19,8 @@ import { DepthSlider } from '@/components/site/depth-slider';
 import { canSeeArticle } from '@/lib/circles';
 import { TrustPanel, VerificationBadge } from '@/components/site/trust-panel';
 import { AttentionTracker } from '@/components/site/attention-tracker';
+import { ReaderLenses } from '@/components/site/reader-lenses';
+import { hasAuthorNotes } from '@/lib/writing';
 import { recordRead } from '@/lib/trust-notify';
 import { buildToc, wordCount } from '@/lib/content-render';
 import { listRevisions } from '@/lib/repo-extra';
@@ -52,7 +54,7 @@ export async function generateMetadata({ params }: PageProps<'/[categorySlug]/[a
     keywords: [a.seo.focusKeyword, ...tags.map((t) => t.name)].filter((k): k is string => !!k),
     robots: a.seo.noIndex || a.extra?.circle ? { index: false, follow: false } : undefined,
     alternates: { canonical: a.seo.canonical || articleUrl(a), ...(await (await import('@/lib/hreflang')).hreflangFor(a)) },
-    openGraph: { type: 'article', title: a.title, description: a.excerpt, images: a.coverImage ? [{ url: a.coverImage }, { url: `/api/og/${a.id}.png`, width: 1200, height: 630 }] : [{ url: `/api/og/${a.id}.png`, width: 1200, height: 630 }], publishedTime: a.publishedAt ?? undefined, modifiedTime: a.updatedAt, authors: author ? [author.name] : undefined, section: cats.find((c) => c.id === a.categoryId)?.name },
+    openGraph: { type: 'article', title: a.extra?.titles?.social || a.title, description: a.excerpt, images: a.coverImage ? [{ url: a.coverImage }, { url: `/api/og/${a.id}.png`, width: 1200, height: 630 }] : [{ url: `/api/og/${a.id}.png`, width: 1200, height: 630 }], publishedTime: a.publishedAt ?? undefined, modifiedTime: a.updatedAt, authors: author ? [author.name] : undefined, section: cats.find((c) => c.id === a.categoryId)?.name },
     twitter: { card: 'summary_large_image', title: a.title, description: a.excerpt },
   };
 }
@@ -170,6 +172,7 @@ export default async function ArticlePage({ params }: PageProps<'/[categorySlug]
           {fieldDefs.length > 0 && <dl className="article-fields">{fieldDefs.map((f) => { const v = a.extra?.fields?.[f.key]; if (!v) return null; return <div key={f.key}><dt>{f.label}</dt><dd>{f.type === 'rating' ? <span className="stars" aria-label={`${v} su 5`}>{'★'.repeat(Number(v))}{'☆'.repeat(5 - Number(v))}</span> : f.type === 'url' ? <a href={v} target="_blank" rel="noopener">{v.replace(/^https?:\/\//, '')}</a> : v}</dd></div>; })}</dl>}
           {toc.length >= 3 && <nav className="toc-box" aria-label="Indice"><b>In questo articolo</b><ol>{toc.map((t) => <li key={t.id}><a href={`#${t.id}`}>{t.text}</a></li>)}</ol></nav>}
           {a.format === 'gallery' && a.gallery.length > 0 && <Gallery images={a.gallery} />}
+          {!locked && <ReaderLenses articleId={a.id} versions={history.length} hasNotes={hasAuthorNotes(a.content)} certainty={a.extra?.certainty?.show ? a.extra.certainty.map : undefined} />}
           {layered && !locked && <DepthSlider minutes={[wordsAt(1), wordsAt(2), wordsAt(3)]} />}
           {locked ? <div className="circle-gate"><h3>🔒 Questo testo è riservato a «{circleName}»</h3><p>L&apos;autore lo condivide solo con un gruppo di persone. Se hai ricevuto una chiave d&apos;invito, aprila dopo aver effettuato l&apos;accesso.</p><Link className="btn btn-primary" href={`/account?redirect=${encodeURIComponent(articleUrl(a))}`}>Accedi</Link></div> : gated ? <Paywall articleId={a.id} premiumOnly={!!a.premium} price={paywall.monthlyPrice} free={paywall.freeArticles}><ArticleBody html={a.content} viewer={viewer} faq={a.faq} articleId={a.id} inlineAd={<AdSlot slot="article_inline" size="728×90" className="ad-inline" />} /></Paywall> : <ArticleBody html={a.content} viewer={viewer} articleId={a.id} faq={a.faq} inlineAd={<AdSlot slot="article_inline" size="728×90" className="ad-inline" />} />}
           {(a.extra?.corrections?.length ?? 0) > 0 && <section className="corrections-box" aria-label="Correzioni"><b>Correzioni</b>{a.extra!.corrections!.map((c, i) => <p key={i}><time dateTime={c.date}>{new Date(c.date).toLocaleDateString('it-IT', { day: 'numeric', month: 'long', year: 'numeric' })}</time> · {c.text}</p>)}</section>}

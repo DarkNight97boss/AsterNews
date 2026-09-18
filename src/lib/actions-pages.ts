@@ -42,7 +42,10 @@ export async function saveMenusAction(m: MenusSettings): Promise<ActionResult> {
 export async function saveSnippetAction(s: import('./models').Snippet): Promise<ActionResult> {
   const me = await requireUser(); if (!['admin', 'editor'].includes(me.role)) return { ok: false, message: 'Solo amministratori e caporedattori gestiscono i blocchi.' };
   if (!s.name.trim()) return { ok: false, message: 'Dai un nome al blocco.' };
-  const id = s.id || uid('sn'); await x3.upsertSnippet({ id, name: s.name.trim().slice(0, 80), html: s.html, updatedAt: new Date().toISOString() });
+  const id = s.id || uid('sn');
+  // Storico dei paragrafi condivisi: ogni modifica conserva la versione precedente, con chi l'ha cambiata
+  if (s.id) { const prev = await x3.findSnippet(s.id); if (prev && prev.html !== s.html) { const { addRecord } = await import('./records'); await addRecord('snippet-history', { ref: s.id, owner: me.id, data: { html: prev.html, by: me.name, at: prev.updatedAt } }); } }
+  await x3.upsertSnippet({ id, name: s.name.trim().slice(0, 80), html: s.html, updatedAt: new Date().toISOString() });
   revalidateTag('articles', 'max'); revalidatePath('/', 'layout'); revalidatePath('/admin/blocchi');
   return { ok: true, message: 'Blocco salvato.', id };
 }
