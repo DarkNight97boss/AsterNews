@@ -48,7 +48,9 @@ export function EditorExtras({ article: a, isNew, users, canAssign, canPublish, 
   }, [a.id, isNew]);
 
   const loadRevs = () => { setShowRevs(true); listRevisionsAction(a.id).then(setRevs); };
-  const addNote = (kind: ArticleNote['kind']) => start(async () => { const r = await addNoteAction(a.id, note, kind); (r.ok ? toast.success : toast.error)(r.message ?? ''); if (r.ok) { setNote(''); setNotes(await listNotesAction(a.id)); if (kind === 'changes') router.refresh(); } });
+  const [quote, setQuote] = useState('');
+  const grabSelection = () => { const t = (window.getSelection()?.toString() ?? '').trim(); if (t.length < 3) { toast.info('Seleziona prima una frase nel testo dell\'articolo.'); return; } setQuote(t.slice(0, 400)); };
+  const addNote = (kind: ArticleNote['kind']) => start(async () => { const r = await addNoteAction(a.id, note, kind, quote); if (r.ok) setQuote(''); (r.ok ? toast.success : toast.error)(r.message ?? ''); if (r.ok) { setNote(''); setNotes(await listNotesAction(a.id)); if (kind === 'changes') router.refresh(); } });
   const restore = (rev: Revision) => { if (!confirm('Ripristinare questa versione? La versione attuale viene salvata nelle revisioni.')) return; start(async () => { const r = await restoreRevisionAction(rev.id); (r.ok ? toast.success : toast.error)(r.message ?? ''); if (r.ok) { setCmp(null); router.refresh(); } }); };
   const diff = cmp ? diffWords(stripHtml(cmp.data.content), stripHtml(a.content)) : [];
 
@@ -69,12 +71,14 @@ export function EditorExtras({ article: a, isNew, users, canAssign, canPublish, 
         {!isNew && (
           <>
             <div className="field" style={{ marginTop: 8 }}><label>Nota interna (non pubblicata)</label><textarea className="textarea" style={{ minHeight: 56 }} value={note} onChange={(e) => setNote(e.target.value)} placeholder="es. Verificare il nome dell'assessore prima di pubblicare" /></div>
+            {quote && <blockquote className="note-quote">«{quote}» <button type="button" className="icon-btn" onClick={() => setQuote('')}>✕</button></blockquote>}
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              <button type="button" className="btn btn-ghost btn-sm" onMouseDown={(e) => { e.preventDefault(); grabSelection(); }} title="Seleziona una frase nel testo, poi premi qui: la nota resta agganciata a quella frase">💬 Commenta la selezione</button>
               <button className="btn btn-outline btn-sm" disabled={pending || !note.trim()} onClick={() => addNote('note')}>Aggiungi nota</button>
               {canPublish && a.authorId !== meId && <button className="btn btn-dark btn-sm" disabled={pending || !note.trim()} onClick={() => addNote('changes')}>Richiedi modifiche all&apos;autore</button>}
             </div>
             <ul className="notes-list" style={{ marginTop: 12 }}>
-              {notes.map((n) => <li key={n.id} className={`${n.kind} ${n.resolved ? 'resolved' : ''}`}><div className="n-head"><span><b>{user(n.userId)}</b> · {n.kind === 'changes' ? 'richiesta modifiche' : 'nota'} · {formatDate(n.createdAt)}</span><span><button className="icon-btn" title={n.resolved ? 'Riapri' : 'Segna come risolta'} onClick={() => start(async () => { await resolveNoteAction(n.id, !n.resolved); setNotes(await listNotesAction(a.id)); })}>{n.resolved ? '↺' : '✓'}</button>{canPublish && <button className="icon-btn danger" onClick={() => start(async () => { await deleteNoteAction(n.id); setNotes(await listNotesAction(a.id)); })}>✕</button>}</span></div>{n.body}</li>)}
+              {notes.map((n) => <li key={n.id} className={`${n.kind} ${n.resolved ? 'resolved' : ''}`}><div className="n-head"><span><b>{user(n.userId)}</b> · {n.kind === 'changes' ? 'richiesta modifiche' : n.kind === 'reader' ? 'segnalazione di un lettore' : 'nota'} · {formatDate(n.createdAt)}</span><span><button className="icon-btn" title={n.resolved ? 'Riapri' : 'Segna come risolta'} onClick={() => start(async () => { await resolveNoteAction(n.id, !n.resolved); setNotes(await listNotesAction(a.id)); })}>{n.resolved ? '↺' : '✓'}</button>{canPublish && <button className="icon-btn danger" onClick={() => start(async () => { await deleteNoteAction(n.id); setNotes(await listNotesAction(a.id)); })}>✕</button>}</span></div>{n.quote && <blockquote className="note-quote" onClick={() => (window as unknown as { find?: (t: string) => boolean }).find?.(n.quote!.slice(0, 60))} title="Clicca per trovarla nel testo">«{n.quote}»</blockquote>}{n.body}</li>)}
               {notes.length === 0 && <li className="help" style={{ border: 0 }}>Nessuna nota.</li>}
             </ul>
           </>

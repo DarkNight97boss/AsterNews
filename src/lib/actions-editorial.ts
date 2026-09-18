@@ -56,11 +56,11 @@ export async function lockHeartbeatAction(articleId: string): Promise<{ ok: bool
 export async function releaseLockAction(articleId: string): Promise<void> { const u = await getCurrentUser(); if (u) await x.releaseLock(articleId, u.id); }
 
 // ---------------- Note interne, richiesta modifiche, assegnazione ----------------
-export async function addNoteAction(articleId: string, body: string, kind: ArticleNote['kind'] = 'note'): Promise<ActionResult> {
+export async function addNoteAction(articleId: string, body: string, kind: ArticleNote['kind'] = 'note', quote = ''): Promise<ActionResult> {
   const u = await requireUser(); const a = await repo.findArticle(articleId);
   if (!a || !(canEdit(u, a) || can(u, 'article.publish'))) return fail('Operazione non consentita.');
   if (!body.trim()) return fail('Scrivi un testo.');
-  const n: ArticleNote = { id: uid('nt'), articleId, userId: u.id, kind, body: body.trim().slice(0, 4000), resolved: false, createdAt: new Date().toISOString() };
+  const n: ArticleNote = { id: uid('nt'), articleId, userId: u.id, kind, body: body.trim().slice(0, 4000), resolved: false, createdAt: new Date().toISOString(), quote: quote.trim().slice(0, 400) };
   await x.insertNote(n);
   try { const { findMentions } = await import('./workflow'); const mentioned = findMentions(body, await repo.listUsers()).filter((m) => m.id !== u.id); if (mentioned.length) { const x3 = await import('./repo-extra3'); for (const m of mentioned) await x3.insertNotification({ id: uid('nt'), userId: m.id, kind: 'mention', text: `${u.name} ti ha menzionato su «${a.title}»: ${body.slice(0, 120)}`, url: `/admin/articoli/${articleId}`, read: false, createdAt: n.createdAt }); } } catch { /* ignora */ }
   if (kind === 'changes') {

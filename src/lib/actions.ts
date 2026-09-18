@@ -57,6 +57,8 @@ export async function saveArticleAction(input: Article, status: ArticleStatus): 
   let a2: Article;
   try { a2 = await (await import('./extensions')).runBeforeSave(a, { user: u, isNew: !existing, wasPublished: existing?.status === 'published' }); } catch (e) { return fail((e as Error).message); }
   Object.assign(a, a2);
+  // Embargo: nessuno pubblica prima dell'ora stabilita, tranne l'amministratore che lo toglie esplicitamente
+  if ((status === 'published' || a.status === 'published') && a.extra?.embargoUntil && a.extra.embargoUntil > now && existing?.status !== 'published') return fail(`Articolo sotto embargo fino al ${new Date(a.extra.embargoUntil).toLocaleString('it-IT')}: programmalo per quell'ora oppure togli l'embargo.`);
   // Desk, fasi di approvazione e regole automatiche
   { const { workflowOf, deskFor, applyRules, canApproveStage } = await import('./workflow'); const w = workflowOf(await getSettings());
     const desk = deskFor(w, a); a.extra = { ...(a.extra ?? {}), ...(desk ? { deskId: desk.id } : {}) };

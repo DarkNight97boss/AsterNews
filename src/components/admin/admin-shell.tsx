@@ -29,6 +29,7 @@ export function AdminShell({ user, permissions, unread, reviewCount, pendingComm
           <A href="/admin/scrivi"><span className="ico">✨</span> Scrivi (semplice)</A>
           <A href="/admin/articoli/nuovo"><span className="ico">＋</span> Editor completo</A>
           <A href="/admin/calendario"><span className="ico">🗓</span> Calendario</A>
+          <A href="/admin/scaletta"><span className="ico">📋</span> Scaletta del giorno</A>
           <A href="/admin/contatti"><span className="ico">📇</span> Rubrica contatti</A>
           {can('stats.view') && <A href="/admin/statistiche"><span className="ico">📈</span> Statistiche</A>}
           {can('category.manage') && <A href="/admin/categorie"><span className="ico">☰</span> Categorie</A>}

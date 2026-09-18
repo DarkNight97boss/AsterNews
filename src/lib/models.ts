@@ -104,7 +104,7 @@ export interface Article {
 }
 
 /** Dati aggiuntivi dell'articolo (una colonna JSON, così le funzioni nuove non richiedono nuove colonne). */
-export interface ArticleExtra { fields?: Record<string, string>; corrections?: { date: string; text: string }[]; showHistory?: boolean; template?: string; titleB?: string; abStats?: { a: number; b: number; ca: number; cb: number; winner?: 'a' | 'b' }; audioUrl?: string; audioDuration?: number; lang?: string; translationOf?: string; translations?: Record<string, string>; stage?: number; deskId?: string; slots?: { homeFrom?: string; homeTo?: string; socialAt?: string; newsletterAt?: string }; wordsTarget?: number; podcast?: { chapters?: { time: string; title: string }[]; episode?: number } }
+export interface ArticleExtra { fields?: Record<string, string>; corrections?: { date: string; text: string }[]; showHistory?: boolean; template?: string; titleB?: string; abStats?: { a: number; b: number; ca: number; cb: number; winner?: 'a' | 'b' }; audioUrl?: string; audioDuration?: number; lang?: string; translationOf?: string; translations?: Record<string, string>; stage?: number; deskId?: string; slots?: { homeFrom?: string; homeTo?: string; socialAt?: string; newsletterAt?: string }; wordsTarget?: number; embargoUntil?: string; sources?: { name: string; contact: string; note: string; verified: boolean }[]; podcast?: { chapters?: { time: string; title: string }[]; episode?: number } }
 export interface CustomField { key: string; label: string; type: 'text' | 'number' | 'date' | 'url' | 'rating' | 'select'; options?: string }
 export interface Snippet { id: string; name: string; html: string; updatedAt: string }
 export interface Desk { id: string; name: string; categoryIds: string[]; userIds: string[] }
@@ -164,7 +164,7 @@ export interface Subscriber {
 
 export interface Session { id: string; userId: string; kind: 'staff' | 'reader'; createdAt: string; lastSeen: string; expiresAt: string; userAgent: string; ip: string; revoked: boolean }
 export interface Revision { id: string; articleId: string; userId: string; note: string; data: Article; createdAt: string }
-export interface ArticleNote { id: string; articleId: string; userId: string; kind: 'note' | 'changes' | 'system'; body: string; resolved: boolean; createdAt: string }
+export interface ArticleNote { id: string; articleId: string; userId: string; kind: 'note' | 'changes' | 'system' | 'reader'; body: string; resolved: boolean; createdAt: string; quote?: string }
 export interface Reader { id: string; email: string; name: string; verified: boolean; premium: boolean; premiumUntil: string | null; stripeCustomer: string; banned: boolean; createdAt: string; lastLogin: string | null; provider?: string; avatar?: string; prefs?: ReaderPrefs }
 export interface ReaderPrefs { zones?: string[]; tags?: string[]; categories?: string[]; public?: boolean }
 export interface Redirect { id: string; fromPath: string; toPath: string; code: number; hits: number; createdAt: string }
@@ -279,6 +279,7 @@ export interface SiteSettings {
   homeBlocks?: HomeBlock[];
   privacy?: PrivacySettings;
   maintenance?: { enabled: boolean; message: string };
+  briefing?: { enabled: boolean; hour: number; feeds: string; count: number };
   themeVersions?: ThemeVersion[];
   editionUsers?: Record<string, string[]>;
 }
