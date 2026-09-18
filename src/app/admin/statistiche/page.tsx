@@ -68,6 +68,7 @@ export default async function StatsPage({ searchParams }: PageProps<'/admin/stat
           <div className="panel"><div className="panel-title">Come funziona</div><p className="help">Ogni pagina invia una segnalazione anonima al caricamento e il tempo di lettura all&apos;uscita. Non vengono salvati indirizzi IP, cookie o identificativi: i dati sono aggregati per giorno, ora, pagina e sorgente. Puoi affiancare Vercel Analytics dalle Impostazioni.</p></div>
         </div>
       </div>
+      <p style={{ margin: '0 0 16px' }}><Link className="btn btn-outline btn-sm" href="/admin/statistiche/autori">👤 Cruscotto per autore e contenuti in calo →</Link></p>
       <SearchConsolePanel configured={!!(await gscConfig()).sa} />
     </>
   );

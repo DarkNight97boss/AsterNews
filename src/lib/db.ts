@@ -188,6 +188,7 @@ CREATE TABLE IF NOT EXISTS donations (id TEXT PRIMARY KEY, amount REAL NOT NULL,
 CREATE TABLE IF NOT EXISTS api_keys (id TEXT PRIMARY KEY, name TEXT NOT NULL, prefix TEXT NOT NULL, key_hash TEXT NOT NULL, scopes TEXT DEFAULT '["read"]', active INTEGER DEFAULT 1, calls INTEGER DEFAULT 0, last_used TEXT, created_by TEXT DEFAULT '', created_at TEXT);
 CREATE TABLE IF NOT EXISTS broken_links (id TEXT PRIMARY KEY, article_id TEXT NOT NULL, url TEXT NOT NULL, status INTEGER DEFAULT 0, error TEXT DEFAULT '', checked_at TEXT, fixed INTEGER DEFAULT 0);
 CREATE INDEX IF NOT EXISTS idx_broken_article ON broken_links(article_id);
+CREATE TABLE IF NOT EXISTS ad_orders (id TEXT PRIMARY KEY, ad_id TEXT NOT NULL, company TEXT DEFAULT '', email TEXT NOT NULL, amount REAL DEFAULT 0, days INTEGER DEFAULT 0, status TEXT DEFAULT 'pending', created_at TEXT);
 CREATE TABLE IF NOT EXISTS tag_follows (id TEXT PRIMARY KEY, tag_id TEXT NOT NULL, email TEXT NOT NULL, reader_id TEXT DEFAULT '', token TEXT NOT NULL, created_at TEXT, UNIQUE (tag_id, email));
 CREATE TABLE IF NOT EXISTS tickets (id TEXT PRIMARY KEY, event_id TEXT NOT NULL, name TEXT DEFAULT '', email TEXT NOT NULL, qty INTEGER DEFAULT 1, code TEXT UNIQUE NOT NULL, status TEXT DEFAULT 'pending', amount REAL DEFAULT 0, created_at TEXT, used_at TEXT);
 CREATE TABLE IF NOT EXISTS ai_usage (id TEXT PRIMARY KEY, user_id TEXT DEFAULT '', action TEXT DEFAULT '', model TEXT DEFAULT '', input_tokens INTEGER DEFAULT 0, output_tokens INTEGER DEFAULT 0, cost REAL DEFAULT 0, created_at TEXT);

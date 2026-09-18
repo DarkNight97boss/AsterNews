@@ -116,6 +116,7 @@ export interface ThemeVersion { id: string; at: string; label: string; theme: Th
 export interface PageExtra { brand?: string; countdownAt?: string; countdownLabel?: string; feedTagId?: string; feedCount?: number; ctaLabel?: string; ctaUrl?: string }
 export interface TagFollow { id: string; tagId: string; email: string; readerId: string; token: string; createdAt: string }
 export interface Ticket { id: string; eventId: string; name: string; email: string; qty: number; code: string; status: 'pending' | 'paid'; amount: number; createdAt: string; usedAt: string | null }
+export interface AdOrder { id: string; adId: string; company: string; email: string; amount: number; days: number; status: 'pending' | 'paid'; createdAt: string }
 export interface WebhookConfig { id: string; url: string; secret: string; events: string[]; enabled: boolean }
 export interface Contact { id: string; name: string; role: string; org: string; phone: string; email: string; notes: string; tags: string; createdBy: string; updatedAt: string }
 export interface Comment {
@@ -209,7 +210,7 @@ export interface NewsletterSettings { provider: 'none' | 'resend' | 'brevo'; api
 export interface StorageSettings { provider: 'auto' | 'supabase' | 'vercel-blob' | 'local' | 'db'; bucket: string; maxWidth: number; unsplashKey?: string; pexelsKey?: string }
 export interface VideoSettings { provider: 'none' | 'cloudflare' | 'mux'; cfAccountId: string; cfApiToken: string; cfCustomerCode: string; muxTokenId: string; muxTokenSecret: string }
 export const DEFAULT_VIDEO: VideoSettings = { provider: 'none', cfAccountId: '', cfApiToken: '', cfCustomerCode: '', muxTokenId: '', muxTokenSecret: '' };
-export interface PaywallPlan { id: string; name: string; price: number; interval: 'month' | 'year' | 'once'; stripePriceId: string; description: string; highlight?: boolean }
+export interface PaywallPlan { id: string; name: string; price: number; interval: 'month' | 'year' | 'once'; stripePriceId: string; description: string; highlight?: boolean; trialDays?: number }
 export interface PaywallSettings { enabled: boolean; freeArticles: number; monthlyPrice: number; stripeSecretKey: string; stripePriceId: string; stripeWebhookSecret: string; plans?: PaywallPlan[]; paymentMethods?: string[] }
 export interface GiftCode { id: string; code: string; email: string; months: number; message: string; fromReader: string; redeemedBy: string; createdAt: string; redeemedAt: string | null }
 export interface QuizResult { id: string; quizId: string; articleId: string; who: string; name: string; score: number; total: number; createdAt: string }
@@ -282,6 +283,7 @@ export interface SiteSettings {
   privacy?: PrivacySettings;
   maintenance?: { enabled: boolean; message: string };
   briefing?: { enabled: boolean; hour: number; feeds: string; count: number };
+  adSales?: { enabled: boolean; prices: Record<string, number>; note: string };
   themeVersions?: ThemeVersion[];
   editionUsers?: Record<string, string[]>;
 }

@@ -4,7 +4,7 @@ import { expect, test } from '@playwright/test';
 const EMAIL = process.env.E2E_EMAIL ?? (process.env.E2E_BASE_URL ? '' : 'admin@asternews.it');
 const PASSWORD = process.env.E2E_PASSWORD ?? (process.env.E2E_BASE_URL ? '' : 'aster2026');
 test('la home carica con testata e articoli', async ({ page }) => { await page.goto('/'); await expect(page.locator('h1, h2').first()).toBeVisible(); await expect(page.locator('a[href^="/"]').first()).toBeVisible(); });
-test('feed, API e sitemap rispondono', async ({ request }) => { for (const u of ['/feed.xml', '/api/v1/site', '/sitemap.xml', '/feed/google-news.xml']) { const r = await request.get(u); expect(r.status(), u).toBe(200); } });
+test('feed, API e sitemap rispondono', async ({ request }) => { for (const u of ['/feed.xml', '/api/v1/site', '/sitemap.xml', '/feed/google-news.xml', '/archivio', '/pubblicita', '/notifiche', '/podcast', '/storie']) { const r = await request.get(u); expect(r.status(), u).toBe(200); } });
 test('login in redazione, scrittura e pubblicazione di un articolo', async ({ page }) => {
   test.skip(!EMAIL || !PASSWORD, 'credenziali e2e non impostate');
   await page.goto('/login'); await page.getByLabel(/email/i).fill(EMAIL); await page.getByLabel(/password/i).fill(PASSWORD); await page.getByRole('button', { name: /accedi/i }).click();

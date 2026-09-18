@@ -17,7 +17,7 @@ export async function GET(_req: Request, { params }: RouteContext<'/sitemaps/[na
     const [cats, zones, events, tags, pages] = await Promise.all([getCategories(), getZones(), getEvents({}, 5000), listTags(20000), import('@/lib/repo-extra3').then((m) => m.listPages(true))]);
     const items = [
       `<url><loc>${b}/</loc><changefreq>hourly</changefreq><priority>1.0</priority></url>`,
-      ...['/notizie', '/eventi', '/zone', '/meteo', '/segnalazioni', '/video', '/foto', '/storie', '/podcast'].map((p) => `<url><loc>${b}${p}</loc><changefreq>daily</changefreq></url>`),
+      ...['/notizie', '/eventi', '/zone', '/meteo', '/segnalazioni', '/video', '/foto', '/storie', '/podcast', '/archivio'].map((p) => `<url><loc>${b}${p}</loc><changefreq>daily</changefreq></url>`),
       ...cats.map((c) => `<url><loc>${b}/${c.slug}</loc><changefreq>hourly</changefreq><priority>0.8</priority></url>`),
       ...pages.filter((p) => !p.seo.noIndex).map((p) => `<url><loc>${b}/${esc(p.slug)}</loc><lastmod>${p.updatedAt}</lastmod><changefreq>monthly</changefreq><priority>0.5</priority></url>`),
       ...zones.map((z) => `<url><loc>${b}/zone/${z.slug}</loc><changefreq>daily</changefreq></url>`),

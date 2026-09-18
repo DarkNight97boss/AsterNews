@@ -22,6 +22,7 @@ import { generateAudioAction, setPodcastMetaAction } from '@/lib/actions-channel
 import { editionsListAction, syndicateArticleAction } from '@/lib/actions-system';
 import { similarTitlesAction } from '@/lib/actions-seo';
 import { DictateButton } from './dictate-button';
+import { checkArticleSchema } from '@/lib/schema-check';
 import { customFieldsAction } from '@/lib/actions-pages';
 import { advanceStageAction } from '@/lib/actions-workflow';
 import { workflowInfoAction } from '@/lib/actions-workflow';
@@ -155,6 +156,7 @@ export function ArticleEditor({ initial, isNew, isPublic, categories, zones, tag
             <p className="help" style={{ marginTop: 6 }}>Le correzioni compaiono datate in fondo all&apos;articolo e nei dati strutturati.</p>
           </div>
           <TranscribePanel onInsert={(html) => set('content', a.content + '\n' + html)} />
+          <div className="panel"><div className="panel-title">Dati strutturati (Google)</div><ul className="schema-list">{checkArticleSchema(a, { authorName: users.find((u) => u.id === a.authorId)?.name ?? '', siteLogo: true }).map((i, k) => <li key={k} className={i.level}>{i.level === 'ok' ? '✔' : i.level === 'warn' ? '⚠' : '✖'} {i.text}</li>)}</ul>{a.sponsored && !isNew && <a className="btn btn-outline btn-sm" href={`/api/export/sponsor/${a.id}`} target="_blank" rel="noreferrer">📊 Report per l&apos;inserzionista</a>}</div>
           <div className="panel"><div className="panel-title">Accessibilità</div>{(() => { const issues = checkAccessibility(a.content, a.title); return issues.length ? <ul className="ai-list">{issues.map((i, k) => <li key={k}><span className={`badge ${i.level === 'error' ? 'badge-red' : 'badge-gray'}`}>{i.level === 'error' ? 'da correggere' : 'consiglio'}</span> {i.text}</li>)}</ul> : <p className="help">Nessun problema di accessibilità rilevato nel testo.</p>; })()}</div>
 
           <div className="panel"><div className="panel-title">Domande e risposte (FAQ) <button className="btn btn-outline btn-sm" onClick={() => set('faq', [...(a.faq ?? []), { q: '', a: '' }])}>+ Aggiungi</button></div>

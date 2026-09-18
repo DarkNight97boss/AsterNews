@@ -94,3 +94,21 @@ describe('lettori: argomenti seguiti e biglietti', () => {
     const n = (await x.listNotes('a1'))[0]; expect(n.kind).toBe('reader'); expect(n.quote).toBe('il sindaco Rossi');
   });
 });
+
+describe('ricavi e dati', () => {
+  it('ordini pubblicitari: pagamento una sola volta', async () => {
+    await x3.insertAdOrder({ id: 'o1', adId: 'ad1', company: 'Bar Roma', email: 'b@r.it', amount: 70, days: 7, status: 'pending', createdAt: now() });
+    expect((await x3.markAdOrderPaid('o1'))?.status).toBe('paid'); expect(await x3.markAdOrderPaid('o1')).toBeNull(); expect((await x3.listAdOrders())[0].company).toBe('Bar Roma');
+  });
+  it('cruscotto autori, contenuti in calo, archivio e abbonati a rischio', async () => {
+    const { run } = await import('../src/lib/db'); const ins = await import('../src/lib/insights'); const d = (n: number) => new Date(Date.now() - n * 86400000).toISOString().slice(0, 10);
+    await repo.upsertArticle(article('old1', { authorId: 'u7', publishedAt: new Date(Date.now() - 120 * 86400000).toISOString() }));
+    for (const [day, count, source] of [[d(20), 100, 'google'], [d(3), 30, 'google'], [d(2), 10, 'meta']] as [string, number, string][]) await run('INSERT INTO hits (day, hour, path, article_id, source, count, read_ms) VALUES (?,?,?,?,?,?,?)', [day, 10, '/x/old1', 'old1', source, count, count * 60000]);
+    const a = (await ins.authorStats()).find((x) => x.authorId === 'u7')!; expect(a.views).toBe(140); expect(a.google).toBe(130); expect(a.social).toBe(10); expect(a.readSec).toBe(60);
+    const dec = await ins.decliningArticles(); expect(dec[0].articleId).toBe('old1'); expect(dec[0].previous).toBe(100); expect(dec[0].recent).toBe(40); expect(dec[0].drop).toBe(60);
+    const rep = await ins.sponsorReport('old1'); expect(rep.views).toBe(140); expect(rep.bySource[0].source).toBe('google');
+    const months = await ins.archiveMonths(); expect(months.length).toBeGreaterThan(0); expect((await ins.archiveDays(months[0].month)).length).toBeGreaterThan(0);
+    await run("INSERT INTO readers (id, email, name, verified, premium, banned, created_at, last_login) VALUES ('rd9','x@y.it','Pina',1,1,0,?,?)", [now(), new Date(Date.now() - 40 * 86400000).toISOString()]);
+    expect((await ins.churnRisk()).map((r) => r.id)).toContain('rd9');
+  });
+});

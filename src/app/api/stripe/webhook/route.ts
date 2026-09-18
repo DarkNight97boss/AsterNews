@@ -27,6 +27,10 @@ export async function POST(req: Request) {
       const { completeDonation } = await import('@/lib/actions-donations'); await completeDonation(String((o.metadata as { donation_id: string }).donation_id));
     } else if (ev.type === 'checkout.session.completed' && (o.metadata as { listing_id?: string })?.listing_id) {
       const { markListingPaid } = await import('@/lib/actions-listings'); await markListingPaid(String((o.metadata as { listing_id: string }).listing_id));
+    } else if (ev.type === 'checkout.session.completed' && (o.metadata as { ad_order_id?: string })?.ad_order_id) {
+      const { completeAdOrder } = await import('@/lib/actions-revenue'); await completeAdOrder(String((o.metadata as { ad_order_id: string }).ad_order_id));
+    } else if (ev.type === 'checkout.session.completed' && (o.metadata as { team_seats?: string })?.team_seats) {
+      const { completeTeamOrder } = await import('@/lib/actions-revenue'); await completeTeamOrder(o.metadata as { team_seats: string; team_months: string; team_email: string; team_company?: string });
     } else if (ev.type === 'checkout.session.completed' && (o.metadata as { ticket_id?: string })?.ticket_id) {
       const { completeTicket } = await import('@/lib/actions-engage'); await completeTicket(String((o.metadata as { ticket_id: string }).ticket_id));
     } else if (ev.type === 'checkout.session.completed' && (o.metadata as { gift_email?: string })?.gift_email) {

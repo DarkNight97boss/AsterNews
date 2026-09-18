@@ -159,3 +159,9 @@ export async function markTicketPaid(id: string): Promise<import('./models').Tic
 export const findTicketByCode = async (code: string): Promise<import('./models').Ticket | undefined> => { const r = (await get('SELECT * FROM tickets WHERE code = ?', [code])) as Row | undefined; return r ? rowToTicket(r) : undefined; };
 export async function useTicket(id: string): Promise<void> { await run('UPDATE tickets SET used_at = ? WHERE id = ?', [new Date().toISOString(), id]); }
 export const listTickets = async (limit = 300): Promise<import('./models').Ticket[]> => (await all('SELECT * FROM tickets ORDER BY created_at DESC LIMIT ?', [limit]) as Row[]).map(rowToTicket);
+
+// ---------------- Ordini pubblicitari self-service ----------------
+const rowToAdOrder = (r: Row): import('./models').AdOrder => ({ id: String(r.id), adId: String(r.ad_id), company: String(r.company ?? ''), email: String(r.email), amount: Number(r.amount ?? 0), days: Number(r.days ?? 0), status: (r.status as 'pending' | 'paid') ?? 'pending', createdAt: String(r.created_at ?? '') });
+export async function insertAdOrder(o: import('./models').AdOrder): Promise<void> { await run('INSERT INTO ad_orders (id, ad_id, company, email, amount, days, status, created_at) VALUES (?,?,?,?,?,?,?,?)', [o.id, o.adId, o.company, o.email, o.amount, o.days, o.status, o.createdAt]); }
+export async function markAdOrderPaid(id: string): Promise<import('./models').AdOrder | null> { const r = (await get('SELECT * FROM ad_orders WHERE id = ?', [id])) as Row | undefined; if (!r || r.status === 'paid') return null; await run("UPDATE ad_orders SET status = 'paid' WHERE id = ?", [id]); return { ...rowToAdOrder(r), status: 'paid' }; }
+export const listAdOrders = async (limit = 100): Promise<import('./models').AdOrder[]> => (await all('SELECT * FROM ad_orders ORDER BY created_at DESC LIMIT ?', [limit]) as Row[]).map(rowToAdOrder);
