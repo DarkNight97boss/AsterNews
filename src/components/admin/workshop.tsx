@@ -2,17 +2,17 @@
 import { useEffect, useRef, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from '@/components/ui/toaster';
-import { addSeedAction, deleteDatumAction, deleteSeedAction, logSessionAction, saveDatumAction, seedsToDraftAction } from '@/lib/actions-writing';
+import { toggleSeedPublicAction, addSeedAction, deleteDatumAction, deleteSeedAction, logSessionAction, saveDatumAction, seedsToDraftAction } from '@/lib/actions-writing';
 import type { LiveDatum } from '@/lib/writing';
 
-export function SeedBox({ seeds, themes }: { seeds: { id: string; text: string; createdAt: string }[]; themes: { theme: string; ids: string[] }[] }) {
+export function SeedBox({ seeds, themes }: { seeds: { id: string; text: string; createdAt: string; public?: boolean }[]; themes: { theme: string; ids: string[] }[] }) {
   const [text, setText] = useState(''); const [pending, start] = useTransition(); const router = useRouter();
   const add = () => start(async () => { const r = await addSeedAction(text); if (r.ok) { setText(''); router.refresh(); } else toast.error(r.message ?? ''); });
   return (
     <div className="panel"><div className="panel-title">Appunti che maturano</div>
       <div style={{ display: 'flex', gap: 6 }}><input className="input" placeholder="Un'idea, una frase sentita, un numero da controllare…" aria-label="Nuovo appunto" value={text} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' && text.trim()) add(); }} /><button type="button" className="btn btn-outline btn-sm" disabled={pending || text.trim().length < 4} onClick={add}>Annota</button></div>
       {themes.map((t) => <div key={t.theme} className="ripe"><b>Hai {t.ids.length} appunti su «{t.theme}…». È un articolo?</b> <button type="button" className="btn btn-primary btn-sm" disabled={pending} onClick={() => start(async () => { const r = await seedsToDraftAction(t.ids, t.theme); if (r.ok && r.id) router.push(`/admin/articoli/${r.id}`); else toast.error(r.message ?? ''); })}>Crea la bozza</button></div>)}
-      <ul className="seed-list">{seeds.length === 0 && <li className="help">Nessun appunto. Quando ne avrai tre sullo stesso tema te lo diremo.</li>}{seeds.map((s) => <li key={s.id}><span>{s.text}</span><span className="help">{new Date(s.createdAt).toLocaleDateString('it-IT', { day: 'numeric', month: 'short' })}</span><button type="button" className="icon-btn danger" aria-label="Elimina appunto" onClick={() => start(async () => { await deleteSeedAction(s.id); router.refresh(); })}>✕</button></li>)}</ul>
+      <ul className="seed-list">{seeds.length === 0 && <li className="help">Nessun appunto. Quando ne avrai tre sullo stesso tema te lo diremo.</li>}{seeds.map((s) => <li key={s.id}><span>{s.text}</span><span className="help">{new Date(s.createdAt).toLocaleDateString('it-IT', { day: 'numeric', month: 'short' })}</span><button type="button" className="icon-btn" title={s.public ? 'Visibile nel Quaderno pubblico: clicca per nasconderlo' : 'Mostra nel Quaderno pubblico'} aria-label={s.public ? 'Nascondi dal quaderno' : 'Mostra nel quaderno'} aria-pressed={!!s.public} onClick={() => start(async () => { await toggleSeedPublicAction(s.id); router.refresh(); })}>{s.public ? '👁' : '◌'}</button><button type="button" className="icon-btn danger" aria-label="Elimina appunto" onClick={() => start(async () => { await deleteSeedAction(s.id); router.refresh(); })}>✕</button></li>)}</ul>
     </div>
   );
 }

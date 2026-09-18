@@ -9,3 +9,10 @@ describe('cerchie di lettori', () => {
   it('feed e API non lo contengono mai', () => { expect(stripCircles(html)).toBe('<p>Pubblico.</p><p>Fine.</p>'); });
   it('post interi riservati', () => { expect(canSeeArticle('fam', { staff: false, circles: [] })).toBe(false); expect(canSeeArticle('fam', { staff: false, circles: ['fam'] })).toBe(true); expect(canSeeArticle(undefined, { staff: false, circles: [] })).toBe(true); });
 });
+
+describe('diario privato', () => {
+  it('i passaggi «solo io» spariscono senza traccia per i lettori, restano per chi scrive', async () => {
+    const { filterCircles, stripCircles } = await import('../src/lib/circles'); const html = '<p>Pubblico.</p><div class="circle-only" data-circle="__me"><p>Pensiero mio.</p></div>';
+    expect(filterCircles(html, { staff: false, circles: [] }, [])).toBe('<p>Pubblico.</p>'); expect(filterCircles(html, { staff: true, circles: [] }, [])).toContain('Pensiero mio.'); expect(stripCircles(html)).toBe('<p>Pubblico.</p>');
+  });
+});

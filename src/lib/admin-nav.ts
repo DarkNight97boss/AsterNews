@@ -15,6 +15,7 @@ export const NAV: NavItem[] = [
   { href: '/admin/articoli/nuovo', label: 'Editor completo', icon: '＋', group: 'Contenuti', profiles: ['quotidiano', 'rivista', 'blog', 'portfolio'] },
   { href: '/admin/calendario', label: 'Calendario', icon: '🗓', group: 'Contenuti', profiles: ['quotidiano', 'rivista', 'newsletter'] },
   { href: '/admin/scaletta', label: 'Scaletta del giorno', icon: '📋', group: 'Contenuti', team: true, profiles: NEWS },
+  { href: '/admin/personale', label: 'Sito personale', icon: '🪴', group: 'Contenuti', profiles: ['blog', 'diario', 'portfolio', 'newsletter'] },
   { href: '/admin/officina', label: 'Officina', icon: '🛠️', group: 'Contenuti', profiles: ['quotidiano', 'rivista', 'blog', 'diario', 'newsletter', 'portfolio'] },
   { href: '/admin/contatti', label: 'Rubrica contatti', icon: '📇', group: 'Contenuti', profiles: NEWS },
   { href: '/admin/statistiche', label: 'Statistiche', icon: '📈', group: 'Contenuti', perm: 'stats.view', profiles: PUB },

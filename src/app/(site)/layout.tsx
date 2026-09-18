@@ -17,6 +17,8 @@ import { currentEdition } from '@/lib/edition';
 import { A11yBar } from '@/components/site/a11y-bar';
 import { DEFAULT_MENUS } from '@/lib/models';
 import { listPages } from '@/lib/repo-extra3';
+import { SiteBanners } from '@/components/site/site-banners';
+import { activeSeason } from '@/lib/personal';
 
 export default async function SiteLayout({ children }: LayoutProps<'/'>) {
   await ensureInstalled();
@@ -35,8 +37,9 @@ export default async function SiteLayout({ children }: LayoutProps<'/'>) {
   await Promise.all(categories.filter((c) => c.showInMenu).map(async (c) => { topicsByCategory[c.slug] = (await topTagsForCategory(c.id, 8)).map((t) => ({ name: t.name, slug: t.slug })); }));
   const pills = topZones.filter((z) => z.kind === 'comune' || (counts[z.id] ?? 0) > 0).slice(0, 2).map((z) => ({ name: z.name, href: `/zone/${z.slug}` }));
   return (
-    <div className="site-frame">
+    <div className={`site-frame${activeSeason(s.personal?.seasons, new Date().toISOString())?.mourning ? ' mourning' : ''}`}>
       {preview && <PreviewBar themeName={theme.name} />}
+      <SiteBanners settings={s} />
       <SiteHeader logoUrl={edition?.logo || ''} customMenu={menus.useCustomHeader && menus.header.length ? menus.header : undefined} extraLinks={menuPages} categories={categories} zones={topZones} opinions={opinions} weather={weather ? { icon: weatherIcon(weather.current.code), label: weatherLabel(weather.current.code), temp: weather.current.temp, city: weather.city } : null} liveLink={live[0] ? articleUrlWith(live[0], categories) : null} isLoggedIn={!!me} today={today} subscribeUrl={s.subscribeUrl} siteName={s.siteName} tagline={s.tagline} socials={s.socials} headerStyle={theme.headerStyle} topicsByCategory={topicsByCategory} pills={pills} />
       <Ticker />
       <A11yBar />

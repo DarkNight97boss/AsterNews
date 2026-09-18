@@ -80,6 +80,9 @@ export default async function ArticlePage({ params, searchParams }: PageProps<'/
   const viewer = { staff: !!staffUser, circles: viewerReader?.prefs?.circles ?? [] }; const circleName = (settings.circles ?? []).find((c) => c.id === a.extra?.circle)?.name ?? '';
   const locked = !canSeeArticle(a.extra?.circle, viewer);
   if (viewerReader && !locked) void recordRead(viewerReader.id, a.id);
+  // Un anno fa oggi: il post che risponde a uno vecchio lo dichiara, e quello vecchio rimanda alla rilettura
+  const repliedTo = a.extra?.replyTo ? await (await import('@/lib/repo')).findArticle(a.extra.replyTo) : null; const rereads = (await (await import('@/lib/repo')).listArticles({ status: 'published', extraHas: 'replyTo' }, 'published', 200)).filter((x) => x.extra?.replyTo === a.id);
+  const allCats = await getCategories(); const pastLinks = <>{repliedTo && repliedTo.status === 'published' && <p className="past-link">↩︎ Risposta a quello che scrivevo il {formatDate(repliedTo.publishedAt)}: <Link href={articleUrlWith(repliedTo, allCats)}>{repliedTo.title}</Link></p>}{rereads.map((r) => <p key={r.id} className="past-link">↪︎ Riletto il {formatDate(r.publishedAt)}: <Link href={articleUrlWith(r, allCats)}>{r.title}</Link></p>)}</>;
   const [topHl, mind, responses, canAsk] = locked ? [[], null, [], false] as const : await Promise.all([highlightsFor(a.id), a.extra?.mindQuestion ? mindStats(a.id) : null, listRecords<{ name: string; title: string; text: string }>('response', { ref: a.id, status: 'approved', order: 'old' }), aiAvailable()]);
   const layered = a.content.includes('class="layered"'); const wordsAt = (d: number) => Math.max(1, Math.round(wordCount(a.content.replace(/<div data-depth="(\d)">[\s\S]*?<\/div>/g, (m, n) => (Number(n) === d ? m : ''))) / 200));
   const revs = a.extra?.hideBlackBox || settings.adapt?.blackBox === false ? [] : await listRevisions(a.id, 50);
@@ -166,6 +169,8 @@ export default async function ArticlePage({ params, searchParams }: PageProps<'/
             <h1>{a.title}</h1>
             <p className="subtitle">{a.subtitle}</p>
             <VerificationBadge a={a} />
+            {a.extra?.memory && <p className="memory-line">Scritto a {a.extra.memory.place} · {a.extra.memory.temp}° e {a.extra.memory.weather}</p>}
+            {pastLinks}
             {langLinks.length > 0 && <p className="lang-switch">Leggi in: {langLinks.map((l) => <Link key={l.lang} href={l.url} hrefLang={l.lang}>{l.label}</Link>)}</p>}
             {a.sponsored && <p className="sponsored-label">Contenuto sponsorizzato</p>}
           </header>

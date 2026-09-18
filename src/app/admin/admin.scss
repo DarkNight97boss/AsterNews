@@ -14,3 +14,7 @@
 .seed-list { list-style: none; padding: 0; margin: 10px 0 0; li { display: flex; gap: 8px; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--line, #e5e5e5); font-size: 13px; span:first-child { flex: 1; } } }
 .session-run { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; .session-clock { font-size: 28px; font-variant-numeric: tabular-nums; } }
 .panel-warn { border-left: 3px solid #b26a00; } .snippet-history { font-size: 13px; padding: 6px 0; border-bottom: 1px solid var(--line, #e5e5e5); summary { cursor: pointer; } }
+
+/* Sito personale */
+.season-row { display: grid; grid-template-columns: 1.2fr .7fr .7fr 44px 2fr auto auto; gap: 6px; align-items: center; margin: 6px 0; @media (max-width: 900px) { grid-template-columns: 1fr 1fr; } }
+.letter-edit { border-left: 3px solid #ddd; padding-left: 10px; margin: 10px 0; } .type-proposal { margin-top: 10px; ul { list-style: none; padding: 0; } li { display: flex; gap: 8px; align-items: center; margin: 4px 0; } }

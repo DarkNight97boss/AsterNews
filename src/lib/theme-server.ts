@@ -6,6 +6,7 @@ import { can } from './permissions';
 import { getSettings } from './queries';
 import { currentEdition } from './edition';
 import { ResolvedTheme, ThemeSettings, resolveTheme } from './themes';
+import { activeSeason } from './personal';
 
 export const PREVIEW_COOKIE = 'theme_preview';
 
@@ -23,5 +24,7 @@ export const getActiveTheme = cache(async (): Promise<{ theme: ResolvedTheme; pr
     }
   }
   const edition = await currentEdition();
-  return { theme: resolveTheme(edition && Object.keys(edition.theme).length ? { ...settings.theme, ...edition.theme } as ThemeSettings : settings.theme), preview: false };
+  // Sito a stagioni: nel periodo indicato cambiano i colori, poi tutto torna com'era senza toccare il tema salvato
+  const season = activeSeason(settings.personal?.seasons, new Date().toISOString()); const tint = (t: ResolvedTheme): ResolvedTheme => (season ? { ...t, ...(season.brand ? { brand: season.brand, brandDark: season.brand } : {}), ...(season.accent ? { accent: season.accent } : {}) } : t);
+  return { theme: tint(resolveTheme(edition && Object.keys(edition.theme).length ? { ...settings.theme, ...edition.theme } as ThemeSettings : settings.theme)), preview: false };
 });

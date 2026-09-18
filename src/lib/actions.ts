@@ -69,6 +69,8 @@ export async function saveArticleAction(input: Article, status: ArticleStatus): 
     if (a.status === 'published' && existing?.status !== 'published' && w.rules.length) { const r = applyRules(w, a); Object.assign(a, r.article); if (r.social.length) (a as Article & { _ruleSocial?: string[] })._ruleSocial = r.social; }
   }
   a.seoScore = analyze(a, ctx).score;
+  // Ricordi con posto e meteo: alla prima pubblicazione si annota da soli dove si era e che tempo faceva
+  if (a.status === 'published' && existing?.status !== 'published' && !a.extra?.memory) { try { const st = await getSettings(); if (st.personal?.memory) { const { getWeather, weatherLabel } = await import('./weather'); const w = await getWeather(st.weatherCity, st.weatherLat, st.weatherLon); if (w) a.extra = { ...(a.extra ?? {}), memory: { place: a.address || st.weatherCity, weather: weatherLabel(w.current.code).toLowerCase(), temp: Math.round(w.current.temp) } }; } } catch { /* il meteo non blocca la pubblicazione */ } }
   // Firma crittografica: ogni versione pubblicata porta l'impronta del testo firmata dalla testata, verificabile in /api/verify
   if (a.status === 'published') { try { const { signArticle } = await import('./signing'); a.extra = { ...(a.extra ?? {}), signature: await signArticle(a.title, a.content) }; } catch { /* la firma non blocca la pubblicazione */ } }
   if (existing) await x.insertRevision({ id: uid('rv'), articleId: a.id, userId: u.id, note: `${existing.status} → ${a.status}`, data: existing, createdAt: now });
