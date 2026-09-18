@@ -17,16 +17,10 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npx playwright install --with-deps chromium
-      - name: Dati demo su PGlite
-        run: npm run seed:demo
-        env:
-          SETUP_DISABLED: '1'
-      - name: Test end-to-end
-        run: npx playwright test
+      - name: Test end-to-end in ambiente isolato (dati demo su PGlite, build di produzione)
+        run: npm run e2e:isolated
         env:
           CI: 'true'
-          SETUP_DISABLED: '1'
-          DEMO_MODE: '1'
       - uses: actions/upload-artifact@v4
         if: failure()
         with:

@@ -14,7 +14,8 @@
     "pagespeed": "node --env-file-if-exists=.env.local --import tsx scripts/pagespeed.mts",
     "seed:demo": "node --env-file-if-exists=.env.local --conditions=react-server --import tsx scripts/seed-demo.mts",
     "backup:restore": "node --env-file-if-exists=.env.local --conditions=react-server --import tsx scripts/restore-backup.mts",
-    "e2e": "playwright test"
+    "e2e": "playwright test",
+    "e2e:isolated": "rm -rf data/pg-e2e && PGLITE_DIR=data/pg-e2e DATABASE_URL= POSTGRES_URL= npm run seed:demo && next build && playwright test"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.126.0",
