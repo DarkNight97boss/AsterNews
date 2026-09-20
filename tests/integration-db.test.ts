@@ -146,3 +146,15 @@ describe('firma degli articoli', () => {
     expect(await S.publicKeyPem()).toContain('BEGIN PUBLIC KEY'); expect((await S.verifyArticle('x', 'y')).signed).toBe(false);
   });
 });
+
+describe('lavori notturni delle ultime tornate', () => {
+  it('firma l\'archivio una volta sola, ricorda promesse e frasi scadute una volta sola', async () => {
+    const T = await import('../src/lib/trust-notify'); const R = await import('../src/lib/records'); const S = await import('../src/lib/signing');
+    await repo.upsertArticle(article('night1', { status: 'published', publishedAt: now(), authorId: 'u9', extra: { expiring: [{ text: 'Il sindaco è Rossi', date: '2020-01-01' }, { text: 'Futura', date: '2999-01-01' }] } }));
+    expect(await T.signBacklog()).toBeGreaterThanOrEqual(1); const a = await repo.findArticle('night1'); expect((await S.verifyArticle(a!.title, a!.content, a!.extra?.signature)).intact).toBe(true); expect(a?.extra?.expiring).toHaveLength(2);
+    const again = await T.signBacklog(); expect(again).toBe(0);
+    expect(await T.remindExpiredSentences()).toBe(1); expect(await T.remindExpiredSentences()).toBe(0); expect((await repo.findArticle('night1'))?.extra?.signature).toBeTruthy();
+    await R.addRecord('promise', { ref: 'night1', owner: 'u9', data: { text: 'Aggiorneremo alla sentenza' }, dueAt: '2020-01-01T00:00:00.000Z' }); const first = await T.remindDueCommitments(); expect(first).toBeGreaterThanOrEqual(1); expect(await T.remindDueCommitments()).toBe(0);
+    const notes = await x3.listNotifications('u9', 20); expect(notes.some((n) => n.text.includes('Frase scaduta'))).toBe(true); expect(notes.some((n) => n.text.includes('Promessa ai lettori'))).toBe(true);
+  });
+});

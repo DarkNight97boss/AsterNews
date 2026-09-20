@@ -38,7 +38,7 @@ import { AdSlot } from '@/components/site/ad-slot';
 import { Paywall } from '@/components/site/paywall';
 import { Analytics } from '@/components/site/analytics';
 import { getCurrentReader } from '@/lib/auth';
-import { DEFAULT_COMMUNITY, DEFAULT_PAYWALL } from '@/lib/models';
+import { DEFAULT_COMMUNITY, DEFAULT_PAYWALL, moduleOn } from '@/lib/models';
 import { CommentsThread } from '@/components/site/comments-thread';
 import { SaveButton } from '@/components/site/save-button';
 import { DonateWidget } from '@/components/site/donate-widget';
@@ -192,13 +192,13 @@ export default async function ArticlePage({ params, searchParams }: PageProps<'/
           {toc.length >= 3 && <nav className="toc-box" aria-label="Indice"><b>In questo articolo</b><ol>{toc.map((t) => <li key={t.id}><a href={`#${t.id}`}>{t.text}</a></li>)}</ol></nav>}
           {a.format === 'gallery' && a.gallery.length > 0 && <Gallery images={a.gallery} />}
           {!locked && a.extra?.ambientUrl && <AmbientSound url={a.extra.ambientUrl} />}
-          {!locked && <ReadingModes articleId={a.id} title={a.title} kids={a.extra?.versions?.kids} easy={a.extra?.versions?.easy} layeredMinutes={layered ? [wordsAt(1), wordsAt(2), wordsAt(3)] : undefined} coread={coread || undefined} />}
-          {!locked && <SelectionTools articleId={a.id} title={a.title} top={[...topHl]} coread={coread || undefined} />}
+          {!locked && moduleOn(settings.trust, 'modes') && <ReadingModes articleId={a.id} title={a.title} kids={a.extra?.versions?.kids} easy={a.extra?.versions?.easy} layeredMinutes={layered ? [wordsAt(1), wordsAt(2), wordsAt(3)] : undefined} coread={coread || undefined} />}
+          {!locked && moduleOn(settings.trust, 'selection') && <SelectionTools articleId={a.id} title={a.title} top={[...topHl]} coread={coread || undefined} />}
           {!locked && <ReaderLenses articleId={a.id} versions={history.length} hasNotes={hasAuthorNotes(a.content)} certainty={a.extra?.certainty?.show ? a.extra.certainty.map : undefined} />}
           {layered && !locked && <DepthSlider minutes={[wordsAt(1), wordsAt(2), wordsAt(3)]} />}
           {locked ? <div className="circle-gate"><h3>🔒 Questo testo è riservato a «{circleName}»</h3><p>L&apos;autore lo condivide solo con un gruppo di persone. Se hai ricevuto una chiave d&apos;invito, aprila dopo aver effettuato l&apos;accesso.</p><Link className="btn btn-primary" href={`/account?redirect=${encodeURIComponent(articleUrl(a))}`}>Accedi</Link></div> : gated ? <Paywall articleId={a.id} premiumOnly={!!a.premium} price={paywall.monthlyPrice} free={paywall.freeArticles}><ArticleBody html={a.content} viewer={viewer} faq={a.faq} articleId={a.id} inlineAd={<AdSlot slot="article_inline" size="728×90" className="ad-inline" />} /></Paywall> : <ArticleBody html={a.content} viewer={viewer} articleId={a.id} faq={a.faq} inlineAd={<AdSlot slot="article_inline" size="728×90" className="ad-inline" />} />}
           {(a.extra?.corrections?.length ?? 0) > 0 && <section className="corrections-box" aria-label="Correzioni"><b>Correzioni</b>{a.extra!.corrections!.map((c, i) => <p key={i}><time dateTime={c.date}>{new Date(c.date).toLocaleDateString('it-IT', { day: 'numeric', month: 'long', year: 'numeric' })}</time> · {c.text}</p>)}</section>}
-          {!locked && canAsk && <AskArticle articleId={a.id} />}
+          {!locked && canAsk && moduleOn(settings.trust, 'ask') && <AskArticle articleId={a.id} />}
           {!locked && a.extra?.mindQuestion && <MindChange articleId={a.id} question={a.extra.mindQuestion} stats={mind} />}
           {!locked && <TrustPanel a={a} author={author ?? undefined} settings={settings} revisions={box?.revisions ?? 0} />}
           {box && !locked && <details className="black-box"><summary>Come è nato questo articolo</summary><dl><div><dt>Lavorazione</dt><dd>iniziato il {new Date(box.started).toLocaleDateString('it-IT', { day: 'numeric', month: 'long' })}, {box.revisions} {box.revisions === 1 ? 'versione salvata' : 'versioni salvate'}</dd></div><div><dt>Lunghezza</dt><dd>{box.words} parole</dd></div>{box.sources > 0 && <div><dt>Fonti</dt><dd>{box.sources} consultate, {box.verified} verificate direttamente</dd></div>}<div><dt>Intelligenza artificiale</dt><dd>{box.ai.length ? `l'assistente ha proposto: ${box.ai.map((k) => ({ title: 'titolo', subtitle: 'sommario', excerpt: 'estratto', seo: 'descrizione per i motori', tagIds: 'tag', kicker: 'occhiello', content: 'parti del testo', coverCaption: 'didascalia' }[k] ?? k)).join(', ')}; un giornalista ha rivisto e approvato tutto` : 'nessun uso per questo articolo'}</dd></div>{box.corrections > 0 && <div><dt>Correzioni</dt><dd>{box.corrections}, elencate sopra</dd></div>}</dl></details>}
@@ -223,8 +223,8 @@ export default async function ArticlePage({ params, searchParams }: PageProps<'/
             <section className="section"><div className="section-title"><h2>I più letti della settimana</h2></div><div className="most-week">{mostWeek.map((m, i) => <ArticleCard key={m.id} article={m} variant="number" index={i + 1} />)}</div></section>
           )}
           {!locked && responses.length > 0 && <section className="section long-responses"><div className="section-title"><h2>Le risposte dei lettori</h2></div>{responses.map((r) => <article key={r.id}><h3><Link href={`/risposte/${r.id}`}>{r.data.title}</Link></h3><p className="help">di {r.data.name}</p><p>{r.data.text.slice(0, 280)}… <Link href={`/risposte/${r.id}`}>Continua</Link></p></article>)}</section>}
-          {!locked && a.allowComments && <LongResponseForm articleId={a.id} />}
-          {!locked && !a.premium && <ContributionForm kind="translation" refId={a.id} />}
+          {!locked && a.allowComments && moduleOn(settings.trust, 'longResponse') && <LongResponseForm articleId={a.id} />}
+          {!locked && !a.premium && moduleOn(settings.trust, 'translation') && <ContributionForm kind="translation" refId={a.id} />}
           {a.allowComments && (
             <section className="comments">
               <h3>Commenti ({comments.length})</h3>

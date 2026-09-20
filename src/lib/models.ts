@@ -112,7 +112,10 @@ export type VerificationState = 'confirmed' | 'developing' | 'unverified' | 'den
 export interface RhythmSettings { quietFrom?: string; quietTo?: string; hourlyRate?: number; rpm?: number; subscriptionValue?: number; maxOpen?: number }
 export interface CommonsSettings { listening?: { enabled: boolean; weekday: number; time: string; url: string; note: string }; partners?: { name: string; benefit: string; address: string }[]; suspendedPool?: number }
 export interface PersonalSettings { silence?: { until: string; message: string }; legacy?: import('./personal').LegacySettings; ownerChatId?: string; seasons?: import('./personal').Season[]; eventMode?: { enabled: boolean; title: string; intro: string; tagId: string; until: string }; autoHome?: boolean; memory?: boolean }
-export interface TrustSettings { funding?: { label: string; percent: number; note?: string }[]; fundingYear?: string; commitments?: { text: string; state: 'kept' | 'progress' | 'missed'; note?: string }[]; disclosures?: Record<string, string>; replyEnabled?: boolean }
+export interface TrustSettings { funding?: { label: string; percent: number; note?: string }[]; fundingYear?: string; commitments?: { text: string; state: 'kept' | 'progress' | 'missed'; note?: string }[]; disclosures?: Record<string, string>; replyEnabled?: boolean; modules?: Partial<Record<ArticleModule, boolean>> }
+export type ArticleModule = 'selection' | 'modes' | 'ask' | 'longResponse' | 'translation' | 'eco';
+/** Un modulo è attivo finché non viene spento esplicitamente. */
+export const moduleOn = (t: TrustSettings | undefined, m: ArticleModule): boolean => t?.modules?.[m] !== false;
 export interface CustomField { key: string; label: string; type: 'text' | 'number' | 'date' | 'url' | 'rating' | 'select'; options?: string }
 export interface Snippet { id: string; name: string; html: string; updatedAt: string }
 export interface Desk { id: string; name: string; categoryIds: string[]; userIds: string[] }
