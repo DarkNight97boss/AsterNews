@@ -58,6 +58,8 @@ export const NAV: NavItem[] = [
   { href: '/admin/rilascio', label: 'Rilascio', icon: '🚀', group: 'Sistema', perm: 'settings.manage', profiles: NEWS },
   { href: '/admin/aggiornamenti', label: 'Aggiornamenti', icon: '⬆', group: 'Sistema', perm: 'settings.manage', profiles: 'all' },
   { href: '/admin/ai-uso', label: 'Uso dell\'AI', icon: '🧮', group: 'Sistema', perm: 'settings.manage', profiles: NEWS },
+  { href: '/admin/piattaforma', label: 'Piattaforma', icon: '🧱', group: 'Sistema', perm: 'settings.manage', profiles: 'all' },
+  { href: '/admin/manuale', label: 'Manuale', icon: '📖', group: 'Account', profiles: 'all' },
   { href: '/admin/emergenze', label: 'Emergenze', icon: '🚨', group: 'Territorio', perm: 'article.publish', profiles: ['quotidiano'] },
   { href: '/admin/servizio', label: 'Servizio', icon: '🛎️', group: 'Community', perm: 'article.publish', profiles: ['quotidiano'] },
   { href: '/admin/archivio', label: 'Archivio', icon: '🏛️', group: 'Contenuti', perm: 'article.publish', profiles: ['quotidiano', 'rivista'] },

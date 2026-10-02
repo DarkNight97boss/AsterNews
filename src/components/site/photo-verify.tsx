@@ -1,0 +1,10 @@
+'use client';
+import { useState } from 'react';
+
+type R = { known: boolean; uploadedAt?: string; credit?: string | null; license?: string | null; exclusive?: boolean; signature?: string | null; claim?: string; publicKey?: string };
+export function PhotoVerify() {
+  const [r, setR] = useState<R | null>(null); const [busy, setBusy] = useState(false); const [url, setUrl] = useState('');
+  const query = async (q: string) => { setBusy(true); try { setR((await (await fetch(`/api/verifica-foto?${q}`)).json()) as R); } catch { setR(null); } setBusy(false); };
+  const onFile = async (f: File) => { const d = await crypto.subtle.digest('SHA-1', await f.arrayBuffer()); const hash = [...new Uint8Array(d)].map((b) => b.toString(16).padStart(2, '0')).join(''); await query(`hash=${hash}`); };
+  return <div><input type="file" accept="image/*" aria-label="Scegli la foto" onChange={(e) => e.target.files?.[0] && onFile(e.target.files[0])} /><div className="form-row" style={{ marginTop: 8 }}><input className="input" placeholder="…oppure l'indirizzo dell'immagine" aria-label="Indirizzo" value={url} onChange={(e) => setUrl(e.target.value)} /><button type="button" className="btn btn-outline" disabled={busy || !url} onClick={() => query(`url=${encodeURIComponent(url)}`)}>Controlla</button></div>{busy && <p className="help">Controllo…</p>}{r && (r.known ? <div className="riguarda" style={{ marginTop: 10 }}><b>✅ È una nostra foto.</b> Caricata il {new Date(r.uploadedAt!).toLocaleDateString('it-IT')}{r.credit ? ` · credito: ${r.credit}` : ''}{r.license ? ` · licenza: ${r.license}` : ''}{r.exclusive ? ' · esclusiva' : ''}.<details style={{ marginTop: 6 }}><summary>Firma</summary><code style={{ wordBreak: 'break-all', fontSize: 11 }}>{r.claim}<br />{r.signature}</code></details></div> : <p className="help" style={{ marginTop: 10 }}>❌ Non risulta tra le foto originali che abbiamo caricato (una copia ridimensionata o ritagliata ha un&apos;impronta diversa: prova con l&apos;indirizzo).</p>)}</div>;
+}

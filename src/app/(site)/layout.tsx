@@ -43,7 +43,7 @@ export default async function SiteLayout({ children }: LayoutProps<'/'>) {
     <div className={`site-frame${activeSeason(s.personal?.seasons, new Date().toISOString())?.mourning ? ' mourning' : ''}`}>
       {preview && <PreviewBar themeName={theme.name} />}
       <SiteBanners settings={s} />
-      <SiteHeader logoUrl={edition?.logo || ''} customMenu={menus.useCustomHeader && menus.header.length ? menus.header : undefined} extraLinks={menuPages} categories={categories} zones={topZones} opinions={opinions} weather={weather ? { icon: weatherIcon(weather.current.code), label: weatherLabel(weather.current.code), temp: weather.current.temp, city: weather.city } : null} liveLink={live[0] ? articleUrlWith(live[0], categories) : null} isLoggedIn={!!me} today={today} subscribeUrl={s.subscribeUrl} siteName={s.siteName} tagline={s.tagline} socials={s.socials} headerStyle={theme.headerStyle} topicsByCategory={topicsByCategory} pills={pills} />
+      <SiteHeader words={s.uiWords} logoUrl={edition?.logo || ''} customMenu={menus.useCustomHeader && menus.header.length ? menus.header : undefined} extraLinks={menuPages} categories={categories} zones={topZones} opinions={opinions} weather={weather ? { icon: weatherIcon(weather.current.code), label: weatherLabel(weather.current.code), temp: weather.current.temp, city: weather.city } : null} liveLink={live[0] ? articleUrlWith(live[0], categories) : null} isLoggedIn={!!me} today={today} subscribeUrl={s.subscribeUrl} siteName={s.siteName} tagline={s.tagline} socials={s.socials} headerStyle={theme.headerStyle} topicsByCategory={topicsByCategory} pills={pills} />
       <Ticker />
       <A11yBar initial={readerForA11y?.prefs?.a11y} />
       <MuteFilter serverMuted={readerForA11y?.prefs?.mutedTags ?? []} />

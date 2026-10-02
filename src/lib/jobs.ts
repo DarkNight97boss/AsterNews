@@ -45,6 +45,7 @@ export async function runDailyJobs(): Promise<JobReport> {
   try { const { sendJobAlerts } = await import('./economy-data'); const r = await sendJobAlerts(); if (r) steps.lavoro = r; } catch (e) { steps.lavoro = 'errore: ' + (e as Error).message; }
   try { const { civicDaily } = await import('./civic-data'); const r = await civicDaily(); if (r) steps.cruscotto = r; } catch (e) { steps.cruscotto = 'errore: ' + (e as Error).message; }
   try { const sv = await import('./service-data'); const r1 = await sv.sendCivicReminders(); if (r1) steps.promemoria = r1; const r2 = await sv.notifyWaitlists(); if (r2) steps.attesa = r2; const r3 = await sv.notifyGuidesDue(); if (r3) steps.guide = r3; } catch (e) { steps.servizio = 'errore: ' + (e as Error).message; }
+  try { const { platformAudit } = await import('./platform-data'); const r = await platformAudit(); if (r) steps.piattaforma = r; } catch (e) { steps.piattaforma = 'errore: ' + (e as Error).message; }
   try { const { legalDeposit } = await import('./archive-data'); const r = await legalDeposit(); if (r) steps.deposito = r; } catch (e) { steps.deposito = 'errore: ' + (e as Error).message; }
   try { const { purgeRecords } = await import('./records'); const n = await purgeRecords(); if (n) steps.pulizia_record = `${n} record scaduti eliminati`; } catch { /* ignore */ }
   try { const { runLegacyCheck } = await import('./legacy'); const r = await runLegacyCheck(); if (r) steps.eredita = r; } catch (e) { steps.eredita = 'errore: ' + (e as Error).message; }

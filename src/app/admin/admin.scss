@@ -28,3 +28,6 @@ body.no-metrics { .stat-value, .t-views, [data-metric], .chart, .bar-chart, .spa
 
 /* Metodo */
 .method-panel { .checklist { list-style: none; padding: 0; margin: 6px 0; li { padding: 3px 0; } } .lex-warn, .cited { font-size: 13px; padding: 8px 10px; margin: 8px 0; border-left: 3px solid #b26a00; background: #fff7e8; ul { margin: 4px 0 0; padding-left: 16px; } } .cited { border-color: #1f4e9c; background: #f4f7fb; } .anon-box { margin-top: 10px; summary { cursor: pointer; font-size: 13px; font-weight: 600; } } }
+
+/* Manuale */
+.manual { max-width: 860px; h1 { font-size: 26px; } h2 { font-size: 20px; margin-top: 22px; } h3 { font-size: 15px; margin-top: 14px; } li { margin: 3px 0; } code { font-size: 12px; background: #f3f3f3; padding: 1px 4px; } }

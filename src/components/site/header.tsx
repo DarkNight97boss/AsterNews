@@ -9,11 +9,11 @@ import { ThemeToggle } from './theme-toggle';
 
 export interface OpinionTeaser { title: string; url: string; author: string; avatar: string }
 export interface WeatherTeaser { icon: string; label: string; temp: number; city: string }
-interface Props { logoUrl?: string; customMenu?: { id: string; label: string; url: string; children?: { id: string; label: string; url: string }[] }[]; extraLinks?: { id: string; label: string; url: string }[]; categories: Category[]; zones: Zone[]; opinions: OpinionTeaser[]; weather: WeatherTeaser | null; liveLink: string | null; isLoggedIn: boolean; today: string; subscribeUrl: string; siteName: string; tagline: string; socials: Record<string, string>; headerStyle: HeaderStyle; topicsByCategory?: Record<string, { name: string; slug: string }[]>; pills?: { name: string; href: string }[] }
+interface Props { words?: Record<string, string>; logoUrl?: string; customMenu?: { id: string; label: string; url: string; children?: { id: string; label: string; url: string }[] }[]; extraLinks?: { id: string; label: string; url: string }[]; categories: Category[]; zones: Zone[]; opinions: OpinionTeaser[]; weather: WeatherTeaser | null; liveLink: string | null; isLoggedIn: boolean; today: string; subscribeUrl: string; siteName: string; tagline: string; socials: Record<string, string>; headerStyle: HeaderStyle; topicsByCategory?: Record<string, { name: string; slug: string }[]>; pills?: { name: string; href: string }[] }
 
 const STATIC_NAMES: Record<string, string> = { notizie: 'Notizie', cerca: 'Cerca', tag: 'Argomenti', autore: 'Firme', meteo: 'Meteo', eventi: 'Cosa fare in città', zone: 'Zone', segnalazioni: 'Segnalazioni', video: 'Video', foto: 'Foto' };
 
-export function SiteHeader({ logoUrl = '', customMenu, extraLinks = [], categories, zones, opinions, weather, liveLink, isLoggedIn, today, subscribeUrl, siteName, tagline, socials, headerStyle, topicsByCategory = {}, pills = [] }: Props) {
+export function SiteHeader({ words, logoUrl = '', customMenu, extraLinks = [], categories, zones, opinions, weather, liveLink, isLoggedIn, today, subscribeUrl, siteName, tagline, socials, headerStyle, topicsByCategory = {}, pills = [] }: Props) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [q, setQ] = useState('');
@@ -27,7 +27,7 @@ export function SiteHeader({ logoUrl = '', customMenu, extraLinks = [], categori
   const _extraNav = extraLinks.length ? extraLinks.map((l) => <Link key={l.id} href={l.url} className="nav-extra">{l.label}</Link>) : null;
   const customItems = (customMenu ?? []).map((m) => ({ slug: m.url.replace(/^\//, ''), name: m.label }));
   const extraItems = extraLinks.map((l) => ({ slug: l.url.replace(/^\//, ''), name: l.label }));
-  const mainMenu = customItems.length ? [...customItems, ...extraItems] : [{ slug: 'notizie', name: 'Notizie' }, { slug: 'eventi', name: 'Cosa fare in città' }, { slug: 'zone', name: 'Zone' }, ...menu.filter((c) => c.kind === 'dossier' || c.kind === 'opinion'), ...extraItems];
+  const mainMenu = customItems.length ? [...customItems, ...extraItems] : [{ slug: 'notizie', name: words?.notizie || 'Notizie' }, { slug: 'eventi', name: words?.eventi || 'Cosa fare in città' }, { slug: 'zone', name: words?.zone || 'Zone' }, ...menu.filter((c) => c.kind === 'dossier' || c.kind === 'opinion'), ...extraItems];
   const wideMenu = customItems.length ? [...customItems, ...extraItems] : [{ slug: 'notizie', name: 'Ultime' }, ...menu.filter((c) => c.kind !== 'local'), { slug: 'eventi', name: 'Eventi' }, { slug: 'zone', name: 'Zone' }, ...extraItems];
   const active = (slug: string) => (first === slug ? 'active' : undefined);
   const close = () => setMenuOpen(false);
