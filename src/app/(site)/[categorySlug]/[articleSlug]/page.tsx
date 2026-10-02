@@ -8,6 +8,10 @@ import { SmartImage } from '@/components/ui/smart-image';
 import { ROLE_LABELS } from '@/lib/models';
 import { approvedComments, articleBySlug, articleUrlWith, category, getCategories, getFeatured, getMostRead, getSettings, legacyRedirectFor, listPublished, related, tagsByIds, user, zone } from '@/lib/queries';
 import { formatDate, readingTime, relativeDate, timeAgo } from '@/lib/utils';
+import { PersonalTime } from '@/components/site/personal-time';
+import { Deliberation } from '@/components/site/deliberation';
+import { guideStatus } from '@/lib/service';
+import { ContributionForm as WaitForm } from '@/components/site/contribution-form';
 import { getActiveTheme } from '@/lib/theme-server';
 import { ArticleFanpage } from '@/components/site/fanpage/article-fanpage';
 import { siteUrl } from '@/lib/site-url';
@@ -159,7 +163,7 @@ export default async function ArticlePage({ params, searchParams }: PageProps<'/
             </>
           )}
           <SaveButton articleId={a.id} saved={saved} loggedIn={!!reader} />
-          <div className="a-date">{formatDate(a.publishedAt)}{a.updatedAt > (a.publishedAt || '') && <><br />aggiornato {timeAgo(a.updatedAt)}</>}<br />{readingTime(a.content)} min di lettura</div>
+          <div className="a-date">{formatDate(a.publishedAt)}{a.updatedAt > (a.publishedAt || '') && <><br />aggiornato {timeAgo(a.updatedAt)}</>}<br />{readingTime(a.content)} min di lettura<PersonalTime words={wordCount(a.content)} /></div>{a.extra?.guide && (() => { const g = guideStatus(a.extra.guide.verifiedAt, a.extra.guide.everyDays || 90, Date.now()); return <p className={`guide-badge guide-${g.state}`}>{g.state === 'never' ? '📘 Guida pratica: non ancora verificata' : g.state === 'ok' ? `✅ Guida pratica verificata il ${new Date(a.extra.guide.verifiedAt).toLocaleDateString('it-IT')}` : `⚠️ Guida pratica: ultima verifica ${g.days} giorni fa, potrebbe non essere aggiornata`}</p>; })()}
           <ShareBar title={a.title} />
           {tags.length > 0 && <><div className="aside-title">Si parla di</div><div className="topic-list">{tags.map((t) => <Link key={t.id} href={`/tag/${t.slug}`}>{t.name.toLowerCase()}</Link>)}</div></>}
           {rel.length > 0 && <><div className="aside-title">Sullo stesso argomento</div><div className="related-mini">{rel.slice(0, 3).map((r) => <ArticleCard key={r.id} article={r} variant="sm" />)}</div></>}
@@ -205,6 +209,8 @@ export default async function ArticlePage({ params, searchParams }: PageProps<'/
           {locked ? <div className="circle-gate"><h3>🔒 Questo testo è riservato a «{circleName}»</h3><p>L&apos;autore lo condivide solo con un gruppo di persone. Se hai ricevuto una chiave d&apos;invito, aprila dopo aver effettuato l&apos;accesso.</p><Link className="btn btn-primary" href={`/account?redirect=${encodeURIComponent(articleUrl(a))}`}>Accedi</Link></div> : gated ? <Paywall articleId={a.id} premiumOnly={!!a.premium} price={paywall.monthlyPrice} free={paywall.freeArticles}><ArticleBody html={a.content} viewer={viewer} faq={a.faq} articleId={a.id} inlineAd={<AdSlot slot="article_inline" size="728×90" className="ad-inline" />} /></Paywall> : <ArticleBody html={a.content} viewer={viewer} articleId={a.id} faq={a.faq} inlineAd={<AdSlot slot="article_inline" size="728×90" className="ad-inline" />} />}
           {(a.extra?.corrections?.length ?? 0) > 0 && <section className="corrections-box" aria-label="Correzioni"><b>Correzioni</b>{a.extra!.corrections!.map((c, i) => <p key={i}><time dateTime={c.date}>{new Date(c.date).toLocaleDateString('it-IT', { day: 'numeric', month: 'long', year: 'numeric' })}</time> · {c.text}</p>)}</section>}
           {after.length > 0 && <section className="after-box" aria-label="Cosa è successo dopo"><b>Cosa è successo dopo</b><ul>{after.map((x) => <li key={x.id}><time dateTime={x.publishedAt ?? ''}>{formatDate(x.publishedAt, false)}</time> <Link href={articleUrlWith(x, allCats)}>{x.title}</Link></li>)}</ul></section>}
+          {!locked && a.extra?.deliberation && <Deliberation articleId={a.id} d={a.extra.deliberation} />}
+          {!locked && a.tagIds.length > 0 && <div className="waitlist-box"><WaitForm kind="waitlist" refId={a.id} /></div>}
           {!locked && canAsk && moduleOn(settings.trust, 'ask') && <AskArticle articleId={a.id} />}
           {!locked && a.extra?.mindQuestion && <MindChange articleId={a.id} question={a.extra.mindQuestion} stats={mind} />}
           {!locked && <TrustPanel a={a} author={author ?? undefined} settings={settings} revisions={box?.revisions ?? 0} />}

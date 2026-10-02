@@ -1,0 +1,12 @@
+import { describe, expect, it } from 'vitest';
+import { badgeLevel, guideStatus, nextOccurrence, personalMinutes, readingDiary, remindersDue, shiftStats, smoothWpm, upcoming, wpmFrom } from '../src/lib/service';
+
+const D = +new Date('2026-10-02T00:00:00Z');
+describe('lettori e servizio', () => {
+  it('guide: stato di verifica', () => { expect(guideStatus(undefined, 90, D).state).toBe('never'); expect(guideStatus('2026-09-01', 90, D).state).toBe('ok'); expect(guideStatus('2026-06-15', 90, D).state).toBe('due'); expect(guideStatus('2025-01-01', 90, D).state).toBe('stale'); });
+  it('tempo personale: parole al minuto con limiti', () => { expect(wpmFrom(100, 60)).toBeNull(); expect(wpmFrom(600, 120)).toBe(300); expect(wpmFrom(600, 10)).toBeNull(); expect(smoothWpm(null, 250)).toBe(250); expect(smoothWpm(200, 300)).toBe(230); expect(personalMinutes(900, 300)).toBe(3); });
+  it('distintivi', () => { expect(badgeLevel(2)).toBeNull(); expect(badgeLevel(3)?.label).toMatch(/corrispondente/i); expect(badgeLevel(12)?.icon).toBe('🏅'); });
+  it('sondaggio deliberativo: chi cambia idea', () => { const s = shiftStats([{ before: 'si', after: 'no' }, { before: 'si', after: 'si' }, { before: 'no' }, {}]); expect(s.n).toBe(3); expect(s.completed).toBe(2); expect(s.changed).toBe(1); expect(s.before.si).toBe(2); expect(s.after.no).toBe(1); });
+  it('promemoria: annuali e una tantum', () => { const d = [{ id: 'a', title: 'TARI', date: '2020-10-05', yearly: true, text: '', url: '' }, { id: 'b', title: 'Iscrizioni', date: '2026-09-01', yearly: false, text: '', url: '' }, { id: 'c', title: 'Bollo', date: '2026-01-10', yearly: true, text: '', url: '' }]; expect(nextOccurrence(d[0], '2026-10-02')).toBe('2026-10-05'); expect(nextOccurrence(d[1], '2026-10-02')).toBeNull(); expect(nextOccurrence(d[2], '2026-10-02')).toBe('2027-01-10'); expect(remindersDue(d, '2026-10-02', 3).map((x) => x.deadline.id)).toEqual(['a']); expect(upcoming(d, '2026-10-02').map((x) => x.deadline.id)).toEqual(['a', 'c']); });
+  it('diario delle letture', () => { const arts = new Map([['x', { title: 'X', tagIds: ['t1'], categoryId: 'c' }], ['y', { title: 'Y', tagIds: ['t1', 't2'], categoryId: 'c' }]]); const d = readingDiary([{ articleId: 'x', createdAt: '2026-09-10T10:00:00Z' }, { articleId: 'y', createdAt: '2026-10-01T10:00:00Z' }, { articleId: 'zz', createdAt: '2026-10-01T10:00:00Z' }], arts); expect(d.total).toBe(2); expect(d.months.map((m) => m.month)).toEqual(['2026-10', '2026-09']); expect(d.topTags[0]).toEqual({ id: 't1', n: 2 }); });
+});

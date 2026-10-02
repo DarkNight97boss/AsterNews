@@ -14,6 +14,7 @@ import { Analytics } from '@/components/site/analytics';
 import { PushPrompt } from '@/components/site/push-prompt';
 import { DEFAULT_ANALYTICS, DEFAULT_PUSH } from '@/lib/models';
 import { currentEdition } from '@/lib/edition';
+import { MuteFilter } from '@/components/site/mute-filter';
 import { A11yBar } from '@/components/site/a11y-bar';
 import { DEFAULT_MENUS } from '@/lib/models';
 import { listPages } from '@/lib/repo-extra3';
@@ -45,6 +46,7 @@ export default async function SiteLayout({ children }: LayoutProps<'/'>) {
       <SiteHeader logoUrl={edition?.logo || ''} customMenu={menus.useCustomHeader && menus.header.length ? menus.header : undefined} extraLinks={menuPages} categories={categories} zones={topZones} opinions={opinions} weather={weather ? { icon: weatherIcon(weather.current.code), label: weatherLabel(weather.current.code), temp: weather.current.temp, city: weather.city } : null} liveLink={live[0] ? articleUrlWith(live[0], categories) : null} isLoggedIn={!!me} today={today} subscribeUrl={s.subscribeUrl} siteName={s.siteName} tagline={s.tagline} socials={s.socials} headerStyle={theme.headerStyle} topicsByCategory={topicsByCategory} pills={pills} />
       <Ticker />
       <A11yBar initial={readerForA11y?.prefs?.a11y} />
+      <MuteFilter serverMuted={readerForA11y?.prefs?.mutedTags ?? []} />
       <main className="page"><div className="container">{children}</div></main>
       <Footer />
       {s.trust?.modules?.eco !== false && <EcoBadge />}
