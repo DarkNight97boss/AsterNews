@@ -310,6 +310,7 @@ export interface SiteSettings {
   access?: AccessSettings;
   sponsors?: Record<string, SectionSponsor>;
   method?: import('./method').MethodSettings;
+  archive?: { depositEnabled?: boolean; depositEmail?: string };
   aiPolicy?: { notes: string; allowTraining: boolean };
   rhythm?: RhythmSettings;
   themeVersions?: ThemeVersion[];

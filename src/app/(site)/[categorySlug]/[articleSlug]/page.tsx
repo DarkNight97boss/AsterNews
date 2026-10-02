@@ -98,6 +98,7 @@ export default async function ArticlePage({ params, searchParams }: PageProps<'/
   const fieldDefs = (settings.customFields?.[a.categoryId] ?? []).filter((f) => a.extra?.fields?.[f.key]);
   const toc = wordCount(a.content) >= 900 ? buildToc(a.content) : [];
   const langLinks = await (await import('@/lib/hreflang')).languageLinks(a);
+  const after = locked ? [] : await (await import('@/lib/archive-data')).followUpsFor(a);
   const storyOk = [a.coverImage, ...a.gallery].filter(Boolean).length >= 2;
   const history = a.extra?.showHistory ? (await listRevisions(a.id, 20)).filter((r) => r.data?.status === 'published') : [];
   const video = videos[0];
@@ -203,6 +204,7 @@ export default async function ArticlePage({ params, searchParams }: PageProps<'/
           {layered && !locked && <DepthSlider minutes={[wordsAt(1), wordsAt(2), wordsAt(3)]} />}
           {locked ? <div className="circle-gate"><h3>🔒 Questo testo è riservato a «{circleName}»</h3><p>L&apos;autore lo condivide solo con un gruppo di persone. Se hai ricevuto una chiave d&apos;invito, aprila dopo aver effettuato l&apos;accesso.</p><Link className="btn btn-primary" href={`/account?redirect=${encodeURIComponent(articleUrl(a))}`}>Accedi</Link></div> : gated ? <Paywall articleId={a.id} premiumOnly={!!a.premium} price={paywall.monthlyPrice} free={paywall.freeArticles}><ArticleBody html={a.content} viewer={viewer} faq={a.faq} articleId={a.id} inlineAd={<AdSlot slot="article_inline" size="728×90" className="ad-inline" />} /></Paywall> : <ArticleBody html={a.content} viewer={viewer} articleId={a.id} faq={a.faq} inlineAd={<AdSlot slot="article_inline" size="728×90" className="ad-inline" />} />}
           {(a.extra?.corrections?.length ?? 0) > 0 && <section className="corrections-box" aria-label="Correzioni"><b>Correzioni</b>{a.extra!.corrections!.map((c, i) => <p key={i}><time dateTime={c.date}>{new Date(c.date).toLocaleDateString('it-IT', { day: 'numeric', month: 'long', year: 'numeric' })}</time> · {c.text}</p>)}</section>}
+          {after.length > 0 && <section className="after-box" aria-label="Cosa è successo dopo"><b>Cosa è successo dopo</b><ul>{after.map((x) => <li key={x.id}><time dateTime={x.publishedAt ?? ''}>{formatDate(x.publishedAt, false)}</time> <Link href={articleUrlWith(x, allCats)}>{x.title}</Link></li>)}</ul></section>}
           {!locked && canAsk && moduleOn(settings.trust, 'ask') && <AskArticle articleId={a.id} />}
           {!locked && a.extra?.mindQuestion && <MindChange articleId={a.id} question={a.extra.mindQuestion} stats={mind} />}
           {!locked && <TrustPanel a={a} author={author ?? undefined} settings={settings} revisions={box?.revisions ?? 0} />}
