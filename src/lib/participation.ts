@@ -1,6 +1,13 @@
 /** Tipi di contributo dei lettori che passano dalla moderazione unica in /admin/partecipazione. `who` e `body` sono le chiavi dei dati da mostrare. */
 export const PARTICIPATION_KINDS: { kind: string; label: string; who: string; body: string }[] = [
   { kind: 'response', label: 'Risposte lunghe agli articoli', who: 'name', body: 'text' },
+  { kind: 'manifesto', label: 'Manifesti elettorali fotografati', who: 'where', body: 'image' },
+  { kind: 'paniere', label: 'Prezzi rilevati per il paniere', who: 'shop', body: 'product' },
+  { kind: 'rumore', label: 'Rumore e odori', who: 'where', body: 'text' },
+  { kind: 'ritardo', label: 'Ritardi del trasporto pubblico', who: 'line', body: 'kind' },
+  { kind: 'albero', label: 'Censimento degli alberi', who: 'where', body: 'image' },
+  { kind: 'voce-genitori', label: 'Voce dei genitori (scuole)', who: 'name', body: 'text' },
+  { kind: 'cantiere-foto', label: 'Foto dei cantieri', who: 'text', body: 'image' },
   { kind: 'guestbook', label: 'Libro degli ospiti (messaggi scritti a mano)', who: 'name', body: 'image' },
   { kind: 'log', label: 'Taccuino di quartiere', who: 'name', body: 'text' },
   { kind: 'council', label: 'Domande al Comune', who: 'name', body: 'text' },

@@ -41,6 +41,7 @@ export async function runDailyJobs(): Promise<JobReport> {
   try { const { ensureIndex } = await import('./embeddings'); steps.embedding = await ensureIndex(300); } catch (e) { steps.embedding = 'errore: ' + (e as Error).message; }
   try { const { scheduledAudit } = await import('./pagespeed'); steps.pagespeed = await scheduledAudit(); } catch (e) { steps.pagespeed = 'errore: ' + (e as Error).message; }
   try { const { remindDueCommitments } = await import('./trust-notify'); const n = await remindDueCommitments(); if (n) steps.promesse = `${n} promemoria inviati`; const { remindExpiredSentences } = await import('./trust-notify'); const k = await remindExpiredSentences(); if (k) steps.frasi = `${k} frasi scadute segnalate`; const { signBacklog } = await import('./trust-notify'); const sg = await signBacklog(); if (sg) steps.firme = `${sg} articoli d'archivio firmati`; } catch { /* ignore */ }
+  try { const { civicDaily } = await import('./civic-data'); const r = await civicDaily(); if (r) steps.cruscotto = r; } catch (e) { steps.cruscotto = 'errore: ' + (e as Error).message; }
   try { const { purgeRecords } = await import('./records'); const n = await purgeRecords(); if (n) steps.pulizia_record = `${n} record scaduti eliminati`; } catch { /* ignore */ }
   try { const { runLegacyCheck } = await import('./legacy'); const r = await runLegacyCheck(); if (r) steps.eredita = r; } catch (e) { steps.eredita = 'errore: ' + (e as Error).message; }
   steps.salute = await healthCheck();

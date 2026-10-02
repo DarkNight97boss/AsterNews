@@ -110,6 +110,7 @@ export interface AltVersion { html: string; glossary: { term: string; meaning: s
 export type ArticleKindLabel = 'cronaca' | 'analisi' | 'opinione' | 'inchiesta' | 'comunicato' | 'intervista' | 'satira';
 export type VerificationState = 'confirmed' | 'developing' | 'unverified' | 'denied';
 export interface RhythmSettings { quietFrom?: string; quietTo?: string; hourlyRate?: number; rpm?: number; subscriptionValue?: number; maxOpen?: number }
+export interface CivicSettings { budget?: string; basketItems?: string; busLines?: string; electionTitle?: string; councilUrl?: string }
 export interface CommonsSettings { listening?: { enabled: boolean; weekday: number; time: string; url: string; note: string }; partners?: { name: string; benefit: string; address: string }[]; suspendedPool?: number }
 export interface PersonalSettings { silence?: { until: string; message: string }; legacy?: import('./personal').LegacySettings; ownerChatId?: string; seasons?: import('./personal').Season[]; eventMode?: { enabled: boolean; title: string; intro: string; tagId: string; until: string }; autoHome?: boolean; memory?: boolean }
 export interface TrustSettings { funding?: { label: string; percent: number; note?: string }[]; fundingYear?: string; commitments?: { text: string; state: 'kept' | 'progress' | 'missed'; note?: string }[]; disclosures?: Record<string, string>; replyEnabled?: boolean; modules?: Partial<Record<ArticleModule, boolean>> }
@@ -303,6 +304,7 @@ export interface SiteSettings {
   trust?: TrustSettings;
   personal?: PersonalSettings;
   commons?: CommonsSettings;
+  civic?: CivicSettings;
   aiPolicy?: { notes: string; allowTraining: boolean };
   rhythm?: RhythmSettings;
   themeVersions?: ThemeVersion[];

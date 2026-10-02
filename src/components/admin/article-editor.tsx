@@ -16,6 +16,7 @@ import { EditorExtras } from './editor-extras';
 import { CostEditor, ReaderEditor, TrustEditor } from './trust-editor';
 import { RehearsalPanel } from './rehearsal-panel';
 import { OutputsPanel } from './outputs-panel';
+import { FactcheckPanel } from './factcheck-panel';
 import { canonicalHashClient } from '@/lib/text-hash-client';
 import { BlockEditor } from './block-editor';
 import { AiAssistant } from './ai-assistant';
@@ -168,6 +169,7 @@ export function ArticleEditor({ initial, isNew, isPublic, categories, zones, tag
             <div style={{ display: 'flex', gap: 6 }}><input className="input" placeholder="Testo della correzione (Corrige)" value={corrText} onChange={(e) => setCorrText(e.target.value)} /><button type="button" className="btn btn-outline btn-sm" disabled={!corrText.trim()} onClick={() => { setExtra({ corrections: [...(extra.corrections ?? []), { date: new Date().toISOString(), text: corrText.trim() }] }); setCorrText(''); }}>Aggiungi</button></div>
             <p className="help" style={{ marginTop: 6 }}>Le correzioni compaiono datate in fondo all&apos;articolo e nei dati strutturati.</p>
           </div>
+          {!isNew && a.format === 'live' && <FactcheckPanel articleId={a.id} />}
           <RehearsalPanel article={a} isNew={isNew} users={users.map((u) => ({ id: u.id, name: u.name }))} meId={meId} extra={extra} setExtra={setExtra} onInsert={(html) => set('content', a.content + '\n' + html)} onTitle={(t) => set('title', t)} />
           <OutputsPanel article={a} isNew={isNew} siteUrl={siteUrl} stale={!!extra.outputs?.hash && outputsHash !== '' && outputsHash !== extra.outputs.hash} extra={extra} setExtra={setExtra} />
           <TranscribePanel onInsert={(html) => set('content', a.content + '\n' + html)} />
