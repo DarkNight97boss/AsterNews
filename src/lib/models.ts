@@ -110,6 +110,7 @@ export interface AltVersion { html: string; glossary: { term: string; meaning: s
 export type ArticleKindLabel = 'cronaca' | 'analisi' | 'opinione' | 'inchiesta' | 'comunicato' | 'intervista' | 'satira';
 export type VerificationState = 'confirmed' | 'developing' | 'unverified' | 'denied';
 export interface RhythmSettings { quietFrom?: string; quietTo?: string; hourlyRate?: number; rpm?: number; subscriptionValue?: number; maxOpen?: number }
+export interface SectionSponsor { name: string; logo: string; url: string; contractUrl: string; until: string; note: string }
 export interface AccessSettings { phone?: string; tutorUserId?: string; schoolIntro?: string }
 export interface CivicSettings { budget?: string; basketItems?: string; busLines?: string; electionTitle?: string; councilUrl?: string }
 export interface CommonsSettings { listening?: { enabled: boolean; weekday: number; time: string; url: string; note: string }; partners?: { name: string; benefit: string; address: string }[]; suspendedPool?: number }
@@ -307,6 +308,7 @@ export interface SiteSettings {
   commons?: CommonsSettings;
   civic?: CivicSettings;
   access?: AccessSettings;
+  sponsors?: Record<string, SectionSponsor>;
   aiPolicy?: { notes: string; allowTraining: boolean };
   rhythm?: RhythmSettings;
   themeVersions?: ThemeVersion[];

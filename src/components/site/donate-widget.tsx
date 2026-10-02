@@ -3,8 +3,8 @@ import { DEFAULT_DONATIONS } from '@/lib/models';
 import { DonateForm } from './donate-form';
 
 /** Riquadro "Sostienici": compare in colonna e nella pagina /sostieni se le donazioni sono attive. */
-export async function DonateWidget({ full = false }: { full?: boolean }) {
+export async function DonateWidget({ full = false, preset }: { full?: boolean; preset?: { amount?: number; message?: string } }) {
   const s = await getSettings(); const d = { ...DEFAULT_DONATIONS, ...(s.donations ?? {}) };
   if (!d.enabled) return null;
-  return <div className={`donate-box ${full ? 'full' : ''}`}>{!full && <><h3>{d.title}</h3><p>{d.text}</p></>}<DonateForm amounts={d.amounts} full={full} /></div>;
+  return <div className={`donate-box ${full ? 'full' : ''}`}>{!full && <><h3>{d.title}</h3><p>{d.text}</p></>}<DonateForm amounts={d.amounts} full={full} preset={preset} /></div>;
 }

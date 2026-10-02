@@ -1,0 +1,10 @@
+import type { Metadata } from 'next';
+import { approvedContrib } from '@/lib/civic-data';
+import { ContributionForm } from '@/components/site/contribution-form';
+
+export const metadata: Metadata = { title: 'Offerte di lavoro in zona', description: 'Le offerte di lavoro delle aziende locali, verificate, con avviso via email per settore.' };
+export const dynamic = 'force-dynamic';
+export default async function JobsPage({ searchParams }: PageProps<'/lavoro'>) {
+  const cat = String((await searchParams).settore ?? ''); const now = new Date().toISOString(); const all = (await approvedContrib('lavoro')).filter((j) => j.status === 'approved' && (!j.dueAt || j.dueAt > now)); const cats = [...new Set(all.map((j) => j.data.category))].sort(); const list = cat ? all.filter((j) => j.data.category === cat) : all;
+  return <div className="account" style={{ maxWidth: 820 }}><div className="account-card trust-page"><h1>Offerte di lavoro in zona</h1><p className="lead">Solo aziende del territorio, verificate dalla redazione. Ogni offerta resta online 30 giorni.</p><p className="log-filter"><a href="/lavoro" aria-current={!cat ? 'page' : undefined}>Tutti</a>{cats.map((c) => <a key={c} href={`/lavoro?settore=${encodeURIComponent(c)}`} aria-current={cat === c ? 'page' : undefined}>{c}</a>)}</p>{list.length === 0 ? <p className="help">Nessuna offerta attiva.</p> : <ul className="trust-list">{list.map((j) => <li key={j.id}><time dateTime={j.createdAt}>{new Date(j.createdAt).toLocaleDateString('it-IT', { day: 'numeric', month: 'short' })}</time><div><b>{j.data.role}</b> · {j.data.url ? <a href={j.data.url} rel="noopener" target="_blank">{j.data.company}</a> : j.data.company} <span className="verified">✔ verificata</span><p style={{ whiteSpace: 'pre-line' }}>{j.data.text}</p><p className="help">{j.data.category} · candidature: {j.data.contact}{j.dueAt ? ` · scade il ${new Date(j.dueAt).toLocaleDateString('it-IT')}` : ''}</p></div></li>)}</ul>}<div className="admin-grid-2"><ContributionForm kind="lavoro-avviso" open /><ContributionForm kind="lavoro" /></div></div></div>;
+}

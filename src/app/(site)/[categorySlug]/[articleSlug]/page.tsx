@@ -31,6 +31,8 @@ import { aiAvailable } from '@/lib/ai';
 import { ReadEnd } from '@/components/site/eco';
 import { approvedOf } from '@/lib/commons-data';
 import { factchecksFor } from '@/lib/civic-data';
+import { coffeesFor } from '@/lib/economy-data';
+import { DEFAULT_DONATIONS as DD } from '@/lib/models';
 import { ContributionForm } from '@/components/site/contribution-form';
 import { recordRead } from '@/lib/trust-notify';
 import { buildToc, wordCount } from '@/lib/content-render';
@@ -88,7 +90,7 @@ export default async function ArticlePage({ params, searchParams }: PageProps<'/
   // Un anno fa oggi: il post che risponde a uno vecchio lo dichiara, e quello vecchio rimanda alla rilettura
   const repliedTo = a.extra?.replyTo ? await (await import('@/lib/repo')).findArticle(a.extra.replyTo) : null; const rereads = (await (await import('@/lib/repo')).listArticles({ status: 'published', extraLike: `"replyTo":"${a.id}"` }, 'published', 50)).filter((x) => x.extra?.replyTo === a.id);
   const allCats = await getCategories(); const pastLinks = <>{repliedTo && repliedTo.status === 'published' && <p className="past-link">↩︎ Risposta a quello che scrivevo il {formatDate(repliedTo.publishedAt)}: <Link href={articleUrlWith(repliedTo, allCats)}>{repliedTo.title}</Link></p>}{rereads.map((r) => <p key={r.id} className="past-link">↪︎ Riletto il {formatDate(r.publishedAt)}: <Link href={articleUrlWith(r, allCats)}>{r.title}</Link></p>)}</>;
-  const translations = locked ? [] : await approvedOf('translation', { ref: a.id }); const readings = locked ? [] : await approvedOf('lettura', { ref: a.id }); const factchecks = a.format === 'live' && !locked ? await factchecksFor(a.id) : [];
+  const translations = locked ? [] : await approvedOf('translation', { ref: a.id }); const readings = locked ? [] : await approvedOf('lettura', { ref: a.id }); const factchecks = a.format === 'live' && !locked ? await factchecksFor(a.id) : []; const coffee = !locked && { ...DD, ...(settings.donations ?? {}) }.enabled ? await coffeesFor(a.id) : null;
   const [topHl, mind, responses, canAsk] = locked ? [[], null, [], false] as const : await Promise.all([highlightsFor(a.id), a.extra?.mindQuestion ? mindStats(a.id) : null, listRecords<{ name: string; title: string; text: string }>('response', { ref: a.id, status: 'approved', order: 'old' }), aiAvailable()]);
   const layered = a.content.includes('class="layered"'); const wordsAt = (d: number) => Math.max(1, Math.round(wordCount(a.content.replace(/<div data-depth="(\d)">[\s\S]*?<\/div>/g, (m, n) => (Number(n) === d ? m : ''))) / 200));
   const revs = a.extra?.hideBlackBox || settings.adapt?.blackBox === false ? [] : await listRevisions(a.id, 50);
@@ -206,6 +208,7 @@ export default async function ArticlePage({ params, searchParams }: PageProps<'/
           {!locked && <TrustPanel a={a} author={author ?? undefined} settings={settings} revisions={box?.revisions ?? 0} />}
           {box && !locked && <details className="black-box"><summary>Come è nato questo articolo</summary><dl><div><dt>Lavorazione</dt><dd>iniziato il {new Date(box.started).toLocaleDateString('it-IT', { day: 'numeric', month: 'long' })}, {box.revisions} {box.revisions === 1 ? 'versione salvata' : 'versioni salvate'}</dd></div><div><dt>Lunghezza</dt><dd>{box.words} parole</dd></div>{box.sources > 0 && <div><dt>Fonti</dt><dd>{box.sources} consultate, {box.verified} verificate direttamente</dd></div>}<div><dt>Intelligenza artificiale</dt><dd>{box.ai.length ? `l'assistente ha proposto: ${box.ai.map((k) => ({ title: 'titolo', subtitle: 'sommario', excerpt: 'estratto', seo: 'descrizione per i motori', tagIds: 'tag', kicker: 'occhiello', content: 'parti del testo', coverCaption: 'didascalia' }[k] ?? k)).join(', ')}; un giornalista ha rivisto e approvato tutto` : 'nessun uso per questo articolo'}</dd></div>{box.corrections > 0 && <div><dt>Correzioni</dt><dd>{box.corrections}, elencate sopra</dd></div>}</dl></details>}
           {history.length > 0 && <details className="update-history"><summary>Cronologia degli aggiornamenti ({history.length})</summary><ul>{history.map((h) => <li key={h.id}><time dateTime={h.createdAt}>{new Date(h.createdAt).toLocaleString('it-IT', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</time>{h.note ? ` · ${h.note}` : ''}</li>)}</ul></details>}
+          {coffee && <p className="coffee-line"><Link href={`/sostieni?importo=2&messaggio=${encodeURIComponent(`caffè:${a.id}`)}`}>☕ Offri un caffè a chi ha scritto questo articolo</Link>{coffee.count > 0 && <span> · {coffee.count} {coffee.count === 1 ? 'caffè offerto' : 'caffè offerti'}</span>}</p>}
           {!locked && <ReadEnd articleId={a.id} />}
           <AdSlot slot="article_bottom" size="728×90" className="ad-inline" />
           {settings.googleNewsUrl && <p className="gnews" style={{ fontFamily: 'var(--font-serif)', textAlign: 'center', marginTop: 24 }}>Scegli <a href={settings.googleNewsUrl} target="_blank" rel="noopener" style={{ color: 'var(--red)', textDecoration: 'underline' }}>{settings.siteName}</a> come fonte preferita su Google News</p>}

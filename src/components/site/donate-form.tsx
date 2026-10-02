@@ -4,9 +4,9 @@ import { useState, useTransition } from 'react';
 import { startDonationAction } from '@/lib/actions-donations';
 import { toast } from '@/components/ui/toaster';
 
-export function DonateForm({ amounts, full }: { amounts: number[]; full: boolean }) {
-  const [amount, setAmount] = useState(amounts[1] ?? amounts[0] ?? 5); const [custom, setCustom] = useState('');
-  const [f, setF] = useState({ name: '', email: '', message: '' });
+export function DonateForm({ amounts, full, preset }: { amounts: number[]; full: boolean; preset?: { amount?: number; message?: string } }) {
+  const [amount, setAmount] = useState(preset?.amount && amounts.includes(preset.amount) ? preset.amount : amounts[1] ?? amounts[0] ?? 5); const [custom, setCustom] = useState(preset?.amount && !amounts.includes(preset.amount) ? String(preset.amount) : '');
+  const [f, setF] = useState({ name: '', email: '', message: preset?.message ?? '' });
   const [pending, start] = useTransition();
   const value = custom ? Number(custom.replace(',', '.')) : amount;
   return (

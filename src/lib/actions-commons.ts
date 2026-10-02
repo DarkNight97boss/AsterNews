@@ -22,7 +22,7 @@ export async function submitContributionAction(kind: string, ref: string, input:
   if (kind === 'board') { data.token = randomToken(12); }
   // Le registrazioni audio vanno nello storage, non nel database
   if (def.fields.some((f) => f.type === 'audio' && data[f.key])) { try { const { uploadRaw } = await import('./storage'); for (const f of def.fields) { if (f.type !== 'audio' || !data[f.key]) continue; const m = data[f.key].match(/^data:(audio\/[\w.-]+)(?:;codecs=[\w.]+)?;base64,(.+)$/)!; const ext = m[1].includes('mpeg') ? 'mp3' : m[1].includes('mp4') || m[1].includes('m4a') || m[1].includes('aac') ? 'm4a' : m[1].includes('ogg') ? 'ogg' : m[1].includes('wav') ? 'wav' : 'webm'; data[f.key] = await uploadRaw(Buffer.from(m[2], 'base64'), `audio/${kind}-${Date.now()}-${randomToken(4)}.${ext}`, m[1]); } } catch { return { ok: false, message: 'Non riesco a salvare la registrazione: riprova.' }; } }
-  const rec = await addRecord(kind, { ref, status: 'pending', data, dueAt: def.expiresDays ? new Date(Date.now() + def.expiresDays * 86_400_000).toISOString() : null });
+  const rec = await addRecord(kind, { ref, status: kind === 'lavoro-avviso' ? 'approved' : 'pending', data, dueAt: def.expiresDays ? new Date(Date.now() + def.expiresDays * 86_400_000).toISOString() : null });
   if (kind === 'board') link = `${siteUrl()}/bacheca?risolto=${rec.id}&chiave=${data.token}`;
   return { ok: true, message: def.thanks, link };
 }

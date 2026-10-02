@@ -12,6 +12,7 @@ import { ArticleBody } from '@/components/site/article-body';
 import { Countdown } from '@/components/site/countdown';
 import { LandingFeed } from '@/components/site/landing-feed';
 import { SmartImage } from '@/components/ui/smart-image';
+import { SectionSponsor } from '@/components/site/section-sponsor';
 
 export async function generateMetadata({ params }: PageProps<'/[categorySlug]'>): Promise<Metadata> {
   const { categorySlug } = await params;
@@ -52,7 +53,7 @@ export default async function CategoryPage({ params, searchParams }: PageProps<'
   const listTotal = Math.max(0, total - (hasHero ? 4 : isOpinion ? 3 : 0));
   return (
     <>
-      <div className="section-head"><h1>{c.name}</h1>{topics.length > 0 && <div className="sub-topics">{topics.map((t) => <Link key={t.id} href={`/tag/${t.slug}`}>{t.name.toLowerCase()}</Link>)}</div>}<p className="desc">{c.description}</p></div>
+      <div className="section-head"><h1>{c.name}</h1><SectionSponsor categoryId={c.id} />{topics.length > 0 && <div className="sub-topics">{topics.map((t) => <Link key={t.id} href={`/tag/${t.slug}`}>{t.name.toLowerCase()}</Link>)}</div>}<p className="desc">{c.description}</p></div>
       {page === 1 && isOpinion && <div className="opinions-row grid-divided" style={{ marginBottom: 40 }}>{articles.slice(0, 3).map((a) => <ArticleCard key={a.id} article={a} variant="opinion" showExcerpt />)}</div>}
       {hasHero && (
         <>

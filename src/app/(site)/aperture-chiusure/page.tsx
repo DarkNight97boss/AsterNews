@@ -1,0 +1,11 @@
+import type { Metadata } from 'next';
+import Link from 'next/link';
+import { listCards } from '@/lib/civic-data';
+import { openingsTrend } from '@/lib/economy';
+
+export const metadata: Metadata = { title: 'Chi apre e chi chiude', description: 'Il registro delle attività che aprono e chiudono in città, mese per mese e via per via.' };
+export const dynamic = 'force-dynamic';
+export default async function OpeningsPage() {
+  const shops = await listCards('negozio'); const t = openingsTrend(shops); const recent = shops.filter((s) => s.fields.dal || s.fields.chiuso_il).sort((a, b) => (b.fields.chiuso_il || b.fields.dal || '').localeCompare(a.fields.chiuso_il || a.fields.dal || '')).slice(0, 40); const max = Math.max(1, ...t.months.map((m) => Math.max(m.opened, m.closed)));
+  return <div className="account" style={{ maxWidth: 820 }}><div className="account-card trust-page"><h1>Chi apre e chi chiude</h1><p className="lead">Le serrande che si alzano e quelle che si abbassano: un indicatore della salute della città, via per via.</p>{t.months.length === 0 ? <p className="help">Nessuna apertura o chiusura registrata.</p> : <><h2>Mese per mese</h2><ul className="bars">{t.months.map((m) => <li key={m.month}><span>{m.month}</span><i className="open" style={{ width: `${(m.opened / max) * 100}%` }} title={`${m.opened} aperture`} /><i className="closed" style={{ width: `${(m.closed / max) * 100}%` }} title={`${m.closed} chiusure`} /><b>+{m.opened} / −{m.closed}</b></li>)}</ul><h2>Via per via</h2><table className="data-table"><thead><tr><th>Via</th><th>Aperture</th><th>Chiusure</th><th>Saldo</th></tr></thead><tbody>{t.streets.slice(0, 30).map((s) => <tr key={s.street}><td>{s.street}</td><td>{s.opened}</td><td>{s.closed}</td><td style={{ color: s.opened - s.closed < 0 ? 'var(--red)' : '#2e7d32' }}>{s.opened - s.closed > 0 ? '+' : ''}{s.opened - s.closed}</td></tr>)}</tbody></table></>}<h2>Ultimi movimenti</h2><ul className="trust-list">{recent.map((s) => <li key={s.id}><time>{s.fields.chiuso_il || s.fields.dal}</time><div><Link href={`/schede/negozio/${s.slug}`}>{s.title}</Link><p>{s.fields.chiuso_il ? 'ha chiuso' : 'ha aperto'} · {s.fields.via}</p></div></li>)}</ul></div></div>;
+}
