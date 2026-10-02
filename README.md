@@ -98,6 +98,20 @@ Tutte passano da un archivio generico dei contributi (`records`: tipo, riferimen
 
 Nota di sicurezza: nei file `'use server'` vivono solo azioni con i propri controlli; le letture per le pagine stanno in moduli `server-only` (`*-data.ts`) e il completamento dei pagamenti in `fulfilment.ts`, raggiungibile solo dal webhook Stripe firmato.
 
+## Cento idee per il giornale locale (ottobre 2026)
+
+Dieci gruppi, tutti implementati e coperti da test unitari, di integrazione e end-to-end. Ogni gruppo ha una pagina di redazione dedicata.
+
+- **Politica locale e dati civici** (`/schede`, `/elezioni`, `/consiglio`, `/citta`): schede generiche del territorio, bussola locale, voti del consiglio, cruscotto dei dati, fact-check in diretta.
+- **Scuola, giovani, anziani** (`/giornali-scolastici`, `/classe`, `/stage`, `/leggibile`, `/api/voce`, `/famiglie`, `/giochi`).
+- **Economia locale e lavoro** (`/negozi`, `/lavoro`, `/mercatino`, `/affitti`, `/pubblicita/numeri`, `/sponsor`, `/inchieste`).
+- **Formati e dispositivi** (`/ebook`, `/radio`, `/auto`, `/striscione`, `/vignette`, `/album`, Braille).
+- **Redazione e metodo** (`/admin/metodo`, `/admin/turni`, `/admin/fascicoli`, `/oblio`, `/come-abbiamo-sbagliato`): check-list, lessico, due fonti, rilettura incrociata, fonti anonime cifrate, diritto all'oblio, post-mortem.
+- **Archivio e memoria** (`/giornale`, `/accadde-oggi`, `/annate`, `/chi-era-chi`, `/toponimi`, `/documenti`, `/deposito`): prima pagina di un giorno qualsiasi, linee del tempo, deposito legale con impronte concatenate.
+- **Lettori e servizio** (`/mio-quartiere`, `/domande`, `/guide`, `/promemoria`, `/corrispondenti`, `/account/diario`): sondaggio deliberativo, lista d'attesa per il seguito, tempo di lettura personale, silenzia argomento.
+- **Emergenze e territorio** (`/emergenza`, `/chiusure`, `/catene`, `/punti-utili`, `/fiumi`, `/emergenze`, `/admin/emergenze`): modalità allerta, lista «sto bene», SMS, diario, verifica delle catene, resoconto automatico.
+- **Piattaforma** (`/rete`, `/api/rete`, `/1k`, `/verifica-foto`, `/accessibilita`, `/admin/piattaforma`, `/admin/manuale`): rete di testate, scambio articoli, solo testo, parole locali, copia su rete locale, budget di byte, verifica immagini, firma delle foto, audit mensile, manuale autogenerato.
+
 ## Dati e infrastruttura
 
 - Postgres via `POSTGRES_URL` / `DATABASE_URL` (driver `pg`, pooler Supabase in transaction mode); senza variabili, PGlite in `data/pg`. Schema e migrazioni idempotenti in `src/lib/db.ts`.
