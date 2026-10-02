@@ -37,7 +37,7 @@ import { useEffect } from 'react';
 import type { SeoContext } from '@/lib/seo-engine';
 
 interface Props { initial: Article; isNew: boolean; isPublic: boolean; categories: Category[]; zones: Zone[]; tags: Tag[]; users: User[]; media: MediaItem[]; permissions: Permission[]; seoCtx: SeoContext; siteUrl: string; maxLinks: number; meId: string; typeTemplates?: Record<string, string> }
-const FORMATS: ArticleFormat[] = ['standard', 'video', 'gallery', 'live'];
+const FORMATS: ArticleFormat[] = ['standard', 'video', 'gallery', 'live', 'lettera'];
 
 function shortTime(iso: string): string {
   const d = new Date(iso);

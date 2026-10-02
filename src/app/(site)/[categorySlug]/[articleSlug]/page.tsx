@@ -147,7 +147,7 @@ export default async function ArticlePage({ params, searchParams }: PageProps<'/
       <ViewCounter id={a.id} />
       <Analytics articleId={a.id} />
       <AttentionTracker category={cat?.name ?? 'Altro'} />
-      <div className="article-grid">
+      <div className={`article-grid${a.format === 'lettera' ? ' letter-layout' : ''}`}>
         <aside className="article-aside">
           {a.byline ? <div className="a-name">{a.byline}</div> : author && (
             <>
@@ -232,7 +232,7 @@ export default async function ArticlePage({ params, searchParams }: PageProps<'/
           {!locked && a.allowComments && moduleOn(settings.trust, 'longResponse') && <LongResponseForm articleId={a.id} />}
           {!locked && !a.premium && moduleOn(settings.trust, 'translation') && <ContributionForm kind="translation" refId={a.id} />}
           {!locked && !a.premium && moduleOn(settings.trust, 'volunteer') && <ContributionForm kind="lettura" refId={a.id} />}
-          {!locked && !a.premium && <p className="help" style={{ fontFamily: 'var(--font-sans)' }}>Insegnanti: <Link href={`/classe/${a.id}`}>versione per la classe</Link> con domande e glossario.</p>}
+          {!locked && !a.premium && <p className="help" style={{ fontFamily: 'var(--font-sans)' }}>Insegnanti: <Link href={`/classe/${a.id}`}>versione per la classe</Link> con domande e glossario · <a href={`/api/export/braille/${a.id}`} rel="nofollow">Braille (.brf)</a></p>}
           {a.allowComments && (
             <section className="comments">
               <h3>Commenti ({comments.length})</h3>

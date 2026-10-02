@@ -2,7 +2,7 @@ import 'server-only';
 import { DEFAULT_NEWSLETTER, NewsletterSettings } from './models';
 import { getSettings } from './queries';
 
-export interface Mail { to: string | string[]; subject: string; html: string; text?: string; replyTo?: string; listUnsubscribe?: string }
+export interface Mail { to: string | string[]; subject: string; html: string; text?: string; replyTo?: string; listUnsubscribe?: string; attachments?: { filename: string; content: string; type?: string }[] }
 
 /** Impostazioni email: dal pannello, con le variabili d'ambiente come ripiego (RESEND_API_KEY, BREVO_API_KEY, MAIL_FROM). */
 export async function mailSettings(): Promise<NewsletterSettings> {
@@ -23,11 +23,11 @@ export async function sendMail(m: Mail, override?: NewsletterSettings): Promise<
   const from = s.fromName ? `${s.fromName} <${s.fromEmail}>` : s.fromEmail;
   try {
     if (s.provider === 'resend') {
-      const r = await fetch('https://api.resend.com/emails', { method: 'POST', headers: { Authorization: `Bearer ${s.apiKey}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ from, to, subject: m.subject, html: m.html, text: m.text, reply_to: m.replyTo, headers: m.listUnsubscribe ? { 'List-Unsubscribe': `<${m.listUnsubscribe}>` } : undefined }) });
+      const r = await fetch('https://api.resend.com/emails', { method: 'POST', headers: { Authorization: `Bearer ${s.apiKey}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ from, to, subject: m.subject, html: m.html, text: m.text, reply_to: m.replyTo, attachments: m.attachments?.map((a) => ({ filename: a.filename, content: a.content })), headers: m.listUnsubscribe ? { 'List-Unsubscribe': `<${m.listUnsubscribe}>` } : undefined }) });
       if (!r.ok) return { ok: false, error: `Resend: ${r.status} ${(await r.text()).slice(0, 200)}` };
       return { ok: true };
     }
-    const r = await fetch('https://api.brevo.com/v3/smtp/email', { method: 'POST', headers: { 'api-key': s.apiKey, 'Content-Type': 'application/json' }, body: JSON.stringify({ sender: { email: s.fromEmail, name: s.fromName || undefined }, to: to.map((email) => ({ email })), subject: m.subject, htmlContent: m.html, textContent: m.text, replyTo: m.replyTo ? { email: m.replyTo } : undefined, headers: m.listUnsubscribe ? { 'List-Unsubscribe': `<${m.listUnsubscribe}>` } : undefined }) });
+    const r = await fetch('https://api.brevo.com/v3/smtp/email', { method: 'POST', headers: { 'api-key': s.apiKey, 'Content-Type': 'application/json' }, body: JSON.stringify({ sender: { email: s.fromEmail, name: s.fromName || undefined }, to: to.map((email) => ({ email })), subject: m.subject, attachment: m.attachments?.map((a) => ({ name: a.filename, content: a.content })), htmlContent: m.html, textContent: m.text, replyTo: m.replyTo ? { email: m.replyTo } : undefined, headers: m.listUnsubscribe ? { 'List-Unsubscribe': `<${m.listUnsubscribe}>` } : undefined }) });
     if (!r.ok) return { ok: false, error: `Brevo: ${r.status} ${(await r.text()).slice(0, 200)}` };
     return { ok: true };
   } catch (e) { return { ok: false, error: (e as Error).message }; }

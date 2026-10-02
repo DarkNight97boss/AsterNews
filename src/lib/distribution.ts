@@ -31,5 +31,5 @@ export function healLinks(html: string, dead: { url: string; archived: string }[
 }
 /** Tetto di notifiche scelto dal lettore: sta tra gli argomenti dell'iscrizione come «max:3». */
 export const pushCap = (topics: string[]): number | null => { const t = topics.find((x) => x.startsWith('max:')); const n = t ? Number(t.slice(4)) : NaN; return Number.isFinite(n) && n > 0 ? Math.min(50, Math.round(n)) : null; };
-export const realTopics = (topics: string[]): string[] => topics.filter((t) => !t.startsWith('max:'));
+export const realTopics = (topics: string[]): string[] => topics.filter((t) => !t.startsWith('max:') && t !== 'watch');
 export const underCap = (topics: string[], sentToday: number): boolean => { const cap = pushCap(topics); return cap === null || sentToday < cap; };

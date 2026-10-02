@@ -26,6 +26,7 @@ export const NAV: NavItem[] = [
   { href: '/admin/pagine', label: 'Pagine', icon: '📄', group: 'Contenuti', editorOnly: true, profiles: 'all' },
   { href: '/admin/blocchi', label: 'Blocchi riutilizzabili', icon: '♻️', group: 'Contenuti', editorOnly: true, profiles: NEWS },
   { href: '/admin/eventi', label: 'Eventi', icon: '📅', group: 'Territorio', perm: 'article.publish', profiles: ['quotidiano'], pill: 'events' },
+  { href: '/admin/formati', label: 'Formati e dispositivi', icon: '📻', group: 'Contenuti', perm: 'article.publish', profiles: ['quotidiano', 'rivista', 'newsletter'] },
   { href: '/admin/economia', label: 'Economia locale', icon: '🏪', group: 'Community', perm: 'settings.manage', profiles: ['quotidiano'] },
   { href: '/admin/scuola', label: 'Scuola e accessibilità', icon: '🎒', group: 'Community', perm: 'article.publish', profiles: ['quotidiano'] },
   { href: '/admin/schede', label: 'Schede', icon: '🗂', group: 'Territorio', perm: 'article.publish', profiles: ['quotidiano', 'rivista'] },

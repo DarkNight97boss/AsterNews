@@ -1,6 +1,6 @@
 export type Role = 'admin' | 'editor' | 'author' | 'contributor';
 export type ArticleStatus = 'draft' | 'review' | 'scheduled' | 'published' | 'archived';
-export type ArticleFormat = 'standard' | 'video' | 'gallery' | 'live';
+export type ArticleFormat = 'standard' | 'video' | 'gallery' | 'live' | 'lettera';
 export type CommentStatus = 'pending' | 'approved' | 'rejected' | 'spam';
 
 export type CategoryKind = 'standard' | 'local' | 'opinion' | 'dossier';
@@ -421,6 +421,7 @@ export const FORMAT_LABELS: Record<ArticleFormat, string> = {
   video: 'Video',
   gallery: 'Fotogallery',
   live: 'Diretta',
+  lettera: 'Lettera (pezzo personale, senza barra laterale)',
 };
 
 export const ROLE_LABELS: Record<Role, string> = {
