@@ -1,0 +1,12 @@
+import { describe, expect, it } from 'vitest';
+import { chainKey, closureGroups, emergencyReport, floods, groupByZone, normalizePhone, riverStatus, smsText } from '../src/lib/emergency';
+
+describe('emergenze', () => {
+  it('chiave della catena: stesso messaggio con varianti', () => { expect(chainKey('ATTENZIONE!!! Domani chiudono le scuole per allerta, inoltra a tutti https://x.y')).toBe(chainKey('attenzione: domani chiudono le scuole per allerta. Inoltra a tutti!')); });
+  it('telefono', () => { expect(normalizePhone('333 123 4567')).toBe('+393331234567'); expect(normalizePhone('0039 333 1234567')).toBe('+393331234567'); expect(normalizePhone('+39 333-1234567')).toBe('+393331234567'); expect(normalizePhone('12')).toBeNull(); });
+  it('SMS mai oltre 160', () => { const t = smsText('Aster News', 'x'.repeat(300), 'https://a.it/emergenza'); expect(t.length).toBeLessThanOrEqual(160); expect(t.endsWith('https://a.it/emergenza')).toBe(true); expect(smsText('A', 'ciao', '')).toBe('A: ciao'); });
+  it('chiusure per tipo, riaperte in fondo', () => { const g = closureGroups([{ id: '1', kind: 'strada', name: 'Via B', status: 'riaperto', until: '', note: '', updatedAt: '' }, { id: '2', kind: 'strada', name: 'Via A', status: 'chiuso', until: '', note: '', updatedAt: '' }, { id: '3', kind: 'scuola', name: 'Liceo', status: 'chiuso', until: '', note: '', updatedAt: '' }]); expect(g.map((x) => x.kind)).toEqual(['strada', 'scuola']); expect(g[0].items.map((x) => x.name)).toEqual(['Via A', 'Via B']); });
+  it('sto bene per zona e ricerca', () => { const g = groupByZone([{ zone: 'Centro', name: 'Màrio', createdAt: '2' }, { zone: '', name: 'Anna', createdAt: '1' }], 'mario'); expect(g).toHaveLength(1); expect(g[0].zone).toBe('Centro'); });
+  it('fiume: stato e piene', () => { expect(riverStatus(2.5, 2, 3).state).toBe('attenzione'); expect(riverStatus(3.2, 2, 3).state).toBe('allarme'); expect(riverStatus(null).state).toBe('nd'); const f = floods([{ d: '2025-01-01', v: 1 }, { d: '2025-01-02', v: 2.5 }, { d: '2025-01-03', v: 3 }, { d: '2025-02-10', v: 2.2 }], 2); expect(f).toHaveLength(2); expect(f[1]).toEqual({ from: '2025-01-02', to: '2025-01-03', peak: 3 }); });
+  it('resoconto', () => { const r = emergencyReport({ title: 'Alluvione', level: 'rosso', from: '2025-01-01T08:00:00Z', to: '2025-01-02T08:00:00Z' }, [{ at: '2025-01-01T09:00:00Z', text: 'Esonda il torrente' }], [], 3, 10); expect(r).toContain('Allerta rossa'); expect(r).toContain('24 ore'); expect(r).toContain('Esonda'); });
+});

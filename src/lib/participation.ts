@@ -1,5 +1,6 @@
 /** Tipi di contributo dei lettori che passano dalla moderazione unica in /admin/partecipazione. `who` e `body` sono le chiavi dei dati da mostrare. */
 export const PARTICIPATION_KINDS: { kind: string; label: string; who: string; body: string }[] = [
+  { kind: 'chiusura-segnalata', label: 'Chiusure segnalate (emergenza)', who: 'kind', body: 'name' },
   { kind: 'response', label: 'Risposte lunghe agli articoli', who: 'name', body: 'text' },
   { kind: 'manifesto', label: 'Manifesti elettorali fotografati', who: 'where', body: 'image' },
   { kind: 'paniere', label: 'Prezzi rilevati per il paniere', who: 'shop', body: 'product' },

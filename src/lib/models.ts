@@ -311,6 +311,7 @@ export interface SiteSettings {
   sponsors?: Record<string, SectionSponsor>;
   method?: import('./method').MethodSettings;
   archive?: { depositEnabled?: boolean; depositEmail?: string };
+  emergency?: import('./emergency').EmergencySettings;
   aiPolicy?: { notes: string; allowTraining: boolean };
   rhythm?: RhythmSettings;
   themeVersions?: ThemeVersion[];
