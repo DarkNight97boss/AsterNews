@@ -8,6 +8,8 @@ export const PARTICIPATION_KINDS: { kind: string; label: string; who: string; bo
   { kind: 'albero', label: 'Censimento degli alberi', who: 'where', body: 'image' },
   { kind: 'voce-genitori', label: 'Voce dei genitori (scuole)', who: 'name', body: 'text' },
   { kind: 'cantiere-foto', label: 'Foto dei cantieri', who: 'text', body: 'image' },
+  { kind: 'lettura', label: 'Letture ad alta voce dei volontari', who: 'name', body: 'audio' },
+  { kind: 'memoria-audio', label: 'Memorie dei quartieri (audio)', who: 'name', body: 'audio' },
   { kind: 'guestbook', label: 'Libro degli ospiti (messaggi scritti a mano)', who: 'name', body: 'image' },
   { kind: 'log', label: 'Taccuino di quartiere', who: 'name', body: 'text' },
   { kind: 'council', label: 'Domande al Comune', who: 'name', body: 'text' },

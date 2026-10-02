@@ -7,11 +7,11 @@ const DEFAULT: Prefs = { font: 'normal', contrast: 'normal', motion: 'normal' };
 function apply(p: Prefs) { const h = document.documentElement; h.dataset.a11yFont = p.font; h.dataset.a11yContrast = p.contrast; h.dataset.a11yMotion = p.motion; }
 
 /** Strumenti di accessibilità: dimensione del testo, alto contrasto, meno animazioni e lettura ad alta voce dell'articolo. */
-export function A11yBar() {
+export function A11yBar({ initial }: { initial?: Prefs } = {}) {
   const [open, setOpen] = useState(false);
   const [p, setP] = useState<Prefs>(DEFAULT);
   const [speaking, setSpeaking] = useState(false);
-  useEffect(() => { try { const saved = JSON.parse(localStorage.getItem('a11y') ?? 'null'); if (saved) { setP(saved); apply(saved); } } catch { /* ignore */ } }, []);
+  useEffect(() => { if (initial) { setP(initial); apply(initial); try { localStorage.setItem('a11y', JSON.stringify(initial)); } catch { /* */ } return; } try { const saved = JSON.parse(localStorage.getItem('a11y') ?? 'null'); if (saved) { setP(saved); apply(saved); } } catch { /* ignore */ } }, [initial]);
   const set = (patch: Partial<Prefs>) => { const n = { ...p, ...patch }; setP(n); apply(n); try { localStorage.setItem('a11y', JSON.stringify(n)); } catch { /* ignore */ } };
   const speak = () => {
     if (!('speechSynthesis' in window)) return;
@@ -31,6 +31,7 @@ export function A11yBar() {
           <button className={p.motion === 'reduce' ? 'on' : ''} onClick={() => set({ motion: p.motion === 'reduce' ? 'normal' : 'reduce' })}>Meno animazioni <span>{p.motion === 'reduce' ? 'sì' : 'no'}</span></button>
           <button className={speaking ? 'on' : ''} onClick={speak}>{speaking ? 'Ferma lettura' : 'Leggi ad alta voce'} <span>🔊</span></button>
           <button onClick={() => set(DEFAULT)}>Ripristina <span>↺</span></button>
+          <a href="/leggibile">Scegli una volta per tutte <span>→</span></a>
         </div>
       )}
       <button className="a11y-toggle" aria-label="Strumenti di accessibilità" aria-expanded={open} onClick={() => setOpen(!open)}>♿</button>

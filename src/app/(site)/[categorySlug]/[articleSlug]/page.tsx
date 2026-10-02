@@ -88,7 +88,7 @@ export default async function ArticlePage({ params, searchParams }: PageProps<'/
   // Un anno fa oggi: il post che risponde a uno vecchio lo dichiara, e quello vecchio rimanda alla rilettura
   const repliedTo = a.extra?.replyTo ? await (await import('@/lib/repo')).findArticle(a.extra.replyTo) : null; const rereads = (await (await import('@/lib/repo')).listArticles({ status: 'published', extraLike: `"replyTo":"${a.id}"` }, 'published', 50)).filter((x) => x.extra?.replyTo === a.id);
   const allCats = await getCategories(); const pastLinks = <>{repliedTo && repliedTo.status === 'published' && <p className="past-link">↩︎ Risposta a quello che scrivevo il {formatDate(repliedTo.publishedAt)}: <Link href={articleUrlWith(repliedTo, allCats)}>{repliedTo.title}</Link></p>}{rereads.map((r) => <p key={r.id} className="past-link">↪︎ Riletto il {formatDate(r.publishedAt)}: <Link href={articleUrlWith(r, allCats)}>{r.title}</Link></p>)}</>;
-  const translations = locked ? [] : await approvedOf('translation', { ref: a.id }); const factchecks = a.format === 'live' && !locked ? await factchecksFor(a.id) : [];
+  const translations = locked ? [] : await approvedOf('translation', { ref: a.id }); const readings = locked ? [] : await approvedOf('lettura', { ref: a.id }); const factchecks = a.format === 'live' && !locked ? await factchecksFor(a.id) : [];
   const [topHl, mind, responses, canAsk] = locked ? [[], null, [], false] as const : await Promise.all([highlightsFor(a.id), a.extra?.mindQuestion ? mindStats(a.id) : null, listRecords<{ name: string; title: string; text: string }>('response', { ref: a.id, status: 'approved', order: 'old' }), aiAvailable()]);
   const layered = a.content.includes('class="layered"'); const wordsAt = (d: number) => Math.max(1, Math.round(wordCount(a.content.replace(/<div data-depth="(\d)">[\s\S]*?<\/div>/g, (m, n) => (Number(n) === d ? m : ''))) / 200));
   const revs = a.extra?.hideBlackBox || settings.adapt?.blackBox === false ? [] : await listRevisions(a.id, 50);
@@ -187,6 +187,7 @@ export default async function ArticlePage({ params, searchParams }: PageProps<'/
             <figure className="article-cover"><div className="cover-frame"><SmartImage src={a.coverImage} alt={a.title} priority slot="cover" /></div>{a.coverCaption && <figcaption>{a.coverCaption}</figcaption>}</figure>
           ) : null}
           <ArticleTools articleId={a.id} title={a.title} url={articleUrl(a)} audioUrl={a.extra?.audioUrl} />
+          {readings.map((r) => <div key={r.id} className="audio-article"><span>🎧 Letto da {r.data.name}, volontario{r.data.note ? ` · ${r.data.note}` : ''}</span><audio controls preload="none" src={r.data.audio} /></div>)}
           {a.extra?.audioUrl && <div className="audio-article"><span>🎧 Ascolta l&apos;articolo{a.extra.audioDuration ? ` · ${Math.max(1, Math.round(a.extra.audioDuration / 60))} min` : ''}</span><audio controls preload="none" src={a.extra.audioUrl} /></div>}
           {a.format === 'live' && <LiveFeed articleId={a.id} initial={liveUpdates} active={a.liveActive} />}
           {factchecks.length > 0 && <section className="factchecks" aria-label="Verifiche in diretta"><b>Verifiche in diretta</b><ul>{factchecks.map((f) => <li key={f.id} className={`fc-${f.verdict.toLowerCase().replace(/\s+/g, '-')}`}>{f.minute && <span className="fc-min">{f.minute}</span>}<span className="fc-verdict">{f.verdict}</span> «{f.claim}»{f.note && <p>{f.note}</p>}{f.source && <a href={f.source} rel="noopener" target="_blank">fonte</a>}</li>)}</ul></section>}
@@ -227,6 +228,8 @@ export default async function ArticlePage({ params, searchParams }: PageProps<'/
           {!locked && responses.length > 0 && <section className="section long-responses"><div className="section-title"><h2>Le risposte dei lettori</h2></div>{responses.map((r) => <article key={r.id}><h3><Link href={`/risposte/${r.id}`}>{r.data.title}</Link></h3><p className="help">di {r.data.name}</p><p>{r.data.text.slice(0, 280)}… <Link href={`/risposte/${r.id}`}>Continua</Link></p></article>)}</section>}
           {!locked && a.allowComments && moduleOn(settings.trust, 'longResponse') && <LongResponseForm articleId={a.id} />}
           {!locked && !a.premium && moduleOn(settings.trust, 'translation') && <ContributionForm kind="translation" refId={a.id} />}
+          {!locked && !a.premium && moduleOn(settings.trust, 'volunteer') && <ContributionForm kind="lettura" refId={a.id} />}
+          {!locked && !a.premium && <p className="help" style={{ fontFamily: 'var(--font-sans)' }}>Insegnanti: <Link href={`/classe/${a.id}`}>versione per la classe</Link> con domande e glossario.</p>}
           {a.allowComments && (
             <section className="comments">
               <h3>Commenti ({comments.length})</h3>

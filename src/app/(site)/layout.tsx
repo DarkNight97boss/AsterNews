@@ -25,6 +25,7 @@ export default async function SiteLayout({ children }: LayoutProps<'/'>) {
   await ensureInstalled();
   const [s0, edition] = await Promise.all([getSettings(), currentEdition()]);
   const s = edition ? { ...s0, siteName: edition.name, tagline: edition.tagline || s0.tagline } : s0;
+  const readerForA11y = await (await import('@/lib/auth')).getCurrentReader();
   const [me, weather, cookieStore, { theme, preview }, categories, users, zones, counts, live] = await Promise.all([getCurrentUser(), getWeather(s.weatherCity, s.weatherLat, s.weatherLon), cookies(), getActiveTheme(), getCategories(), getUsers(), getZones(), zoneCounts(), getLiveArticles()]);
   if (s.maintenance?.enabled && !me) return <div className="maintenance"><div><div className="logo">{s.siteName}</div><h1>Torniamo subito</h1><p>{s.maintenance.message || 'Stiamo aggiornando il sito: torniamo tra pochi minuti.'}</p></div></div>;
   const menus = { ...DEFAULT_MENUS, ...(s.menus ?? {}) };
@@ -43,7 +44,7 @@ export default async function SiteLayout({ children }: LayoutProps<'/'>) {
       <SiteBanners settings={s} />
       <SiteHeader logoUrl={edition?.logo || ''} customMenu={menus.useCustomHeader && menus.header.length ? menus.header : undefined} extraLinks={menuPages} categories={categories} zones={topZones} opinions={opinions} weather={weather ? { icon: weatherIcon(weather.current.code), label: weatherLabel(weather.current.code), temp: weather.current.temp, city: weather.city } : null} liveLink={live[0] ? articleUrlWith(live[0], categories) : null} isLoggedIn={!!me} today={today} subscribeUrl={s.subscribeUrl} siteName={s.siteName} tagline={s.tagline} socials={s.socials} headerStyle={theme.headerStyle} topicsByCategory={topicsByCategory} pills={pills} />
       <Ticker />
-      <A11yBar />
+      <A11yBar initial={readerForA11y?.prefs?.a11y} />
       <main className="page"><div className="container">{children}</div></main>
       <Footer />
       {s.trust?.modules?.eco !== false && <EcoBadge />}

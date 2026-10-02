@@ -12,7 +12,7 @@ import type { ActionResult } from './actions';
 const EMAIL = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 export async function saveTrustSettingsAction(t: TrustSettings): Promise<ActionResult> {
   await requirePermission('settings.manage'); const s = await getSettings();
-  const MODS = ['selection', 'modes', 'ask', 'longResponse', 'translation', 'eco'] as const;
+  const MODS = ['selection', 'modes', 'ask', 'longResponse', 'translation', 'eco', 'volunteer'] as const;
   const clean: TrustSettings = { modules: Object.fromEntries(MODS.map((m) => [m, t.modules?.[m] !== false])), fundingYear: (t.fundingYear ?? '').slice(0, 20), replyEnabled: t.replyEnabled !== false, funding: (t.funding ?? []).filter((f) => f.label.trim()).slice(0, 20).map((f) => ({ label: f.label.trim().slice(0, 80), percent: Math.min(100, Math.max(0, Number(f.percent) || 0)), note: (f.note ?? '').slice(0, 200) })), commitments: (t.commitments ?? []).filter((c) => c.text.trim()).slice(0, 20).map((c) => ({ text: c.text.trim().slice(0, 240), state: c.state, note: (c.note ?? '').slice(0, 240) })), disclosures: Object.fromEntries(Object.entries(t.disclosures ?? {}).filter(([, v]) => v.trim()).map(([k, v]) => [k, v.trim().slice(0, 500)])) };
   await repo.saveSettingsRow({ ...s, trust: clean }); revalidateTag('settings', 'max'); revalidatePath('/', 'layout'); revalidatePath('/admin/fiducia'); return { ok: true, message: 'Trasparenza aggiornata.' };
 }
