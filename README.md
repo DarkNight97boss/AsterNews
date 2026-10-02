@@ -71,7 +71,7 @@ Su Vercel: collega l'integrazione Supabase (crea `POSTGRES_URL`), fai il deploy 
 - **Piattaforma**: registro estensioni, staging con promozione, log di sicurezza con avvisi, SSO Google Workspace e Microsoft 365, test end-to-end Playwright (`npm run e2e`), monitoraggio sintetico, Core Web Vitals reali, registro consensi GDPR, guida in-app.
 
 ### Quinta tornata: affidabilità, redazione, lettori, ricavi
-- **Rilascio controllato** (`/admin/rilascio`): commit in attesa, `npm run release:check` (tipi, test, end-to-end isolati), pulsante «Rilascia» attivo solo a condizioni verdi, ripristino con un clic, registro delle migrazioni, modalità manutenzione. **Uso dell'AI** registrato con tetto di spesa mensile.
+- **Rilascio controllato** (`/admin/rilascio`): commit in attesa, `npm run release:check` (tipi, test, end-to-end isolati), due passi separati («Allinea il repository» = git push, «Pubblica su Vercel» = deploy esplicito via Deploy Hook o API; i deploy automatici da main sono spenti in vercel.json),  ripristino con un clic, registro delle migrazioni, modalità manutenzione. **Uso dell'AI** registrato con tetto di spesa mensile.
 - **Redazione**: commenti a margine sulla frase selezionata, scaletta del giorno stampabile, embargo, fonti riservate, rassegna mattutina automatica dai feed, dettatura vocale.
 - **Lettori**: notifiche push per zona e sezione (`/notifiche`), «segui l'argomento» via email, lettura senza distrazioni, coda di ascolto, segnalazione errori, biglietti per gli eventi con controllo all'ingresso.
 - **Ricavi**: report per l'inserzionista, pubblicità self-service (`/pubblicita`), abbonamenti aziendali, prova gratuita e codici sconto, abbonati a rischio con email di recupero.

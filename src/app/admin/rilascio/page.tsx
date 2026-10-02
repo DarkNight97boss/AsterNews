@@ -17,7 +17,7 @@ export default async function ReleasePage() {
   const failed = migrations.filter((m) => !m.ok);
   return (
     <>
-      <ReleasePanel state={state} deployments={deployments} deployError={deployError} perf={perf} maintenance={{ enabled: !!s.maintenance?.enabled, message: s.maintenance?.message ?? '' }} hasHook={!!s.updates?.deployHookUrl} />
+      <ReleasePanel state={state} deployments={deployments} deployError={deployError} perf={perf} maintenance={{ enabled: !!s.maintenance?.enabled, message: s.maintenance?.message ?? '' }} deployMode={s.updates?.deployHookUrl ? 'hook' : (s.updates?.vercelToken || process.env.VERCEL_TOKEN) && (s.updates?.vercelProjectId || process.env.VERCEL_PROJECT_ID) ? 'api' : 'none'} />
       <div className="panel"><div className="panel-title">Registro delle migrazioni del database ({migrations.length} applicate{failed.length ? `, ${failed.length} con errore` : ''})</div>
         <p className="help" style={{ marginBottom: 8 }}>Ogni modifica allo schema viene eseguita una sola volta e registrata qui con data ed esito.</p>
         <div className="table-wrap" style={{ border: 0, maxHeight: 320, overflow: 'auto' }}><table className="table"><thead><tr><th>Quando</th><th>Istruzione</th><th>Esito</th></tr></thead><tbody>{[...failed, ...migrations.filter((m) => m.ok)].slice(0, 120).map((m) => <tr key={m.id}><td className="help" style={{ whiteSpace: 'nowrap' }}>{new Date(m.appliedAt).toLocaleString('it-IT')}</td><td><code style={{ fontSize: 11 }}>{m.stmt.slice(0, 110)}</code></td><td>{m.ok ? <span className="badge badge-green">ok</span> : <span className="badge badge-red" title={m.error}>errore</span>}</td></tr>)}</tbody></table></div>
