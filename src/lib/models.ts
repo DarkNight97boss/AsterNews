@@ -288,6 +288,8 @@ export interface SiteSettings {
   onboarding?: OnboardingSettings;
   performance?: PerformanceSettings;
   customFields?: Record<string, CustomField[]>;
+  /** Testo di partenza per sezione, creato con «tipi di contenuto descritti a parole» */
+  typeTemplates?: Record<string, string>;
   workflow?: WorkflowSettings;
   video?: VideoSettings;
   webhooks?: WebhookConfig[];

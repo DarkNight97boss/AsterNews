@@ -35,7 +35,7 @@ import { checkAccessibility } from '@/lib/a11y-check';
 import { useEffect } from 'react';
 import type { SeoContext } from '@/lib/seo-engine';
 
-interface Props { initial: Article; isNew: boolean; isPublic: boolean; categories: Category[]; zones: Zone[]; tags: Tag[]; users: User[]; media: MediaItem[]; permissions: Permission[]; seoCtx: SeoContext; siteUrl: string; maxLinks: number; meId: string }
+interface Props { initial: Article; isNew: boolean; isPublic: boolean; categories: Category[]; zones: Zone[]; tags: Tag[]; users: User[]; media: MediaItem[]; permissions: Permission[]; seoCtx: SeoContext; siteUrl: string; maxLinks: number; meId: string; typeTemplates?: Record<string, string> }
 const FORMATS: ArticleFormat[] = ['standard', 'video', 'gallery', 'live'];
 
 function shortTime(iso: string): string {
@@ -43,7 +43,7 @@ function shortTime(iso: string): string {
   return d.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
 }
 
-export function ArticleEditor({ initial, isNew, isPublic, categories, zones, tags: allTags, users, media, permissions, seoCtx, siteUrl, maxLinks, meId }: Props) {
+export function ArticleEditor({ initial, isNew, isPublic, categories, zones, tags: allTags, users, media, permissions, seoCtx, siteUrl, maxLinks, meId, typeTemplates = {} }: Props) {
   const router = useRouter();
   const [a, setA] = useState<Article>(initial);
   const [tags, setTags] = useState<Tag[]>(allTags);
@@ -63,6 +63,8 @@ export function ArticleEditor({ initial, isNew, isPublic, categories, zones, tag
   const [outputsHash, setOutputsHash] = useState(''); useEffect(() => { if (!a.extra?.outputs?.hash) return; const t = setTimeout(() => { canonicalHashClient(a.title, a.content).then(setOutputsHash).catch(() => {}); }, 800); return () => clearTimeout(t); }, [a.title, a.content, a.extra?.outputs?.hash]);
   const extra = a.extra ?? {}; const setExtra = (patch: Partial<NonNullable<Article['extra']>>) => set('extra', { ...extra, ...patch });
   const catFields = fieldDefs[a.categoryId] ?? [];
+  // Sezione con un modello di partenza (creata descrivendola a parole): un articolo nuovo e vuoto lo riceve appena si sceglie la sezione
+  useEffect(() => { const t = typeTemplates[a.categoryId]; if (isNew && t && !a.content.trim() && !a.extra?.template) { setA((x) => ({ ...x, content: t, extra: { ...(x.extra ?? {}), template: `tipo:${a.categoryId}` } })); } }, [a.categoryId, a.content, a.extra?.template, isNew, typeTemplates]);
   useEffect(() => { try { const m = localStorage.getItem('editor_mode'); if (m === 'blocks' || m === 'classic') setEditorMode(m); } catch { /* ignore */ } }, []);
   const switchMode = (m: 'blocks' | 'classic') => { setEditorMode(m); try { localStorage.setItem('editor_mode', m); } catch { /* ignore */ } };
   const [pending, start] = useTransition();

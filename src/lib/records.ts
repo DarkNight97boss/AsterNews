@@ -37,6 +37,15 @@ export async function countRecords(kind: string, f: { ref?: string; status?: Rec
 }
 /** Conteggi per riferimento (es. quanti «grazie» per ogni paragrafo di un articolo). */
 export async function countByRef(kind: string, refPrefix: string): Promise<Record<string, number>> { const rows = (await all("SELECT ref, COUNT(*) c FROM records WHERE kind = ? AND ref LIKE ? AND status IN ('open','approved','done') GROUP BY ref", [kind, `${refPrefix}%`])) as Row[]; return Object.fromEntries(rows.map((r) => [String(r.ref), Number(r.c)])); }
+/** Pulizia giornaliera: i record a scadenza vengono tolti dopo la scadenza, quelli effimeri dopo il loro tempo utile. Restituisce quante righe ha tolto. */
+export async function purgeRecords(nowMs = Date.now()): Promise<number> {
+  const iso = (d: number) => new Date(nowMs - d * 86_400_000).toISOString(); const rules: [string, string][] = [['spot', iso(1)], ['coread', iso(1)], ['export-token', iso(1)]];
+  let n = 0; const count = async () => Number(((await get('SELECT COUNT(*) c FROM records')) as { c: number }).c);
+  const before = await count();
+  for (const [kind, dueBefore] of rules) await run('DELETE FROM records WHERE kind = ? AND due_at IS NOT NULL AND due_at < ?', [kind, dueBefore]);
+  await run('DELETE FROM records WHERE kind = ? AND created_at < ?', ['coread-hl', iso(14)]); await run('DELETE FROM records WHERE kind = ? AND created_at < ?', ['pushcap', iso(2)]); await run('DELETE FROM records WHERE kind = ? AND created_at < ?', ['read', iso(180)]);
+  n = before - (await count()); return Math.max(0, n);
+}
 /** Contatore aggregato (una riga per chiave, non una per evento): per misure che non devono riempire il database. */
 export async function bumpCounter(kind: string, key: string, ref = '', extra: Record<string, string> = {}): Promise<number> {
   const id = `${kind}_${key}`.slice(0, 160); const cur = await findRecord<{ n: number }>(id); const n = (cur?.data.n ?? 0) + 1;

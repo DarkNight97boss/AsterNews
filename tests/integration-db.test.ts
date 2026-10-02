@@ -158,3 +158,14 @@ describe('lavori notturni delle ultime tornate', () => {
     const notes = await x3.listNotifications('u9', 20); expect(notes.some((n) => n.text.includes('Frase scaduta'))).toBe(true); expect(notes.some((n) => n.text.includes('Promessa ai lettori'))).toBe(true);
   });
 });
+
+describe('filtri sugli extra e sull\'indirizzo', () => {
+  it('extraLacks, extraLike e addressWords lavorano in SQL', async () => {
+    await repo.upsertArticle(article('f1', { status: 'published', publishedAt: now(), address: 'Via Roma 12', extra: { replyTo: 'f0' } })); await repo.upsertArticle(article('f2', { status: 'published', publishedAt: now(), address: 'Corso Garibaldi 3', extra: { signature: { hash: 'h', sig: 's', at: now() } } })); await repo.upsertArticle(article('f3', { status: 'published', publishedAt: now(), address: 'Via Roma 40', extra: { replyTo: 'altro' } }));
+    const ids = (l: { id: string }[]) => l.map((x) => x.id).filter((i) => i.startsWith('f')).sort();
+    expect(ids(await repo.listArticles({ status: 'published', extraLacks: 'signature', includeCircles: true }, 'published', 100))).toEqual(['f1', 'f3']);
+    expect(ids(await repo.listArticles({ status: 'published', extraLike: '"replyTo":"f0"' }, 'published', 100))).toEqual(['f1']);
+    expect(ids(await repo.listArticles({ status: 'published', addressWords: ['via', 'roma'] }, 'published', 100))).toEqual(['f1', 'f3']);
+    const R = await import('../src/lib/records'); await R.addRecord('spot', { id: 'spot_x', data: {}, dueAt: '2020-01-01T00:00:00.000Z' }); await R.addRecord('spot', { id: 'spot_y', data: {}, dueAt: '2999-01-01T00:00:00.000Z' }); expect(await R.purgeRecords()).toBeGreaterThanOrEqual(1); expect(await R.findRecord('spot_x')).toBeUndefined(); expect(await R.findRecord('spot_y')).toBeTruthy();
+  });
+});

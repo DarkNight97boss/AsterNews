@@ -54,7 +54,7 @@ export async function proposeTypeAction(description: string): Promise<ActionResu
 export async function createTypeAction(p: TypeProposal): Promise<ActionResult> {
   await requirePermission('settings.manage'); const name = p.name.trim(); if (name.length < 2 || !p.fields.length) return { ok: false, message: 'Proposta incompleta.' }; const cats = await getCategories(); if (cats.some((c) => c.slug === slugify(name))) return { ok: false, message: 'Esiste già una sezione con questo nome.' };
   const base = cats[0]; const id = uid('c'); await repo.upsertCategory({ id, slug: slugify(name), name, kind: 'standard', color: base?.color ?? '#22418f', description: '', order: cats.length + 1, showInMenu: true, showOnHome: false });
-  const s = await getSettings(); await repo.saveSettingsRow({ ...s, customFields: { ...(s.customFields ?? {}), [id]: p.fields as never }, typeTemplates: { ...((s as { typeTemplates?: Record<string, string> }).typeTemplates ?? {}), [id]: p.template } } as typeof s); revalidateTag('categories', 'max'); touch();
+  const s = await getSettings(); await repo.saveSettingsRow({ ...s, customFields: { ...(s.customFields ?? {}), [id]: p.fields as never }, typeTemplates: { ...(s.typeTemplates ?? {}), [id]: p.template } }); revalidateTag('categories', 'max'); touch();
   return { ok: true, message: `Creata la sezione «${name}» con ${p.fields.length} campi e la sua tabella in /dati/${slugify(name)}.` };
 }
 /** Libro degli ospiti: un messaggio scritto a mano sul touch, sempre moderato. */

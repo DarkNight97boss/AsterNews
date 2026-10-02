@@ -15,7 +15,8 @@ export async function notifyCorrectionToReaders(a: Article): Promise<number> {
   const c = a.extra?.corrections?.[a.extra.corrections.length - 1]; if (!c || !(await mailConfigured())) return 0;
   const [reads, s, cats] = await Promise.all([listRecords('read', { ref: a.id, limit: 2000 }), getSettings(), getCategories()]); const url = `${siteUrl()}/${cats.find((k) => k.id === a.categoryId)?.slug ?? 'notizie'}/${a.slug}`;
   let sent = 0;
-  for (const r of reads) { const reader = await findReader(r.owner); if (!reader?.email) continue; const res = await sendMail({ to: reader.email, subject: `Abbiamo corretto un articolo che hai letto`, html: mailLayout(s.siteName, 'Una correzione che ti riguarda', `<p>Hai letto <b>${esc(a.title)}</b>. Dopo la pubblicazione abbiamo corretto il testo:</p><blockquote style="border-left:3px solid #d7262d;padding-left:12px;margin:12px 0">${esc(c.text)}</blockquote><p>Te lo scriviamo perché chi ha letto un errore ha diritto a leggere anche la rettifica.</p>${button(url, 'Leggi la versione corretta')}`) }); if (res.ok) sent++; }
+  // Solo chi ha aperto l'articolo prima della correzione ha letto davvero l'errore
+  for (const r of reads.filter((x) => x.createdAt < c.date)) { const reader = await findReader(r.owner); if (!reader?.email) continue; const res = await sendMail({ to: reader.email, subject: `Abbiamo corretto un articolo che hai letto`, html: mailLayout(s.siteName, 'Una correzione che ti riguarda', `<p>Hai letto <b>${esc(a.title)}</b>. Dopo la pubblicazione abbiamo corretto il testo:</p><blockquote style="border-left:3px solid #d7262d;padding-left:12px;margin:12px 0">${esc(c.text)}</blockquote><p>Te lo scriviamo perché chi ha letto un errore ha diritto a leggere anche la rettifica.</p>${button(url, 'Leggi la versione corretta')}`) }); if (res.ok) sent++; }
   return sent;
 }
 /** Promemoria giornaliero: promesse e previsioni arrivate a scadenza diventano una notifica per chi le ha registrate (una volta sola). */
@@ -41,6 +42,6 @@ export async function remindExpiredSentences(): Promise<number> {
 /** Firma degli articoli usciti prima che la firma esistesse: qualche decina al giorno, finché l'archivio non è tutto firmato. */
 export async function signBacklog(max = 150): Promise<number> {
   const { listArticles, patchArticle } = await import('./repo'); const { signArticle } = await import('./signing'); let n = 0;
-  for (const a of await listArticles({ status: 'published', includeCircles: true }, 'published', 3000)) { if (a.extra?.signature) continue; await patchArticle(a.id, { extra: JSON.stringify({ ...(a.extra ?? {}), signature: await signArticle(a.title, a.content) }) }); if (++n >= max) break; }
+  for (const a of await listArticles({ status: 'published', includeCircles: true, extraLacks: 'signature' }, 'published', max)) { if (a.extra?.signature) continue; await patchArticle(a.id, { extra: JSON.stringify({ ...(a.extra ?? {}), signature: await signArticle(a.title, a.content) }) }); if (++n >= max) break; }
   return n;
 }

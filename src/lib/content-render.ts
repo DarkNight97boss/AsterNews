@@ -1,6 +1,7 @@
 import 'server-only';
 import * as x3 from './repo-extra3';
 import { renderAuthorNotes, renderLiveData, type LiveDatum } from './writing';
+import { stripCircles } from './circles';
 
 /**
  * Rifiniture del contenuto al momento del rendering (il testo salvato non cambia):
@@ -23,6 +24,10 @@ export async function enhanceContent(html: string): Promise<string> {
   out = addHeadingIds(out);
   return out;
 }
+/** Note d'autore tolte del tutto: fuori dal sito (feed, API, libro, archivio statico) non c'è il pulsante che le mostra. */
+export const stripAuthorNotes = (html: string): string => (html.includes('[[nota:') ? html.replace(/\[\[nota:[\s\S]*?\]\]/g, '') : html);
+/** Il testo come deve uscire dal sito: senza blocchi riservati e note d'autore, con dati vivi, blocchi riutilizzabili, note a piè di pagina e link archiviati già risolti. Da usare in ogni esportazione, feed e API. */
+export async function publicContent(html: string): Promise<string> { return enhanceContent(stripAuthorNotes(stripCircles(html))); }
 export function renderFootnotes(html: string): string {
   if (!html.includes('[^')) return html;
   const notes: string[] = [];

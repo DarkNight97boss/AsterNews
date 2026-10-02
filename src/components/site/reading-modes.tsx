@@ -8,7 +8,7 @@ import type { AltVersion } from '@/lib/models';
 export function ReadingModes({ articleId, title, kids, easy, layeredMinutes, coread }: { articleId: string; title: string; kids?: AltVersion; easy?: AltVersion; layeredMinutes?: number[]; coread?: string }) {
   const [minutes, setMinutes] = useState(0); const [alt, setAlt] = useState<'' | 'kids' | 'easy'>(''); const [code, setCode] = useState(''); const [room, setRoom] = useState(coread ?? ''); const [hiddenMin, setHiddenMin] = useState(0); const [pending, start] = useTransition();
   useEffect(() => {
-    const body = document.querySelector('.article-body'); if (!body) return; const blocks = Array.from(body.children).filter((el) => !el.matches('.footnotes')) as HTMLElement[]; blocks.forEach((b) => b.classList.remove('time-cut')); setHiddenMin(0); if (!minutes) return;
+    const body = document.querySelector('.article-body'); if (!body) return; const blocks = Array.from(body.children).filter((el) => !el.matches('.footnotes')) as HTMLElement[]; blocks.forEach((b) => b.classList.remove('time-cut')); setHiddenMin(0); if (!minutes) { if (layeredMinutes?.length) delete document.documentElement.dataset.depth; return; }
     if (layeredMinutes?.length) { document.documentElement.dataset.depth = String(depthForMinutes(layeredMinutes, minutes)); return; }
     const words = blocks.map((b) => (b.textContent ?? '').split(/\s+/).filter(Boolean).length); const keep = paragraphsForMinutes(words, minutes); blocks.slice(keep).forEach((b) => b.classList.add('time-cut')); setHiddenMin(Math.ceil(words.slice(keep).reduce((n, w) => n + w, 0) / 200));
   }, [minutes, layeredMinutes]);

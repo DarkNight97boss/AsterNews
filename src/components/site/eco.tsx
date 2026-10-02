@@ -19,7 +19,14 @@ export function EcoBadge() {
 }
 export function ReadEnd({ articleId }: { articleId: string }) {
   const ref = useRef<HTMLSpanElement>(null);
-  useEffect(() => { const el = ref.current; if (!el) return; const started = Date.now(); const io = new IntersectionObserver((e) => { if (e[0].isIntersecting && Date.now() - started > 15_000) { io.disconnect(); try { if (sessionStorage.getItem(`end_${articleId}`)) return; sessionStorage.setItem(`end_${articleId}`, '1'); } catch { /* */ } readEndAction(articleId).catch(() => {}); } }); io.observe(el); return () => io.disconnect(); }, [articleId]);
+  useEffect(() => {
+    const el = ref.current; if (!el) return; const started = Date.now(); let timer: ReturnType<typeof setTimeout> | undefined; let done = false;
+    const record = () => { if (done) return; done = true; io.disconnect(); try { if (sessionStorage.getItem(`end_${articleId}`)) return; sessionStorage.setItem(`end_${articleId}`, '1'); } catch { /* */ } readEndAction(articleId).catch(() => {}); };
+    const visible = () => { const r = el.getBoundingClientRect(); return r.top < innerHeight && r.bottom > 0; };
+    // La fine può essere già nel viewport al caricamento (articolo corto): in quel caso si aspetta il tempo minimo e si ricontrolla
+    const io = new IntersectionObserver((e) => { if (!e[0].isIntersecting) { clearTimeout(timer); return; } const left = 15_000 - (Date.now() - started); if (left <= 0) record(); else { clearTimeout(timer); timer = setTimeout(() => { if (visible()) record(); }, left); } });
+    io.observe(el); return () => { clearTimeout(timer); io.disconnect(); };
+  }, [articleId]);
   return <span ref={ref} aria-hidden="true" />;
 }
 /** Prezzo libero sensato: suggerisce una cifra da quanto leggi davvero (i minuti restano nel browser) e dice chiaro che puoi pagare meno. */

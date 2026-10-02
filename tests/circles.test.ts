@@ -16,3 +16,15 @@ describe('diario privato', () => {
     expect(filterCircles(html, { staff: false, circles: [] }, [])).toBe('<p>Pubblico.</p>'); expect(filterCircles(html, { staff: true, circles: [] }, [])).toContain('Pensiero mio.'); expect(stripCircles(html)).toBe('<p>Pubblico.</p>');
   });
 });
+
+describe('blocchi riservati con div annidati', () => {
+  it('un riquadro dentro un passaggio riservato non fa uscire il resto del testo', async () => {
+    const { filterCircles, stripCircles } = await import('../src/lib/circles');
+    const html = '<p>Pubblico.</p><div class="circle-only" data-circle="__me"><div class="box"><b>Da sapere</b><p>appunto</p></div><p>Il vero segreto</p></div><p>Coda pubblica.</p>';
+    expect(filterCircles(html, { staff: false, circles: [] }, [])).toBe('<p>Pubblico.</p><p>Coda pubblica.</p>'); expect(stripCircles(html)).toBe('<p>Pubblico.</p><p>Coda pubblica.</p>');
+    expect(filterCircles(html, { staff: true, circles: [] }, [])).toContain('Il vero segreto');
+    const fam = '<div class="circle-only" data-circle="fam"><div class="layered"><div data-depth="1">breve</div></div><p>Segreto</p></div><p>Fine</p>';
+    expect(filterCircles(fam, { staff: false, circles: [] }, [{ id: 'fam', name: 'Famiglia' }])).toBe('<p class="circle-locked">🔒 Una parte di questo testo è riservata a «Famiglia».</p><p>Fine</p>'); expect(filterCircles(fam, { staff: false, circles: ['fam'] }, [{ id: 'fam', name: 'Famiglia' }])).toContain('Segreto');
+    expect(stripCircles('<div class="circle-only" data-circle="__me"><p>mai chiuso')).toBe('');
+  });
+});

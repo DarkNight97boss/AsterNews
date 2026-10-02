@@ -1,14 +1,15 @@
 import { ImageResponse } from 'next/og';
 import { findArticle } from '@/lib/repo';
 import { getSettings, getTheme } from '@/lib/queries';
-import { stripCircles } from '@/lib/circles';
+import { publicContent } from '@/lib/content-render';
 
 export const dynamic = 'force-dynamic';
 /** Cartolina dell'articolo: la frase scelta dal lettore su un'immagine quadrata da mandare a una persona. La frase deve esistere davvero nel testo. */
 export async function GET(req: Request) {
   const u = new URL(req.url); const a = await findArticle(u.searchParams.get('a') ?? ''); const quote = (u.searchParams.get('t') ?? '').replace(/\s+/g, ' ').trim().slice(0, 240);
   if (!a || a.status !== 'published' || a.extra?.circle || quote.length < 12) return new Response('Not found', { status: 404 });
-  const plain = stripCircles(a.content).replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' '); if (!plain.toLowerCase().includes(quote.slice(0, 40).toLowerCase())) return new Response('La frase non è in questo articolo', { status: 400 });
+  // La frase deve esistere per intero: con il solo prefisso chiunque potrebbe attribuire al giornale parole mai scritte
+  const norm = (t: string) => t.toLowerCase().replace(/[’']/g, "'").replace(/[“”«»]/g, '"').replace(/\s+/g, ' ').trim(); const plain = norm((await publicContent(a.content)).replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ')); if (!plain.includes(norm(quote))) return new Response('La frase non è in questo articolo', { status: 400 });
   const [s, theme] = await Promise.all([getSettings(), getTheme()]);
   return new ImageResponse((
     <div style={{ width: 1080, height: 1080, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', background: '#fbf7ee', color: '#1a1a1a', padding: 90, fontFamily: 'Georgia, serif' }}>

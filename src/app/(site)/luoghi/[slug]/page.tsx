@@ -9,7 +9,7 @@ import { approvedOf } from '@/lib/commons-data';
 import { decadeOf } from '@/lib/community';
 
 export const revalidate = 900;
-async function load(slug: string) { const words = slug.split('-').filter(Boolean); if (!words.length) return []; const all = await listArticles({ status: 'published', q: words[words.length - 1] }, 'published', 300); return all.filter((a) => a.address && placeSlug(a.address) === slug); }
+async function load(slug: string) { const words = slug.split('-').filter((w) => w.length >= 2); if (!words.length) return []; const all = await listArticles({ status: 'published', addressWords: words }, 'published', 2000); return all.filter((a) => a.address && placeSlug(a.address) === slug); }
 export async function generateMetadata({ params }: PageProps<'/luoghi/[slug]'>): Promise<Metadata> { const { slug } = await params; const arts = await load(slug); const name = arts[0]?.address?.replace(/[,\s]*\d.*$/, '') ?? slug; return { title: `Ciò che sappiamo su ${name}`, description: `Tutti gli articoli che riguardano ${name}, dal più recente.`, robots: arts.length < 2 ? { index: false } : undefined }; }
 /** «Ciò che sa il giornale su via Roma»: scheda generata dall'archivio a partire dall'indirizzo degli articoli. */
 export default async function PlacePage({ params }: PageProps<'/luoghi/[slug]'>) {
