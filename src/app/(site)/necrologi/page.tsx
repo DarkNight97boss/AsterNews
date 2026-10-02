@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { Sidebar } from '@/components/site/widgets';
 import { listListings } from '@/lib/repo-extra2';
-import { listingsSettings } from '@/lib/actions-listings';
+import { listingsSettings } from '@/lib/listings-data';
 import { formatDate } from '@/lib/utils';
 
 export const metadata: Metadata = { title: 'Necrologi', description: 'Necrologi, anniversari e ringraziamenti.' };

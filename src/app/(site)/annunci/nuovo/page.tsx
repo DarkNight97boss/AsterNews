@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import { ListingForm } from '@/components/site/listing-form';
 import { getCurrentReader } from '@/lib/auth';
 import { getZones } from '@/lib/queries';
-import { listingsSettings } from '@/lib/actions-listings';
+import { listingsSettings } from '@/lib/listings-data';
 
 export const metadata: Metadata = { title: 'Pubblica un annuncio', robots: { index: false } };
 export default async function NewListingPage({ searchParams }: PageProps<'/annunci/nuovo'>) {

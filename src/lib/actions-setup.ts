@@ -23,7 +23,10 @@ export interface SetupPayload {
   services: { mailProvider: 'none' | 'resend' | 'brevo'; mailApiKey: string; mailFrom: string; mailFromName: string; analytics: boolean; push: boolean; storage: 'auto' | 'supabase' | 'vercel-blob' | 'db' };
 }
 
+/** Dopo l'installazione (o con SETUP_DISABLED) le azioni del setup rispondono solo a un amministratore. */
+async function setupAllowed(): Promise<boolean> { if (!process.env.SETUP_DISABLED && !(await isInstalled().catch(() => false))) return true; const { getCurrentUser } = await import('./auth'); const { can } = await import('./permissions'); const me = await getCurrentUser(); return !!me && can(me, 'settings.manage'); }
 export async function getSetupInfoAction(): Promise<SetupInfo> {
+  if (!(await setupAllowed())) throw new Error('Non autorizzato');
   let latencyMs = -1; let dbError = ''; let articles = 0; let users = 0; let seeded = false;
   try {
     const t0 = Date.now(); await all('SELECT 1'); latencyMs = Date.now() - t0;
@@ -33,6 +36,7 @@ export async function getSetupInfoAction(): Promise<SetupInfo> {
 }
 
 export async function testMailAction(provider: 'resend' | 'brevo', apiKey: string, from: string, to: string): Promise<ActionResult> {
+  if (!(await setupAllowed())) return { ok: false, message: 'Non autorizzato.' };
   const r = await sendMail({ to, subject: 'ASTER News: prova email', html: '<p>La configurazione email funziona.</p>', text: 'La configurazione email funziona.' }, { ...DEFAULT_NEWSLETTER, provider, apiKey, fromEmail: from });
   return r.ok ? { ok: true, message: `Email di prova inviata a ${to}.` } : { ok: false, message: r.error };
 }

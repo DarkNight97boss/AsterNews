@@ -48,4 +48,3 @@ export async function sendWinbackAction(readerIds: string[]): Promise<ActionResu
   for (const r of risk) { const res = await sendMail({ to: r.email, subject: `${r.name ? r.name.split(' ')[0] + ', c' : 'C'}i sei mancato su ${s.siteName}`, html: mailLayout(s.siteName, 'Cosa ti sei perso', `<p>È un po' che non passi: ecco gli articoli più letti dagli abbonati in questi giorni.</p><ul>${top.map((a) => `<li><a href="${siteUrl()}/${cats.find((c) => c.id === a.categoryId)?.slug ?? 'notizie'}/${a.slug}">${a.title}</a></li>`).join('')}</ul><p>Se qualcosa non ti convince del tuo abbonamento, rispondi a questa email: leggiamo tutto.</p>`) }); if (res.ok) n++; }
   return { ok: true, message: `${n} email di recupero inviate.` };
 }
-export async function isLoggedReader(): Promise<boolean> { return !!(await getCurrentReader()); }

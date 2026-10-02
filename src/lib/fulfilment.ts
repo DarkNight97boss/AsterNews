@@ -11,7 +11,7 @@ import { siteUrl } from './site-url';
 import { randomToken } from './security';
 import { uid } from './utils';
 
-const listingsSettings = async () => ({ ...DEFAULT_LISTINGS, ...((await getSettings()).listings ?? {}) });
+import { listingsSettings } from './listings-data';
 
 /**
  * Completamento dei pagamenti e creazione dei codici regalo. Vive fuori dai file 'use server': queste funzioni le chiama solo il webhook

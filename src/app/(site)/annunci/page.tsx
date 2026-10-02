@@ -4,7 +4,7 @@ import { Sidebar } from '@/components/site/widgets';
 import { LISTING_CATEGORIES } from '@/lib/models';
 import { getZones } from '@/lib/queries';
 import { listListings } from '@/lib/repo-extra2';
-import { listingsSettings } from '@/lib/actions-listings';
+import { listingsSettings } from '@/lib/listings-data';
 import { formatDate } from '@/lib/utils';
 
 export const metadata: Metadata = { title: 'Annunci', description: 'Annunci di casa, lavoro, auto e servizi dal territorio.' };

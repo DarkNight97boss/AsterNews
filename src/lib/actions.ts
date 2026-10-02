@@ -8,6 +8,7 @@ import { clientIp, getCurrentUser, requirePermission, requireUser } from './auth
 import { resetDb } from './db';
 import * as repo from './repo';
 import * as x from './repo-extra';
+import { guardRate } from './ratelimit';
 import { Article, ArticleStatus, Category, Comment, CommentStatus, Event, MediaItem, Report, SiteSettings, Tag, User, Zone } from './models';
 import { can, canEdit } from './permissions';
 import { getCategories, getSeoSettings, getSettings, invalidateProfiles, rawContext, seoContext } from './queries';
@@ -134,7 +135,7 @@ export async function duplicateArticleAction(id: string): Promise<ActionResult> 
   refresh();
   return ok('Articolo duplicato.', copy.id);
 }
-export async function incrementViewsAction(id: string): Promise<void> { await repo.incrementViews(id); }
+export async function incrementViewsAction(id: string): Promise<void> { if (await guardRate('viste', 120, 600_000)) return; await repo.incrementViews(id); }
 
 // ---------------- Categorie / Tag / Zone ----------------
 export async function saveCategoryAction(c: Category): Promise<ActionResult> {
@@ -178,7 +179,7 @@ export async function ensureTagAction(name: string): Promise<Tag | null> {
   return ensureTag(name);
 }
 /** Crea il tag se manca (uso interno, senza controllo permessi). */
-export async function ensureTag(name: string): Promise<Tag | null> {
+async function ensureTag(name: string): Promise<Tag | null> {
   const slug = slugify(name);
   if (!slug) return null;
   const existing = await repo.findTagBySlug(slug);

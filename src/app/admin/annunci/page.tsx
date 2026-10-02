@@ -4,7 +4,7 @@ import { requireUser } from '@/lib/auth';
 import { can } from '@/lib/permissions';
 import { getZones } from '@/lib/queries';
 import { listListings } from '@/lib/repo-extra2';
-import { listingsSettings } from '@/lib/actions-listings';
+import { listingsSettings } from '@/lib/listings-data';
 
 export default async function ListingsAdminPage({ searchParams }: PageProps<'/admin/annunci'>) {
   const me = await requireUser(); if (!can(me, 'comment.moderate')) redirect('/admin');

@@ -9,9 +9,9 @@ import { siteUrl } from './site-url';
 import { uid } from './utils';
 import { esc, mailConfigured, mailLayout, sendMail } from './mailer';
 import type { ActionResult } from './actions';
+import { listingsSettings } from './listings-data';
 
 const EMAIL = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
-export async function listingsSettings() { return { ...DEFAULT_LISTINGS, ...((await getSettings()).listings ?? {}) }; }
 
 /** Un lettore (o un visitatore con email) propone un annuncio o un necrologio; se previsto un pagamento, torna l'URL del checkout Stripe. */
 export async function submitListingAction(input: { kind: ListingKind; title: string; body: string; image: string; category: string; price: string; contactName: string; contactEmail: string; contactPhone: string; zoneId: string; extra?: Record<string, string> }): Promise<ActionResult & { checkoutUrl?: string }> {
