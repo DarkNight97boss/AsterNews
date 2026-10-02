@@ -20,6 +20,7 @@ export async function saveRhythmAction(r: RhythmSettings): Promise<ActionResult>
 /** Emergenza dichiarata: l'unica notifica che passa anche negli orari di quiete. Resta nel registro delle attività, perché non diventi un'abitudine. */
 export async function declareEmergencyAction(text: string): Promise<ActionResult> {
   const u = await requirePermission('article.publish'); if (text.trim().length < 10) return { ok: false, message: 'Spiega in una riga cosa sta succedendo.' }; if (await guardRate('emergenza', 3, 3_600_000)) return { ok: false, message: 'Hai già dichiarato un\'emergenza da poco.' };
-  const now = new Date().toISOString(); for (const x of await repo.listUsers()) if (x.active && x.id !== u.id) await insertNotification({ id: uid('nf'), userId: x.id, kind: 'emergency', text: `🚨 ${u.name}: ${text.trim().slice(0, 200)}`, url: '/admin/scaletta', read: false, createdAt: now });
+  const now = new Date().toISOString(); const { listRecords } = await import('./records'); const today = now.slice(0, 10); const onCall = new Set((await listRecords<{ date: string; userId: string; kind: string }>('shift', { limit: 500 })).filter((s) => s.data.date === today && s.data.kind === 'reperibile').map((s) => s.data.userId));
+  for (const x of await repo.listUsers()) if (x.active && x.id !== u.id) await insertNotification({ id: uid('nf'), userId: x.id, kind: 'emergency', text: `🚨 ${onCall.has(x.id) ? 'SEI DI REPERIBILITÀ · ' : ''}${u.name}: ${text.trim().slice(0, 200)}`, url: '/admin/scaletta', read: false, createdAt: now });
   return { ok: true, message: 'Emergenza dichiarata: la notifica arriva a tutti, anche fuori turno.' };
 }

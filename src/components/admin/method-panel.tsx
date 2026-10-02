@@ -1,0 +1,26 @@
+'use client';
+import { useEffect, useMemo, useState, useTransition } from 'react';
+import { toast } from '@/components/ui/toaster';
+import type { Article } from '@/lib/models';
+import { lexiconCheck, mentions, parseLexicon, type MethodSettings } from '@/lib/method';
+import { anonSourceSaveAction, markReviewedAction, methodInfoAction } from '@/lib/actions-method';
+
+type Extra = NonNullable<Article['extra']>;
+/** Regole della casa nell'editor: check-list del genere, lessico, persone citate, rilettura incrociata, fonti anonime. */
+export function MethodPanel({ article: a, isNew, meId, users, extra, setExtra }: { article: Article; isNew: boolean; meId: string; users: { id: string; name: string }[]; extra: Extra; setExtra: (p: Partial<Extra>) => void }) {
+  const [info, setInfo] = useState<{ method: MethodSettings; contacts: { id: string; name: string; role: string; org: string; notes: string; phone: string }[] } | null>(null); const [src, setSrc] = useState({ who: '', how: '', verifiedAt: new Date().toISOString().slice(0, 10), second: '' }); const [pending, start] = useTransition();
+  useEffect(() => { methodInfoAction().then(setInfo).catch(() => {}); }, []);
+  const kind = extra.label?.kind ?? 'default'; const items = useMemo(() => ((info?.method.checklists?.[kind] ?? info?.method.checklists?.default ?? '').split('\n').map((x) => x.trim()).filter(Boolean)), [info, kind]); const checked = extra.checklist ?? [];
+  const lex = useMemo(() => (info ? lexiconCheck(`${a.title} ${a.subtitle} ${a.content}`, parseLexicon(info.method.lexicon ?? '')) : []), [info, a.title, a.subtitle, a.content]); const cited = useMemo(() => (info ? mentions(`${a.title} ${a.content}`, info.contacts) : []), [info, a.title, a.content]);
+  const needsCross = (info?.method.crossReadKinds ?? []).includes(kind); const reviewer = users.find((u) => u.id === extra.reviewedBy);
+  if (!info) return null; if (!items.length && !lex.length && !cited.length && !needsCross && isNew) return null;
+  return (
+    <div className="panel method-panel"><div className="panel-title">Regole della casa</div>
+      {items.length > 0 && <><p className="help">Check-list «{kind}»: tutto spuntato prima di pubblicare.</p><ul className="checklist">{items.map((i) => <li key={i}><label className="switch"><input type="checkbox" checked={checked.includes(i)} onChange={(e) => setExtra({ checklist: e.target.checked ? [...checked, i] : checked.filter((x) => x !== i) })} /> {i}</label></li>)}</ul></>}
+      {lex.length > 0 && <div className="lex-warn"><b>Lessico della testata</b><ul>{lex.map((l) => <li key={l.avoid}>«{l.avoid}» ×{l.count}{l.prefer ? <> → preferisci <b>{l.prefer}</b></> : ''}{l.note ? <span className="help"> ({l.note})</span> : ''}</li>)}</ul></div>}
+      {cited.length > 0 && <div className="cited"><b>Persone citate (dalla rubrica)</b><ul>{cited.map((c) => <li key={c.id}><b>{c.name}</b>{c.role ? `, ${c.role}` : ''}{c.org ? ` · ${c.org}` : ''}{c.phone ? ` · ${c.phone}` : ''}{c.notes && <span className="help"> — {c.notes.slice(0, 160)}</span>}</li>)}</ul></div>}
+      {needsCross && <p className="help">Rilettura incrociata richiesta per «{kind}»: {reviewer ? <b>riletto da {reviewer.name}</b> : 'nessuno ha ancora riletto.'} {!isNew && a.authorId !== meId && !reviewer && <button type="button" className="btn btn-outline btn-sm" disabled={pending} onClick={() => start(async () => { const r = await markReviewedAction(a.id); (r.ok ? toast.success : toast.error)(r.message ?? ''); if (r.ok) setExtra({ reviewedBy: r.reviewedBy, reviewedAt: r.reviewedAt }); })}>Ho riletto questo pezzo</button>}</p>}
+      {!isNew && (extra.sources ?? []).length > 0 && <details className="anon-box"><summary>Registra l&apos;identità di una fonte anonima (cifrata)</summary><p className="help">Resta cifrata nel database; la leggono solo tu e un collega scelto; ogni lettura finisce nel registro delle attività.</p><input className="input" placeholder="Chi è davvero (nome, ruolo, contatto)" aria-label="Identità della fonte" value={src.who} onChange={(e) => setSrc({ ...src, who: e.target.value })} /><input className="input" style={{ marginTop: 6 }} placeholder="Come l'hai verificata" aria-label="Verifica" value={src.how} onChange={(e) => setSrc({ ...src, how: e.target.value })} /><div className="form-row" style={{ marginTop: 6 }}><input className="input" type="date" aria-label="Verificata il" value={src.verifiedAt} onChange={(e) => setSrc({ ...src, verifiedAt: e.target.value })} /><select className="select" aria-label="Seconda persona autorizzata" value={src.second} onChange={(e) => setSrc({ ...src, second: e.target.value })}><option value="">Solo io</option>{users.filter((u) => u.id !== meId).map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}</select></div><button type="button" className="btn btn-outline btn-sm" style={{ marginTop: 6 }} disabled={pending || src.who.trim().length < 3} onClick={() => start(async () => { const r = await anonSourceSaveAction(a.id, { who: src.who, how: src.how, verifiedAt: src.verifiedAt, allowed: src.second ? [src.second] : [] }); (r.ok ? toast.success : toast.error)(r.message ?? ''); if (r.ok) setSrc({ ...src, who: '', how: '' }); })}>Cifra e registra</button></details>}
+    </div>
+  );
+}

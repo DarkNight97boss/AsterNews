@@ -1,0 +1,9 @@
+import type { Metadata } from 'next';
+import Link from 'next/link';
+import { listRecords } from '@/lib/records';
+import { findArticle } from '@/lib/repo';
+import { articleUrlWith, getCategories } from '@/lib/queries';
+
+export const metadata: Metadata = { title: 'Come abbiamo sbagliato', description: 'Dopo un errore grave, cosa è successo, perché, e cosa cambia in redazione.' };
+export const dynamic = 'force-dynamic';
+export default async function PostmortemsPage() { const [list, cats] = await Promise.all([listRecords<{ title: string; what: string; why: string; change: string; articleId: string }>('postmortem', { status: 'approved', limit: 100 }), getCategories()]); const links = new Map<string, string>(); for (const p of list) if (p.data.articleId) { const a = await findArticle(p.data.articleId); if (a?.status === 'published') links.set(p.id, articleUrlWith(a, cats)); } return <div className="account" style={{ maxWidth: 760 }}><div className="account-card trust-page"><h1>Come abbiamo sbagliato</h1><p className="lead">Le correzioni dicono cosa era sbagliato. Qui diciamo perché è successo e cosa abbiamo cambiato, quando l&apos;errore è stato grave.</p>{list.length === 0 && <p className="help">Nessun post-mortem pubblico, per ora.</p>}{list.map((p) => <section key={p.id} className="postmortem"><h2>{p.data.title}</h2><p className="help">{new Date(p.createdAt).toLocaleDateString('it-IT', { day: 'numeric', month: 'long', year: 'numeric' })}{links.get(p.id) && <> · <Link href={links.get(p.id)!}>l&apos;articolo</Link></>}</p><h3>Cosa è successo</h3><p style={{ whiteSpace: 'pre-line' }}>{p.data.what}</p>{p.data.why && <><h3>Perché</h3><p style={{ whiteSpace: 'pre-line' }}>{p.data.why}</p></>}{p.data.change && <><h3>Cosa cambia</h3><p style={{ whiteSpace: 'pre-line' }}>{p.data.change}</p></>}</section>)}<p className="help"><Link href="/correzioni">Il registro delle correzioni</Link> · <Link href="/trasparenza">Trasparenza</Link></p></div></div>; }
