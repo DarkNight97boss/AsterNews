@@ -42,7 +42,7 @@
     "sass": "^1.104.1",
     "tsx": "^4.23.13",
     "typescript": "^5",
-    "vitest": "^4.1.11"
+    "vitest": "^4.1.12"
   },
   "browserslist": [
     "chrome >= 95",
